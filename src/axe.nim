@@ -22,7 +22,7 @@ when isMainModule:
                 tokens = lex(source)
                 ast = parse(tokens)
                 cCode = generateC(ast)
-                
+
             writeFile(name.replace(".axe", ".c"), cCode)
             discard execProcess(
                 command = "gcc",
