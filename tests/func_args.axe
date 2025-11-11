@@ -1,0 +1,13 @@
+def greet(name: char*, times: int) {
+    loop {
+        println name;
+        times = times - 1;
+        if times == 0 {
+            break;
+        }
+    }
+}
+
+main {
+    greet("world", 3);
+}

@@ -1,0 +1,8 @@
+main {
+    println "Hello, world.";
+
+    loop {
+        println "What is up...";
+        break;
+    }
+}
