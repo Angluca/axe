@@ -1,0 +1,10 @@
+// std.stdio;
+
+main: void (args: array<string>) {
+    println("Hello, world.");
+
+    loop {
+        println("What is up...");
+        break;
+    }
+}
