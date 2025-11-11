@@ -23,7 +23,7 @@ proc lex(source: string): seq[Token] =
 
     while pos < source.len:
         case source[pos]
-        of ' ', '\n', '\t':
+        of ' ', '\n', '\t', '\r':
             inc(pos)
         of '{':
             tokens.add(Token(typ: LBrace, value: "{"))
@@ -36,7 +36,8 @@ proc lex(source: string): seq[Token] =
             inc(pos)
         of '"':
             let ending = source.find('"', pos + 1)
-            if ending == -1: raise newException(ValueError, "Unterminated string")
+            if ending == -1:
+                raise newException(ValueError, "Unterminated string")
             tokens.add(Token(typ: String, value: source[(pos+1)..(ending-1)]))
             pos = ending + 1
         else:
@@ -53,13 +54,17 @@ proc lex(source: string): seq[Token] =
                 tokens.add(Token(typ: Break, value: "break"))
                 pos += 5
             else:
-                raise newException(ValueError, fmt"Unexpected character at position {pos}: '{source[pos]}'")
+                let charAtPos = if pos < source.len: source[pos] else: '.'
+                echo "Charatpos: " & charAtPos
+                echo "Pos: " & $pos
+                echo "Char code: " & $ord(charAtPos)
+                raise newException(ValueError, &"Unexpected character at position {pos}: '{charAtPos}'")
     return tokens
 
+# Parsing and code generation remain mostly the same
 proc parse(tokens: seq[Token]): ASTNode =
     var pos = 0
     var ast: ASTNode
-
     while pos < tokens.len:
         if tokens[pos].typ == Main:
             inc(pos)
@@ -68,7 +73,6 @@ proc parse(tokens: seq[Token]): ASTNode =
             inc(pos)
 
             var mainNode = ASTNode(nodeType: "Main", children: @[], value: "")
-
             while pos < tokens.len and tokens[pos].typ != RBrace:
                 case tokens[pos].typ
                 of Println:
@@ -103,16 +107,8 @@ proc parse(tokens: seq[Token]): ASTNode =
                                 raise newException(ValueError, "Expected ';' after break")
                             loopNode.children.add(ASTNode(nodeType: "Break", children: @[], value: ""))
                             inc(pos)
-                        of String:
-                            inc(pos)
-                            if tokens[pos].typ != Semicolon:
-                                raise newException(ValueError, "Expected ';' after string")
-                            loopNode.children.add(ASTNode(nodeType: "String", children: @[], value: tokens[pos].value))
-                            inc(pos)
-                        of Semicolon:
-                            inc(pos)
                         else:
-                            raise newException(ValueError, "Unexpected token after loop body")
+                            raise newException(ValueError, "Unexpected token in loop body")
                     if pos >= tokens.len or tokens[pos].typ != RBrace:
                         raise newException(ValueError, "Expected '}' after loop body")
                     inc(pos)
@@ -147,7 +143,7 @@ proc generateC(ast: ASTNode): string =
 
 when isMainModule:
     if paramCount() < 1:
-        echo "Usage: compiler input.axe"
+        echo "Usage: axe input.axe"
     else:
         try:
             let source = readFile(paramStr(1))

@@ -1,4 +1,4 @@
-main: void () {
+main {
     println("Hello, world.");
 
     loop {
