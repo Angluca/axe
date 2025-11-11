@@ -307,7 +307,7 @@ ASTNode parse(Token[] tokens)
             break;
 
         default:
-            enforce(false, "Unexpected token at top level");
+            enforce(false, "Unexpected token at top level: " ~ tokens[pos].value);
         }
     }
 
