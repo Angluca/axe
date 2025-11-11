@@ -11,7 +11,7 @@ type
     value*: string
     line*, col*: int
 
-const Keywords = ["main", "void", "loop", "break"].toHashSet()
+const Keywords = ["void", "loop", "break"].toHashSet()
 
 proc lex*(source: string): seq[Token] =
   var tokens: seq[Token]

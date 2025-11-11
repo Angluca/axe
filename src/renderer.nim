@@ -1,6 +1,7 @@
 import ast
 
 proc render*(node: Node): string =
+  echo "Rendering..."
   case node.kind
   of nkProgram:
     result = "#include <stdio.h>\n\n"
