@@ -22,19 +22,19 @@ proc generateC*(ast: ASTNode): string =
         for child in ast.children:
             case child.nodeType
             of "Println":
-                cCode.add("    printf(\"%s\\n\", \"" & child.value & "\");\n")
+                cCode.add("printf(\"%s\\n\", \"" & child.value & "\");\n")
             of "Loop":
-                cCode.add("    while (1) {\n")
+                cCode.add("while (1) {\n")
                 for loopChild in child.children:
                     case loopChild.nodeType
                     of "Println":
-                        cCode.add("        printf(\"%s\\n\", \"" & loopChild.value & "\");\n")
+                        cCode.add("printf(\"%s\\n\", \"" & loopChild.value & "\");\n")
                     of "Break":
-                        cCode.add("        break;\n")
-                cCode.add("    }\n")
+                        cCode.add("break;\n")
+                cCode.add("}\n")
             of "Break":
-                cCode.add("    break;\n")
-        cCode.add("    return 0;\n}")
+                cCode.add("break;\n")
+        cCode.add("return 0;\n}")
     else:
         raise newException(ValueError, "Unsupported node type for C generation: " & ast.nodeType)
     
