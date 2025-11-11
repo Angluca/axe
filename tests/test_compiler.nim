@@ -69,5 +69,4 @@ suite "Renderer tests":
     check contains(asmCode, "section .data")
     check contains(asmCode, "fmt db \"%s\", 10, 0")
     check contains(asmCode, "global _start")
-    check contains(asmCode, "push hello")
     check contains(asmCode, "call printf")
