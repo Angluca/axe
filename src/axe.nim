@@ -1,18 +1,18 @@
-import 
-    os, 
-    strutils, 
+import
+    os,
+    strutils,
     strformat,
     osproc
 
 type
     TokenType = enum
-        Main, 
-        Println, 
-        Loop, 
-        Break, 
-        String, 
-        Semicolon, 
-        LBrace, 
+        Main,
+        Println,
+        Loop,
+        Break,
+        String,
+        Semicolon,
+        LBrace,
         RBrace
 
     Token = object
@@ -27,7 +27,7 @@ type
 proc lex(source: string): seq[Token] =
     ## Lexical analysis and tokenization
     ## Includes whitespace skipping, basic tokenization, and string handling
-    
+
     var tokens: seq[Token]
     var pos = 0
 
@@ -68,7 +68,8 @@ proc lex(source: string): seq[Token] =
                 echo "Charatpos: " & charAtPos
                 echo "Pos: " & $pos
                 echo "Char code: " & $ord(charAtPos)
-                raise newException(ValueError, &"Unexpected character at position {pos}: '{charAtPos}'")
+                raise newException(ValueError,
+                        &"Unexpected character at position {pos}: '{charAtPos}'")
     return tokens
 
 proc parse(tokens: seq[Token]): ASTNode =
@@ -90,7 +91,8 @@ proc parse(tokens: seq[Token]): ASTNode =
                     inc(pos)
                     if pos >= tokens.len or tokens[pos].typ != String:
                         raise newException(ValueError, "Expected string after println")
-                    mainNode.children.add(ASTNode(nodeType: "Println", children: @[], value: tokens[pos].value))
+                    mainNode.children.add(ASTNode(nodeType: "Println",
+                            children: @[], value: tokens[pos].value))
                     inc(pos)
                     if pos >= tokens.len or tokens[pos].typ != Semicolon:
                         raise newException(ValueError, "Expected ';' after println")
@@ -107,7 +109,8 @@ proc parse(tokens: seq[Token]): ASTNode =
                             inc(pos)
                             if tokens[pos].typ != String:
                                 raise newException(ValueError, "Expected string after println")
-                            loopNode.children.add(ASTNode(nodeType: "Println", children: @[], value: tokens[pos].value))
+                            loopNode.children.add(ASTNode(nodeType: "Println",
+                                    children: @[], value: tokens[pos].value))
                             inc(pos)
                             if tokens[pos].typ != Semicolon:
                                 raise newException(ValueError, "Expected ';' after println")
@@ -116,7 +119,8 @@ proc parse(tokens: seq[Token]): ASTNode =
                             inc(pos)
                             if tokens[pos].typ != Semicolon:
                                 raise newException(ValueError, "Expected ';' after break")
-                            loopNode.children.add(ASTNode(nodeType: "Break", children: @[], value: ""))
+                            loopNode.children.add(ASTNode(nodeType: "Break",
+                                    children: @[], value: ""))
                             inc(pos)
                         else:
                             raise newException(ValueError, "Unexpected token in loop body")
@@ -159,13 +163,17 @@ when isMainModule:
         echo "Usage: axe input.axe"
     else:
         try:
-            let 
+            let
                 source = readFile(paramStr(1))
                 tokens = lex(source)
                 ast = parse(tokens)
                 cCode = generateC(ast)
             writeFile("output.c", cCode)
-            discard execProcess(command="gcc", args=["output.c", "-o", "output"], options={poStdErrToStdOut})
+            discard execProcess(
+                command = "gcc",
+                args = ["output.c", "-o", "output"],
+                options = {poStdErrToStdOut}
+            )
         except ValueError as e:
             echo "Error: ", e.msg
         except OSError as e:
