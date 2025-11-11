@@ -17,6 +17,12 @@ ASTNode parse(Token[] tokens)
     size_t pos = 0;
     ASTNode ast = ASTNode("Program", [], "");
 
+    /** 
+     * Parses a type from the current position in the token stream.
+     * 
+     * Returns: 
+     *   string = Type name (e.g., "int", "char", "int*")
+     */
     string parseType()
     {
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
@@ -42,6 +48,12 @@ ASTNode parse(Token[] tokens)
         return typeName;
     }
 
+    /** 
+     * Parses function arguments from the current position in the token stream.
+     * 
+     * Returns: 
+     *   string = Comma-separated list of arguments (e.g., "int a, char b")
+     */
     string parseArgs()
     {
         string[] args;
