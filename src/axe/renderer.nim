@@ -1,6 +1,7 @@
 import
     structs,
     strformat,
+    strutils,
     sets
 
 proc generateC*(ast: ASTNode): string =
@@ -16,7 +17,11 @@ proc generateC*(ast: ASTNode): string =
     of "Program":
         for child in ast.children:
             if child.nodeType == "Function":
-                cCode.add("void " & child.value & "();\n")
+                let funcDecl = child.value.split('(')
+                let funcName = funcDecl[0]
+                let args = if funcDecl.len > 1: funcDecl[1].strip(chars={')'}) else: ""
+                cCode.add("void " & funcName & "(" & 
+                    (if args.len > 0: "int " & args.replace(",", ", int ") else: "void") & ");\n")
         for i in includes:
             cCode.add(i & "\n")
         cCode.add("\n")
@@ -40,17 +45,41 @@ proc generateC*(ast: ASTNode): string =
             of "Break":
                 cCode.add("break;\n")
             of "FunctionCall":
-                cCode.add(child.value & "();\n")
+                let funcDecl = ast.value.split('(')
+                let funcName = funcDecl[0]
+                let args = if funcDecl.len > 1: funcDecl[1].strip(chars={')'}) else: ""
+                cCode.add(funcName & "(" & args & ");\n")
+            of "Function":
+                let funcDecl = ast.value.split('(')
+                let funcName = funcDecl[0]
+                let args = if funcDecl.len > 1: funcDecl[1].strip(chars={')'}) else: ""
+                cCode.add("void " & funcName & "(" & 
+                    (if args.len > 0: "int " & args.replace(",", ", int ") else: "void") & ") {\n")
+                for child in ast.children:
+                    cCode.add(generateC(child))
+                cCode.add("}\n")
         cCode.add("return 0;\n}")
     of "Function":
-        cCode.add("void " & ast.value & "() {\n")
+        let funcDecl = ast.value.split('(')
+        let funcName = funcDecl[0]
+        let args = if funcDecl.len > 1: funcDecl[1].strip(chars={')'}) else: ""
+        cCode.add("void " & funcName & "(" & 
+            (if args.len > 0: "int " & args.replace(",", ", int ") else: "void") & ") {\n")
         for child in ast.children:
             case child.nodeType
             of "Println":
                 cCode.add("printf(\"%s\\n\", \"" & child.value & "\");\n")
             of "FunctionCall":
-                cCode.add(child.value & "();\n")
+                let funcDecl = ast.value.split('(')
+                let funcName = funcDecl[0]
+                let args = if funcDecl.len > 1: funcDecl[1].strip(chars={')'}) else: ""
+                cCode.add(funcName & "(" & args & ");\n")
         cCode.add("}")
+    of "FunctionCall":
+        let funcDecl = ast.value.split('(')
+        let funcName = funcDecl[0]
+        let args = if funcDecl.len > 1: funcDecl[1].strip(chars={')'}) else: ""
+        cCode.add(funcName & "(" & args & ");\n")
     else:
         raise newException(ValueError, "Unsupported node type for C generation: " & ast.nodeType)
     

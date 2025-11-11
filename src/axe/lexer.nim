@@ -27,26 +27,27 @@ proc lex*(source: string): seq[Token] =
         of ';':
             tokens.add(Token(typ: Semicolon, value: ";"))
             inc(pos)
+        of ':':
+            tokens.add(Token(typ: Colon, value: ":"))
+            inc(pos)
         of '"':
             let ending = source.find('"', pos + 1)
             if ending == -1:
                 raise newException(ValueError, "Unterminated string")
             tokens.add(Token(typ: String, value: source[(pos+1)..(ending-1)]))
             pos = ending + 1
-        of '(':
-            tokens.add(Token(typ: LParen, value: "("))
-            inc(pos)
-        of ')':
-            tokens.add(Token(typ: RParen, value: ")"))
+        of '(', ')', ',':
+            tokens.add(Token(typ: case source[pos]
+                of '(': LParen
+                of ')': RParen
+                of ',': Comma
+                else: Colon, value: $source[pos]))
             inc(pos)
         of '[':
             tokens.add(Token(typ: LBracket, value: "["))
             inc(pos)
         of ']':
             tokens.add(Token(typ: RBracket, value: "]"))
-            inc(pos)
-        of ',':
-            tokens.add(Token(typ: Comma, value: ","))
             inc(pos)
         of '.':
             tokens.add(Token(typ: Dot, value: "."))

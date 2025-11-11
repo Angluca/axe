@@ -1,4 +1,6 @@
-import structs
+import 
+    structs,
+    strutils
 
 proc parse*(tokens: seq[Token]): ASTNode =
     var pos = 0
@@ -6,6 +8,41 @@ proc parse*(tokens: seq[Token]): ASTNode =
     
     template current: Token = tokens[pos]
     template advance = inc(pos)
+    
+    proc parseType(): string =
+        while pos < tokens.len and current.typ == Whitespace: advance
+        if pos >= tokens.len:
+            raise newException(ValueError, "Expected type after ':'")
+        case current.typ
+        of Identifier:
+            result = current.value
+            advance
+        else:
+            raise newException(ValueError, "Invalid type specification")
+    
+    proc parseArgs(): string =
+        var args: seq[string]
+        while pos < tokens.len and current.typ == Whitespace: advance
+        if pos < tokens.len and current.typ == LParen:
+            advance
+            while pos < tokens.len and current.typ != RParen:
+                case current.typ
+                of Whitespace, Comma: advance
+                of Identifier:
+                    let argName = current.value
+                    advance
+                    while pos < tokens.len and current.typ == Whitespace: advance
+                    if pos < tokens.len and current.typ == Colon:
+                        advance
+                        let argType = parseType()
+                        args.add(argType & " " & argName)
+                    else:
+                        args.add("int " & argName)
+                else: raise newException(ValueError, "Unexpected token in argument list")
+            if pos >= tokens.len or current.typ != RParen:
+                raise newException(ValueError, "Expected ')' after arguments")
+            advance
+        return args.join(", ")
     
     while pos < tokens.len:
         case current.typ
@@ -112,13 +149,16 @@ proc parse*(tokens: seq[Token]): ASTNode =
             let funcName = current.value
             advance
             
+            var args = parseArgs()
+            
             while pos < tokens.len and current.typ == Whitespace: advance
             
             if pos >= tokens.len or current.typ != LBrace:
-                raise newException(ValueError, "Expected '{' after function name")
+                raise newException(ValueError, "Expected '{' after function declaration")
             advance
             
-            var funcNode = ASTNode(nodeType: "Function", children: @[], value: funcName)
+            var funcNode = ASTNode(nodeType: "Function", children: @[], value: funcName & "(" & args & ")")
+            
             while pos < tokens.len and current.typ != RBrace:
                 case current.typ
                 of Whitespace, Newline: advance
