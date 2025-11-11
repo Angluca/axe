@@ -64,4 +64,33 @@ proc parse*(tokens: seq[Token]): ASTNode =
                 raise newException(ValueError, "Expected '}' after main body")
             inc(pos)
             ast = mainNode
+        elif tokens[pos].typ == Def:
+            inc(pos)
+            if pos >= tokens.len or tokens[pos].typ != Identifier:
+                raise newException(ValueError, "Expected function name after 'def'")
+            let funcName = tokens[pos].value
+            inc(pos)
+            if pos >= tokens.len or tokens[pos].typ != LBrace:
+                raise newException(ValueError, "Expected '{' after function name")
+            inc(pos)
+
+            var funcNode = ASTNode(nodeType: "Function", children: @[], value: funcName)
+            while pos < tokens.len and tokens[pos].typ != RBrace:
+                case tokens[pos].typ
+                of Println:
+                    inc(pos)
+                    if pos >= tokens.len or tokens[pos].typ != String:
+                        raise newException(ValueError, "Expected string after println")
+                    funcNode.children.add(ASTNode(nodeType: "Println",
+                            children: @[], value: tokens[pos].value))
+                    inc(pos)
+                    if pos >= tokens.len or tokens[pos].typ != Semicolon:
+                        raise newException(ValueError, "Expected ';' after println")
+                    inc(pos)
+                else:
+                    raise newException(ValueError, "Unexpected token in function body")
+            if pos >= tokens.len or tokens[pos].typ != RBrace:
+                raise newException(ValueError, "Expected '}' after function body")
+            inc(pos)
+            ast = funcNode
     return ast

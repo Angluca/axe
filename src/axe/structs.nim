@@ -7,7 +7,9 @@ type
         String,
         Semicolon,
         LBrace,
-        RBrace
+        RBrace,
+        Def,
+        Identifier
 
     Token* = object
         typ*: TokenType

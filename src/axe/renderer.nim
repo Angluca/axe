@@ -12,17 +12,24 @@ proc generateC*(ast: ASTNode): string =
         for child in ast.children:
             case child.nodeType
             of "Println":
-                cCode.add(fmt"""    printf("%s\n", "{child.value}");""")
+                cCode.add(fmt"""printf("%s\n", "{child.value}");""")
             of "Loop":
-                cCode.add("    while (1) {\n")
+                cCode.add("while (1) {\n")
                 for loopChild in child.children:
                     case loopChild.nodeType
                     of "Println":
-                        cCode.add(fmt"""        printf("%s\n", "{loopChild.value}");""")
+                        cCode.add(fmt"""printf("%s\n", "{loopChild.value}");""")
                     of "Break":
-                        cCode.add("        break;\n")
+                        cCode.add("break;\n")
                 cCode.add("    }\n")
-        cCode.add("    return 0;\n}\n")
+        cCode.add("return 0;\n}\n")
+    elif ast.nodeType == "Function":
+        cCode.add(fmt"void {ast.value}() {{")
+        for child in ast.children:
+            case child.nodeType
+            of "Println":
+                cCode.add(fmt"""printf(\"%s\n\", \"{child.value}\");""")
+        cCode.add("}\n")
     return cCode
 
 proc generateAsm*(ast: ASTNode): string =

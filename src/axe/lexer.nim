@@ -42,6 +42,14 @@ proc lex*(source: string): seq[Token] =
             elif pos + 5 <= source.len and source[pos ..< pos+5] == "break":
                 tokens.add(Token(typ: Break, value: "break"))
                 pos += 5
+            elif pos + 3 <= source.len and source[pos ..< pos+3] == "def":
+                tokens.add(Token(typ: Def, value: "def"))
+                pos += 3
+            elif source[pos].isAlphaAscii():
+                let start = pos
+                while pos < source.len and source[pos].isAlphaAscii():
+                    inc(pos)
+                tokens.add(Token(typ: Identifier, value: source[start..<pos]))
             else:
                 let charAtPos = if pos < source.len: source[pos] else: '.'
                 echo "Charatpos: " & charAtPos

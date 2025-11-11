@@ -1,0 +1,5 @@
+def some_function {
+    println "Hello, world.";
+}
+
+some_function();
