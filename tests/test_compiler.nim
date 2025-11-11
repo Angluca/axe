@@ -33,15 +33,17 @@ suite "Parser tests":
 
     let ast = parse(tokens)
 
-    check ast.nodeType == "Main"
-    check ast.children.len == 2
-    check ast.children[0].nodeType == "Println"
-    check ast.children[0].value == "hello"
-    check ast.children[1].nodeType == "Loop"
-    check ast.children[1].children.len == 2
-    check ast.children[1].children[0].nodeType == "Println"
-    check ast.children[1].children[0].value == "world"
-    check ast.children[1].children[1].nodeType == "Break"
+    check ast.nodeType == "Program"
+    check ast.children.len == 1
+    check ast.children[0].nodeType == "Main"
+    check ast.children[0].children.len == 2
+    check ast.children[0].children[0].nodeType == "Println"
+    check ast.children[0].children[0].value == "hello"
+    check ast.children[0].children[1].nodeType == "Loop"
+    check ast.children[0].children[1].children.len == 2
+    check ast.children[0].children[1].children[0].nodeType == "Println"
+    check ast.children[0].children[1].children[0].value == "world"
+    check ast.children[0].children[1].children[1].nodeType == "Break"
 
 suite "Renderer tests":
   test "C code generation":

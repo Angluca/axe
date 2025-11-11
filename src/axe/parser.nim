@@ -32,6 +32,49 @@ proc parse*(tokens: seq[Token]): ASTNode =
                     if pos >= tokens.len or current.typ != Semicolon:
                         raise newException(ValueError, "Expected ';' after println")
                     advance
+                of Loop:
+                    advance
+                    while pos < tokens.len and current.typ == Whitespace: advance
+                    if pos >= tokens.len or current.typ != LBrace:
+                        raise newException(ValueError, "Expected '{' after loop")
+                    advance
+                    
+                    var loopNode = ASTNode(nodeType: "Loop", children: @[], value: "")
+                    while pos < tokens.len and current.typ != RBrace:
+                        case current.typ
+                        of Whitespace, Newline: advance
+                        of Println:
+                            advance
+                            while pos < tokens.len and current.typ == Whitespace: advance
+                            if pos >= tokens.len or current.typ != String:
+                                raise newException(ValueError, "Expected string after println")
+                            loopNode.children.add(ASTNode(nodeType: "Println", children: @[], value: current.value))
+                            advance
+                            while pos < tokens.len and current.typ == Whitespace: advance
+                            if pos >= tokens.len or current.typ != Semicolon:
+                                raise newException(ValueError, "Expected ';' after println")
+                            advance
+                        of Break:
+                            advance
+                            while pos < tokens.len and current.typ == Whitespace: advance
+                            if pos >= tokens.len or current.typ != Semicolon:
+                                raise newException(ValueError, "Expected ';' after break")
+                            advance
+                            loopNode.children.add(ASTNode(nodeType: "Break", children: @[], value: ""))
+                        else:
+                            raise newException(ValueError, "Unexpected token in loop body")
+                    
+                    if pos >= tokens.len or current.typ != RBrace:
+                        raise newException(ValueError, "Expected '}' after loop body")
+                    advance
+                    mainNode.children.add(loopNode)
+                of Break:
+                    advance
+                    while pos < tokens.len and current.typ == Whitespace: advance
+                    if pos >= tokens.len or current.typ != Semicolon:
+                        raise newException(ValueError, "Expected ';' after break")
+                    advance
+                    mainNode.children.add(ASTNode(nodeType: "Break", children: @[], value: ""))
                 of Identifier:
                     let funcName = current.value
                     advance
