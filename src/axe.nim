@@ -18,6 +18,9 @@ type
         value: string
 
 proc lex(source: string): seq[Token] =
+    ## Lexical analysis and tokenization
+    ## Includes whitespace skipping, basic tokenization, and string handling
+    
     var tokens: seq[Token]
     var pos = 0
 
@@ -61,8 +64,9 @@ proc lex(source: string): seq[Token] =
                 raise newException(ValueError, &"Unexpected character at position {pos}: '{charAtPos}'")
     return tokens
 
-# Parsing and code generation remain mostly the same
 proc parse(tokens: seq[Token]): ASTNode =
+    ## Syntax analysis and abstract syntax tree (AST) construction
+    ## Includes main function parsing, loop and break statement parsing, and string handling
     var pos = 0
     var ast: ASTNode
     while pos < tokens.len:
@@ -122,23 +126,25 @@ proc parse(tokens: seq[Token]): ASTNode =
     return ast
 
 proc generateC(ast: ASTNode): string =
+    ## Code generation from abstract syntax tree (AST)
+    ## Includes C code generation for main function, loop and break statements, and string handling
     var cCode = "#include <stdio.h>\n\n"
     if ast.nodeType == "Main":
         cCode.add("int main() {\n")
         for child in ast.children:
             case child.nodeType
             of "Println":
-                cCode.add(fmt"""    printf(\"%s\\n\", \"{child.value}\");\n""")
+                cCode.add(fmt"""    printf("%s\n", "{child.value}");\n""")
             of "Loop":
                 cCode.add("    while (1) {\n")
                 for loopChild in child.children:
                     case loopChild.nodeType
                     of "Println":
-                        cCode.add(fmt"""        printf(\"%s\\n\", \"{loopChild.value}\");\n""")
+                        cCode.add(fmt"""        printf("%s\n", "{loopChild.value}");\n""")
                     of "Break":
                         cCode.add("        break;\n")
                 cCode.add("    }\n")
-        cCode.add("    return 0;\n}")
+        cCode.add("    return 0;\n}\n")
     return cCode
 
 when isMainModule:
