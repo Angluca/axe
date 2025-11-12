@@ -44,7 +44,6 @@ void main(string[] args)
             string result = compileAndRunAsm(asmCode);
             
             if (result.canFind("Error:")) {
-                stderr.writeln("Assembly Error:");
                 stderr.writeln(result);
                 return;
             }
