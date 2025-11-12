@@ -6,8 +6,8 @@ import std.algorithm.iteration;
 import axe.structs;
 
 /**
- * Lexical analysis and tokenization
- * Includes whitespace skipping, tokenization, and string handling
+ * Lexical analysis and tokenization.
+ * Includes whitespace skipping, tokenization, and string handling.
  */
 Token[] lex(string source)
 {
