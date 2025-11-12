@@ -82,6 +82,19 @@ string generateC(ASTNode ast)
             case "Assignment":
                 cCode ~= child.value ~ ";\n";
                 break;
+            case "If":
+                cCode ~= "if (" ~ child.value ~ ") {\n";
+                foreach (ifChild; child.children)
+                {
+                    final switch (ifChild.nodeType)
+                    {
+                    case "Break":
+                        cCode ~= "break;\n";
+                        break;
+                    }
+                }
+                cCode ~= "}\n";
+                break;
             }
         }
         cCode ~= "return 0;\n}";
@@ -111,6 +124,19 @@ string generateC(ASTNode ast)
             case "Assignment":
                 cCode ~= child.value ~ ";\n";
                 break;
+            case "If":
+                cCode ~= "if (" ~ child.value ~ ") {\n";
+                foreach (ifChild; child.children)
+                {
+                    final switch (ifChild.nodeType)
+                    {
+                    case "Break":
+                        cCode ~= "break;\n";
+                        break;
+                    }
+                }
+                cCode ~= "}\n";
+                break;
             }
         }
         cCode ~= "}";
@@ -126,6 +152,20 @@ string generateC(ASTNode ast)
 
     case "Assignment":
         cCode ~= ast.value ~ ";\n";
+        break;
+
+    case "If":
+        cCode ~= "if (" ~ ast.value ~ ") {\n";
+        foreach (child; ast.children)
+        {
+            final switch (child.nodeType)
+            {
+            case "Break":
+                cCode ~= "break;\n";
+                break;
+            }
+        }
+        cCode ~= "}\n";
         break;
 
     default:

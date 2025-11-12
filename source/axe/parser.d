@@ -184,6 +184,70 @@ ASTNode parse(Token[] tokens)
                             loopNode.children ~= ASTNode("Break", [], "");
                             break;
 
+                        case TokenType.IF:
+                            pos++;
+                            while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                                pos++;
+
+                            string cond;
+                            if (pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER)
+                            {
+                                cond = tokens[pos].value;
+                                pos++;
+                                while (pos < tokens.length && tokens[pos].type == TokenType
+                                    .WHITESPACE)
+                                    pos++;
+
+                                if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR &&
+                                    tokens[pos].value == "==")
+                                {
+                                    pos++;
+                                    while (pos < tokens.length && tokens[pos].type == TokenType
+                                        .WHITESPACE)
+                                        pos++;
+
+                                    if (pos < tokens.length && tokens[pos].type == TokenType
+                                        .IDENTIFIER)
+                                    {
+                                        cond ~= " == " ~ tokens[pos].value;
+                                        pos++;
+                                    }
+                                }
+                            }
+
+                            while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                                pos++;
+
+                            enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
+                                "Expected '{' after if condition");
+                            pos++;
+
+                            ASTNode ifNode = ASTNode("If", [], cond);
+                            while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
+                            {
+                                switch (tokens[pos].type)
+                                {
+                                case TokenType.BREAK:
+                                    pos++;
+                                    while (pos < tokens.length && tokens[pos].type == TokenType
+                                        .WHITESPACE)
+                                        pos++;
+                                    enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
+                                        "Expected ';' after break");
+                                    pos++;
+                                    ifNode.children ~= ASTNode("Break", [], "");
+                                    break;
+                                default:
+                                    enforce(false, "Unexpected token in if body");
+                                }
+                            }
+
+                            enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
+                                "Expected '}' after if body");
+                            pos++;
+                            loopNode.children ~= ifNode;
+                            break;
+
                         case TokenType.IDENTIFIER:
                             string varName = tokens[pos].value;
                             pos++;
@@ -382,7 +446,8 @@ ASTNode parse(Token[] tokens)
                     break;
 
                 default:
-                    enforce(false, "Unexpected token in function body at position " ~ to!string(pos));
+                    enforce(false, "Unexpected token in function body at position " ~ to!string(
+                            pos));
                 }
             }
 
