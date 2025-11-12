@@ -410,16 +410,7 @@ string generateAsm(ASTNode ast)
                     for (int i = cast(int) argList.length - 1; i >= 0; i--)
                     {
                         string a = argList[i].strip();
-                        if (a[0] == '"')
-                        {
-                            // String literal
-                            asmCode ~= "    mov rcx, " ~ a ~ "\n";
-                        }
-                        else
-                        {
-                            // Numeric literal or variable
-                            asmCode ~= "    mov rcx, " ~ a ~ "\n";
-                        }
+                        asmCode ~= "    mov rcx, " ~ a ~ "\n";
                         asmCode ~= "    push rcx\n";
                     }
                 }
