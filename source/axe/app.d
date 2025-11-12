@@ -81,6 +81,6 @@ void main(string[] args)
     }
     catch (Exception e)
     {
-        stderr.writeln("Error: ", e.msg);
+        stderr.writeln("Compilation error: ", e.msg);
     }
 }
