@@ -140,17 +140,16 @@ string generateAsm(ASTNode ast)
     case "Program":
         foreach (child; ast.children)
         {
-            if (child.nodeType == "Main")
-            {
-                asmCode = generateAsm(child);
-            }
-            else if (child.nodeType == "Function")
+            if (child.nodeType == "Function")
             {
                 asmCode ~= generateAsm(child) ~ "\n";
             }
-            else
+        }
+        foreach (child; ast.children)
+        {
+            if (child.nodeType == "Main")
             {
-                enforce(false, "Unsupported node type in Program: " ~ child.nodeType);
+                asmCode ~= generateAsm(child);
             }
         }
         break;
