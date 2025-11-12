@@ -617,8 +617,9 @@ ASTNode parse(Token[] tokens)
                             break;
 
                         default:
-                            enforce(false, format(
-                                    "Unexpected token in function body at position %s: %s (type: %s)\nExpected one of: %s",
+                            enforce(false,
+                                format("Unexpected token in function body at" ~
+                                    " position %s: %s (type: %s)\nExpected one of: %s",
                                     pos.to!string,
                                     tokens[pos].value,
                                     tokens[pos].type.to!string,
