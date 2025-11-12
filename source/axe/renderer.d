@@ -45,58 +45,67 @@ string generateC(ASTNode ast)
         cCode ~= "int main() {\n";
         foreach (child; ast.children)
         {
-            final switch (child.nodeType)
-            {
-            case "Println":
-                cCode ~= "printf(\"%s\\n\", \"" ~ child.value ~ "\");\n";
-                break;
-            case "Loop":
-                cCode ~= "while (1) {\n";
-                foreach (loopChild; child.children)
-                {
-                    final switch (loopChild.nodeType)
-                    {
-                    case "Println":
-                        cCode ~= "printf(\"%s\\n\", \"" ~ loopChild.value ~ "\");\n";
-                        break;
-                    case "Break":
-                        cCode ~= "break;\n";
-                        break;
-                    case "Assignment":
-                        cCode ~= loopChild.value ~ ";\n";
-                        break;
+            if (child.nodeType == "Println") {
+                cCode ~= "    printf(\"%s\\n\", \"" ~ child.value ~ "\");\n";
+            } else if (child.nodeType == "Loop") {
+                cCode ~= "    while (1) {\n";
+                foreach (loopChild; child.children) {
+                    if (loopChild.nodeType == "Println") {
+                        cCode ~= "        printf(\"%s\\n\", \"" ~ loopChild.value ~ "\");\n";
+                    } else if (loopChild.nodeType == "Break") {
+                        cCode ~= "        break;\n";
+                    } else if (loopChild.nodeType == "Assignment") {
+                        cCode ~= "        " ~ loopChild.value ~ ";\n";
+                    } else if (loopChild.nodeType == "If") {
+                        cCode ~= "        if (" ~ loopChild.value ~ ") {\n";
+                        foreach (ifChild; loopChild.children) {
+                            if (ifChild.nodeType == "Break") {
+                                cCode ~= "            break;\n";
+                            } else if (ifChild.nodeType == "FunctionCall") {
+                                auto parts = ifChild.value.split("(");
+                                string funcName = parts[0];
+                                string args = parts.length > 1 ? parts[1].strip(")") : "";
+                                cCode ~= "            " ~ funcName ~ "(" ~ args ~ ");\n";
+                            } else if (ifChild.nodeType == "Assignment") {
+                                cCode ~= "            " ~ ifChild.value ~ ";\n";
+                            }
+                        }
+                        cCode ~= "        }\n";
+                    } else if (loopChild.nodeType == "FunctionCall") {
+                        auto parts = loopChild.value.split("(");
+                        string funcName = parts[0];
+                        string args = parts.length > 1 ? parts[1].strip(")") : "";
+                        cCode ~= "        " ~ funcName ~ "(" ~ args ~ ");\n";
                     }
                 }
-                cCode ~= "}\n";
-                break;
-            case "Break":
-                cCode ~= "break;\n";
-                break;
-            case "FunctionCall":
+                cCode ~= "    }\n";
+            } else if (child.nodeType == "Break") {
+                cCode ~= "    break;\n";
+            } else if (child.nodeType == "FunctionCall") {
                 auto parts = child.value.split("(");
                 string funcName = parts[0];
                 string args = parts.length > 1 ? parts[1].strip(")") : "";
-                cCode ~= funcName ~ "(" ~ args ~ ");\n";
-                break;
-            case "Assignment":
-                cCode ~= child.value ~ ";\n";
-                break;
-            case "If":
-                cCode ~= "if (" ~ child.value ~ ") {\n";
-                foreach (ifChild; child.children)
-                {
-                    final switch (ifChild.nodeType)
-                    {
-                    case "Break":
-                        cCode ~= "break;\n";
-                        break;
+                cCode ~= "    " ~ funcName ~ "(" ~ args ~ ");\n";
+            } else if (child.nodeType == "Assignment") {
+                cCode ~= "    " ~ child.value ~ ";\n";
+            } else if (child.nodeType == "If") {
+                cCode ~= "    if (" ~ child.value ~ ") {\n";
+                foreach (ifChild; child.children) {
+                    if (ifChild.nodeType == "Break") {
+                        cCode ~= "        break;\n";
+                    } else if (ifChild.nodeType == "FunctionCall") {
+                        auto parts = ifChild.value.split("(");
+                        string funcName = parts[0];
+                        string args = parts.length > 1 ? parts[1].strip(")") : "";
+                        cCode ~= "        " ~ funcName ~ "(" ~ args ~ ");\n";
+                    } else if (ifChild.nodeType == "Assignment") {
+                        cCode ~= "        " ~ ifChild.value ~ ";\n";
                     }
                 }
-                cCode ~= "}\n";
-                break;
+                cCode ~= "    }\n";
             }
         }
-        cCode ~= "return 0;\n}";
+        cCode ~= "    return 0;\n}";
         break;
 
     case "Function":
@@ -111,6 +120,7 @@ string generateC(ASTNode ast)
             final switch (child.nodeType)
             {
             case "Println":
+                cCode ~= "    printf(\"%s\\n\", \"" ~ child.value ~ "\");\n";
                 cCode ~= "printf(\"%s\\n\", \"" ~ child.value ~ "\");\n";
                 break;
             case "FunctionCall":
@@ -436,7 +446,6 @@ string generateAsm(ASTNode ast)
                 auto condition = child.value;
                 string endIfLabel = "endif_" ~ to!string(child.children.length);
                 
-                // Evaluate condition (only supports simple equality for now)
                 if (condition.canFind("=="))
                 {
                     auto parts = condition.split("==");
@@ -445,10 +454,8 @@ string generateAsm(ASTNode ast)
                            ~  "    jne " ~ endIfLabel ~ "\n";
                 }
                 
-                // If block
                 foreach (ifChild; child.children)
                 {
-                    // Handle Break statements in if body
                     if (ifChild.nodeType == "Break")
                     {
                         asmCode ~= "    jmp " ~ endIfLabel ~ "\n";
@@ -486,6 +493,30 @@ string generateAsm(ASTNode ast)
                         `;
                         msgCounter++;
                         break;
+                    case "If":
+                        auto condition = loopChild.value;
+                        string endIfLabel = "loop_if_end_" ~ to!string(msgCounter);
+                        msgCounter++;
+                        
+                        if (condition.canFind("=="))
+                        {
+                            auto parts = condition.split("==");
+                            asmCode ~= "    mov eax, " ~ parts[0].strip() ~ "\n"
+                                   ~  "    cmp eax, " ~ parts[1].strip() ~ "\n"
+                                   ~  "    jne " ~ endIfLabel ~ "\n";
+                        }
+                        
+                        foreach (ifChild; loopChild.children)
+                        {
+                            if (ifChild.nodeType == "Break")
+                            {
+                                asmCode ~= "    jmp " ~ loopEnd ~ "\n";
+                            }
+                        }
+                        
+                        asmCode ~= endIfLabel ~ ":\n";
+                        break;
+                        
                     default:
                         enforce(false, "Unsupported node type in loop: " ~ loopChild.nodeType);
                     }
