@@ -421,11 +421,8 @@ string generateAsm(ASTNode ast)
                 string dest = parts[0].strip();
                 string src = parts[1].strip();
 
-                // Declare the variable if it's not a parameter
                 if (!isParameter(dest))
-                {
                     declareVariable(dest);
-                }
 
                 if (src.canFind(" - "))
                 {
@@ -557,7 +554,6 @@ string generateAsm(ASTNode ast)
                     string left = parts[0].strip();
                     string right = parts[1].strip();
 
-                    // Force parameter access via stack location
                     if (paramMap !is null && left in paramMap)
                         asmCode ~= "    mov eax, " ~ paramMap[left] ~ "\n";
                     else
@@ -569,7 +565,6 @@ string generateAsm(ASTNode ast)
                 }
                 else if (paramMap !is null && condition in paramMap)
                 {
-                    // Direct parameter check using stack location
                     asmCode ~= "    cmp " ~ paramMap[condition] ~ ", 1\n";
                     asmCode ~= "    jne " ~ endIfLabel ~ "\n";
                 }
@@ -623,7 +618,6 @@ string generateAsm(ASTNode ast)
                             string left = parts[0].strip();
                             string right = parts[1].strip();
 
-                            // Handle parameter vs literal comparisons
                             asmCode ~= "    mov eax, " ~ operand(left, paramMap) ~ "\n";
                             asmCode ~= "    mov ebx, " ~ (right[0].isDigit() ? right : operand(right, paramMap)) ~ "\n";
                             asmCode ~= "    cmp eax, ebx\n";
@@ -631,7 +625,6 @@ string generateAsm(ASTNode ast)
                         }
                         else 
                         {
-                            // Direct parameter check
                             asmCode ~= "    mov eax, " ~ operand(condition, paramMap) ~ "\n";
                             asmCode ~= "    cmp eax, 1\n";
                             asmCode ~= "    jne " ~ endIfLabel ~ "\n";
@@ -720,11 +713,8 @@ string generateAsm(ASTNode ast)
                 string dest = parts[0].strip();
                 string src = parts[1].strip();
 
-                // Declare the variable if it's not a parameter
                 if (!isParameter(dest))
-                {
                     declareVariable(dest);
-                }
 
                 if (src.canFind(" - "))
                 {
@@ -755,11 +745,8 @@ string generateAsm(ASTNode ast)
         string dest = parts[0].strip();
         string src = parts[1].strip();
 
-        // Declare the variable if it's not a parameter
         if (!isParameter(dest))
-        {
             declareVariable(dest);
-        }
 
         if (src.canFind(" - "))
         {
@@ -775,14 +762,10 @@ string generateAsm(ASTNode ast)
                 ~ "    mov [" ~ dest ~ "], eax\n";
         }
         break;
-
     }
 
-    // Add .data section if we have variables
     if (dataSection.length > 0)
-    {
         asmCode = "section .data\n" ~ dataSection ~ "\n" ~ asmCode;
-    }
 
     return asmCode;
 }
