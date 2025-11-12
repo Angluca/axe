@@ -3,6 +3,7 @@ module axe.parser;
 import std.exception : enforce;
 import std.conv;
 import std.string;
+import std.algorithm;
 import axe.structs : ASTNode, Token, TokenType;
 
 /** 
@@ -504,8 +505,16 @@ ASTNode parse(Token[] tokens)
                     break;
 
                 default:
-                    enforce(false, "Unexpected token in function body at position " ~ to!string(
-                            pos));
+                    enforce(false, format(
+                            "Unexpected token in function body at position %s: %s (type: %s)\nExpected one of: %s",
+                            pos.to!string,
+                            tokens[pos].value,
+                            tokens[pos].type.to!string,
+                            [
+                                TokenType.IDENTIFIER, TokenType.IF, TokenType.LOOP,
+                                TokenType.PRINTLN, TokenType.BREAK
+                            ].map!(
+                            t => t.to!string).join(", ")));
                 }
             }
 
@@ -547,13 +556,13 @@ unittest
         Token(TokenType.RBRACE, "}"),
         Token(TokenType.RBRACE, "}")
     ];
-    
+
     auto loopAst = parse(loopIfTokens);
     assert(loopAst.children[0].nodeType == "Function");
     assert(loopAst.children[0].children[0].nodeType == "Loop");
     assert(loopAst.children[0].children[0].children[0].nodeType == "If");
     assert(loopAst.children[0].children[0].children[0].value == "x == 0");
-    
+
     auto funcIfTokens = [
         Token(TokenType.DEF, "def"),
         Token(TokenType.IDENTIFIER, "test"),
@@ -570,7 +579,7 @@ unittest
         Token(TokenType.RBRACE, "}"),
         Token(TokenType.RBRACE, "}")
     ];
-    
+
     auto funcAst = parse(funcIfTokens);
     assert(funcAst.children[0].nodeType == "Function");
     assert(funcAst.children[0].children[0].nodeType == "If");
