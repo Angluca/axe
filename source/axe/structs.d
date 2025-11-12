@@ -21,7 +21,8 @@ enum TokenType
     COMMA,
     DOT,
     COLON,
-    OPERATOR
+    OPERATOR,
+    IF
 }
 
 struct Token

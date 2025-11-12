@@ -129,6 +129,11 @@ Token[] lex(string source)
                 tokens ~= Token(TokenType.DEF, "def");
                 pos += 3;
             }
+            else if (pos + 2 <= source.length && source[pos .. pos + 2] == "if")
+            {
+                tokens ~= Token(TokenType.IF, "if");
+                pos += 2;
+            }
             else if (source[pos].isAlphaNum())
             {
                 size_t start = pos;

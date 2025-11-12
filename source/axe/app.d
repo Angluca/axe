@@ -31,11 +31,16 @@ void main(string[] args)
         auto tokens = lex(source);
         auto ast = parse(tokens);
 
+        if (args.canFind("-tokens"))
+            writeln(tokens);
+        if (args.canFind("-ast"))
+            writeln(ast);
+        
         if (args.canFind("-asm"))
         {
             string asmCode = generateAsm(ast);
             std.file.write(replace(name, ".axe", ".asm"), asmCode);
-            
+
             version (Windows)
             {
                 execute([
@@ -58,7 +63,7 @@ void main(string[] args)
                     replace(name, ".axe", "")
                 ]);
             }
-            
+
             if (!args.canFind("-e"))
             {
                 remove(replace(name, ".axe", ".asm"));
