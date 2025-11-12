@@ -724,7 +724,7 @@ string generateAsm(ASTNode ast)
     return asmCode;
 }
 
-/** 
+/**
  * Compiles and runs the generated assembly code
  * Returns NASM errors if any
  */
