@@ -172,18 +172,18 @@ ASTNode parse(Token[] tokens)
                             enforce(false, "Undeclared variable: " ~ identName);
                         }
                         pos++;
-                        
+
                         string expr = "";
                         while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
                         {
                             expr ~= tokens[pos].value;
                             pos++;
                         }
-                        
+
                         enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
                             "Expected ';' after assignment");
                         pos++;
-                        
+
                         mainNode.children ~= new AssignmentNode(identName, expr);
                     }
                     else if (pos < tokens.length && tokens[pos].type == TokenType.LPAREN)
@@ -413,18 +413,18 @@ ASTNode parse(Token[] tokens)
                                 enforce(false, "Undeclared variable: " ~ identName);
                             }
                             pos++;
-                            
+
                             string expr = "";
                             while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
                             {
                                 expr ~= tokens[pos].value;
                                 pos++;
                             }
-                            
+
                             enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
                                 "Expected ';' after assignment");
                             pos++;
-                            
+
                             mainNode.children ~= new AssignmentNode(identName, expr);
                         }
                         else if (pos < tokens.length && tokens[pos].type == TokenType.LPAREN)
@@ -595,7 +595,7 @@ ASTNode parse(Token[] tokens)
 
                 writeln("Exited main block at pos ", pos);
                 writeln("Current token: ", pos < tokens.length ? to!string(
-                    tokens[pos].type) : "EOF", " ('",
+                        tokens[pos].type) : "EOF", " ('",
                     pos < tokens.length ? tokens[pos].value : "", "')");
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
@@ -773,25 +773,27 @@ ASTNode parse(Token[] tokens)
                             pos++;
                             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                                 pos++;
-                            
-                            // Check if this is an assignment
-                            if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
+
+                            if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR
+                                && tokens[pos].value == "=")
                             {
                                 pos++;
-                                while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                                while (pos < tokens.length && tokens[pos].type == TokenType
+                                    .WHITESPACE)
                                     pos++;
-                                
+
                                 string expr = "";
-                                while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
+                                while (pos < tokens.length && tokens[pos].type != TokenType
+                                    .SEMICOLON)
                                 {
                                     expr ~= tokens[pos].value;
                                     pos++;
                                 }
-                                
+
                                 enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
                                     "Expected ';' after assignment");
                                 pos++;
-                                
+
                                 ifNode.children ~= new AssignmentNode(varName, expr);
                             }
                             else
@@ -837,18 +839,18 @@ ASTNode parse(Token[] tokens)
                         pos++;
                         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                             pos++;
-                        
+
                         string expr = "";
                         while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
                         {
                             expr ~= tokens[pos].value;
                             pos++;
                         }
-                        
+
                         enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
                             "Expected ';' after assignment");
                         pos++;
-                        
+
                         funcNode.children ~= new AssignmentNode(identName, expr);
                     }
                     else if (pos < tokens.length && tokens[pos].type == TokenType.LPAREN)
@@ -1060,28 +1062,31 @@ ASTNode parse(Token[] tokens)
                                         enforce(false, "Undeclared variable: " ~ varName);
                                     }
                                     pos++;
-                                    while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                                    while (pos < tokens.length && tokens[pos].type == TokenType
+                                        .WHITESPACE)
                                         pos++;
-                                    
+
                                     // Check if this is an assignment
                                     if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR
                                         && tokens[pos].value == "=")
                                     {
                                         pos++;
-                                        while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                                        while (pos < tokens.length && tokens[pos].type == TokenType
+                                            .WHITESPACE)
                                             pos++;
-                                        
+
                                         string expr = "";
-                                        while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
+                                        while (pos < tokens.length && tokens[pos].type != TokenType
+                                            .SEMICOLON)
                                         {
                                             expr ~= tokens[pos].value;
                                             pos++;
                                         }
-                                        
+
                                         enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
                                             "Expected ';' after assignment");
                                         pos++;
-                                        
+
                                         ifNode.children ~= new AssignmentNode(varName, expr);
                                     }
                                     else
