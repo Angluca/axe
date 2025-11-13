@@ -188,6 +188,35 @@ ASTNode parse(Token[] tokens)
                     mainNode.children ~= new FunctionCallNode(funcName, args);
                     break;
                     
+                case TokenType.LOOP:
+                    pos++; // Skip 'loop'
+                    enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
+                        "Expected '{' after 'loop'");
+                    pos++; // Skip '{'
+                    
+                    auto loopNode = new LoopNode();
+                    while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE) {
+                        switch (tokens[pos].type) {
+                            case TokenType.BREAK:
+                                pos++; // Skip 'break'
+                                enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
+                                    "Expected ';' after 'break'");
+                                pos++; // Skip ';'
+                                loopNode.children ~= new BreakNode();
+                                break;
+                                
+                            default:
+                                enforce(false, "Unexpected token in loop body");
+                        }
+                    }
+                    
+                    enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
+                        "Expected '}' after loop body");
+                    pos++; // Skip '}'
+                    
+                    mainNode.children ~= loopNode;
+                    break;
+                    
                 default:
                     enforce(false, "Unexpected statement in main block: " ~ tokens[pos].value);
                 }
@@ -280,6 +309,35 @@ ASTNode parse(Token[] tokens)
                         pos++; // Skip ';'
                         
                         mainNode.children ~= new FunctionCallNode(funcName, args);
+                        break;
+                        
+                    case TokenType.LOOP:
+                        pos++; // Skip 'loop'
+                        enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
+                            "Expected '{' after 'loop'");
+                        pos++; // Skip '{'
+                        
+                        auto loopNode = new LoopNode();
+                        while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE) {
+                            switch (tokens[pos].type) {
+                                case TokenType.BREAK:
+                                    pos++; // Skip 'break'
+                                    enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
+                                        "Expected ';' after 'break'");
+                                    pos++; // Skip ';'
+                                    loopNode.children ~= new BreakNode();
+                                    break;
+                                    
+                                default:
+                                    enforce(false, "Unexpected token in loop body");
+                            }
+                        }
+                        
+                        enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
+                            "Expected '}' after loop body");
+                        pos++; // Skip '}'
+                        
+                        mainNode.children ~= loopNode;
                         break;
                         
                     default:
