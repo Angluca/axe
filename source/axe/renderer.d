@@ -212,7 +212,8 @@ string processExpression(string expr)
 {
     expr = expr.strip();
 
-    if (expr.canFind("(") && expr.endsWith(")")) {
+    if (expr.canFind("(") && expr.endsWith(")"))
+    {
         return expr;
     }
 
@@ -909,5 +910,25 @@ unittest
         assert(cCode.canFind("int add(int a, int b)"));
         assert(cCode.canFind("return (a+b);"));
         assert(cCode.canFind("const int x = add(1,2);"));
+    }
+
+    {
+        bool caught = false;
+        try
+        {
+            auto tokens = lex("main { y = y + 1; }");
+            auto ast = parse(tokens);
+            generateC(ast);
+        }
+        catch (Exception e)
+        {
+            writeln("ERROR: ", e.msg);
+            assert(e.msg.canFind("Undeclared variable: y"));
+            caught = true;
+        }
+        if (!caught)
+        {
+            assert(0, "Should have caught undeclared variable error");
+        }
     }
 }
