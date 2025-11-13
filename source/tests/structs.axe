@@ -5,7 +5,7 @@ model Cat {
 }
 
 main {
-    val cat = new Cat(
+    mut val cat = new Cat(
         health: 100,
         name: "Garfield",
         annoyingness_level: 9999

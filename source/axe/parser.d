@@ -465,8 +465,14 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                     mainNode.children ~= ifNode;
                     break;
 
+                case TokenType.MUT:
+                    pos++;
+                    enforce(pos < tokens.length && tokens[pos].type == TokenType.VAL,
+                        "Expected 'val' after 'mut'");
+                    goto case TokenType.VAL;
+
                 case TokenType.VAL:
-                    bool isMutable = false;
+                    bool isMutable = tokens[pos - 1].type == TokenType.MUT;
                     pos++;
 
                     if (pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER)
