@@ -186,6 +186,7 @@ string generateC(ASTNode ast)
         }
 
         loopLevel--;
+        cCode ~= "}\n";
         break;
 
     case "Break":
