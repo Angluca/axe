@@ -214,7 +214,9 @@ class UseNode : ASTNode
 class ModelNode : ASTNode
 {
     string name;
-    string[string] fields; // field name -> type
+
+    // field name -> type
+    string[string] fields;
 
     this(string name, string[string] fields)
     {
@@ -228,8 +230,10 @@ class ModelInstantiationNode : ASTNode
 {
     string modelName;
     string variableName;
-    string[string] fieldValues; // field name -> value
     bool isMutable;
+
+    // field name -> value
+    string[string] fieldValues;
 
     this(string modelName, string variableName, string[string] fieldValues, bool isMutable = false)
     {
@@ -245,7 +249,9 @@ class MemberAccessNode : ASTNode
 {
     string objectName;
     string memberName;
-    string value; // empty for reads, filled for writes
+
+    // empty for reads, filled for writes
+    string value;
 
     this(string objectName, string memberName, string value = "")
     {
