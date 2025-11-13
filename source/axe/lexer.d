@@ -101,7 +101,6 @@ Token[] lex(string source)
             pos++;
             break;
 
-            // Handle break keyword
         case 'b':
             if (pos + 4 < source.length && source[pos .. pos + 5] == "break")
             {
@@ -110,7 +109,6 @@ Token[] lex(string source)
             }
             else
             {
-                // Handle as identifier
                 size_t start = pos;
                 while (pos < source.length && (source[pos].isAlphaNum || source[pos] == '_'))
                 {
