@@ -933,7 +933,6 @@ unittest
         }
     }
 
-    // Test loop with println and break - regression test for loop closing brace
     {
         auto tokens = lex("main { println \"start\"; loop { println \"in loop\"; break; } }");
         auto ast = parse(tokens);
@@ -941,26 +940,23 @@ unittest
 
         writeln("Loop test output:");
         writeln(cCode);
-        
-        // Verify loop structure is correct
+
         assert(cCode.canFind("while (1) {"), "Loop should start with while (1) {");
         assert(cCode.canFind("printf(\"in loop\\n\");"), "Loop should contain println");
         assert(cCode.canFind("break;"), "Loop should contain break");
-        
-        // Count braces to ensure they're balanced
+
         import std.algorithm : count;
+        import std.string : indexOf;
+
         auto openBraces = cCode.count('{');
         auto closeBraces = cCode.count('}');
         assert(openBraces == closeBraces, "Braces should be balanced in loop code");
-        
-        // Verify return statement is after loop closes
-        import std.string : indexOf;
+
         auto loopStart = cCode.indexOf("while (1)");
         auto returnPos = cCode.indexOf("return 0;");
         assert(loopStart < returnPos, "return should come after loop");
     }
 
-    // Test variable reassignment in different contexts
     {
         auto tokens = lex("main { val x = 5; x = 10; }");
         auto ast = parse(tokens);
@@ -968,12 +964,11 @@ unittest
 
         writeln("Variable reassignment test:");
         writeln(cCode);
-        
+
         assert(cCode.canFind("const int x = 5;"), "Should declare x");
         assert(cCode.canFind("x = 10;"), "Should reassign x");
     }
 
-    // Test println in loop with variable reassignment
     {
         auto tokens = lex(
             "def test() { val x = 0; loop { println \"test\"; x = x + 1; if x == 5 { break; } } }");
@@ -982,14 +977,14 @@ unittest
 
         writeln("Complex loop test:");
         writeln(cCode);
-        
+
         assert(cCode.canFind("while (1) {"), "Should have loop");
         assert(cCode.canFind("printf(\"test\\n\");"), "Should have println in loop");
         assert(cCode.canFind("x = (x+1);"), "Should have assignment in loop");
         assert(cCode.canFind("if ((x == 5))"), "Should have if statement");
-        
-        // Verify balanced braces
+
         import std.algorithm : count;
+
         auto openBraces = cCode.count('{');
         auto closeBraces = cCode.count('}');
         assert(openBraces == closeBraces, "Braces should be balanced");
