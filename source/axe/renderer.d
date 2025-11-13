@@ -246,7 +246,6 @@ string generateC(ASTNode ast)
     case "For":
         auto forNode = cast(ForNode) ast;
         
-        // Generate the for loop header
         string forType = forNode.isMutable ? forNode.varType : "const " ~ forNode.varType;
         string forInit = forType ~ " " ~ forNode.varName ~ " = " ~ processExpression(forNode.initValue);
         string forCond = processCondition(forNode.condition);
