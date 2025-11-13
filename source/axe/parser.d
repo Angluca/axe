@@ -83,15 +83,17 @@ ASTNode parse(Token[] tokens)
                 {
                     string paramName = tokens[pos].value;
                     pos++;
-                    if (pos < tokens.length && tokens[pos].type == TokenType.COLON) {
+                    if (pos < tokens.length && tokens[pos].type == TokenType.COLON)
+                    {
                         pos++;
                         string typeName = parseType();
                         args ~= typeName ~ " " ~ paramName;
                     }
-                    else {
+                    else
+                    {
                         args ~= paramName;
                     }
-                    
+
                     if (pos < tokens.length && tokens[pos].type == TokenType.COMMA)
                         pos++;
                 }
@@ -498,7 +500,8 @@ ASTNode parse(Token[] tokens)
                             if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
                             {
                                 pos++;
-                                while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
+                                while (pos < tokens.length && tokens[pos].type != TokenType
+                                    .SEMICOLON)
                                 {
                                     initializer ~= tokens[pos].value;
                                     pos++;
@@ -529,7 +532,7 @@ ASTNode parse(Token[] tokens)
 
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
                     "Expected '}' after main body");
-                pos++; 
+                pos++;
 
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
@@ -553,13 +556,14 @@ ASTNode parse(Token[] tokens)
 
             string[] params = parseArgs();
             string returnType = "void";
-            
+
             // Check for return type annotation
-            if (pos < tokens.length && tokens[pos].type == TokenType.COLON) {
+            if (pos < tokens.length && tokens[pos].type == TokenType.COLON)
+            {
                 pos++;
                 returnType = parseType();
             }
-            
+
             auto funcNode = new FunctionNode(currentFuncName, params, returnType);
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
@@ -1071,18 +1075,18 @@ ASTNode parse(Token[] tokens)
                     pos++;
                     while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                         pos++;
-                    
+
                     string returnExpr;
                     while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
                     {
                         returnExpr ~= tokens[pos].value;
                         pos++;
                     }
-                    
+
                     enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
                         "Expected ';' after return statement");
                     pos++;
-                    
+
                     funcNode.children ~= new ReturnNode(returnExpr);
                     break;
 
