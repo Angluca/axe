@@ -202,7 +202,10 @@ ASTNode parse(Token[] tokens)
                             else if (tokens[pos].type == TokenType.STR || tokens[pos].type == TokenType
                                 .IDENTIFIER)
                             {
-                                args ~= tokens[pos].value;
+                                if (tokens[pos].type == TokenType.STR)
+                                    args ~= "\"" ~ tokens[pos].value ~ "\"";
+                                else
+                                    args ~= tokens[pos].value;
                                 pos++;
                                 if (pos < tokens.length && tokens[pos].type == TokenType.COMMA)
                                 {
@@ -454,7 +457,10 @@ ASTNode parse(Token[] tokens)
                                 else if (tokens[pos].type == TokenType.STR || tokens[pos].type == TokenType
                                     .IDENTIFIER)
                                 {
-                                    args ~= tokens[pos].value;
+                                    if (tokens[pos].type == TokenType.STR)
+                                        args ~= "\"" ~ tokens[pos].value ~ "\"";
+                                    else
+                                        args ~= tokens[pos].value;
                                     pos++;
                                     if (pos < tokens.length && tokens[pos].type == TokenType.COMMA)
                                     {
@@ -893,7 +899,10 @@ ASTNode parse(Token[] tokens)
                             else if (tokens[pos].type == TokenType.STR || tokens[pos].type == TokenType
                                 .IDENTIFIER)
                             {
-                                functionArgs ~= tokens[pos].value;
+                                if (tokens[pos].type == TokenType.STR)
+                                    functionArgs ~= "\"" ~ tokens[pos].value ~ "\"";
+                                else
+                                    functionArgs ~= tokens[pos].value;
                                 pos++;
                                 if (pos < tokens.length && tokens[pos].type == TokenType.COMMA)
                                 {
@@ -1196,7 +1205,10 @@ ASTNode parse(Token[] tokens)
                                     else if (tokens[pos].type == TokenType.STR || tokens[pos].type == TokenType
                                         .IDENTIFIER)
                                     {
-                                        args ~= tokens[pos].value;
+                                        if (tokens[pos].type == TokenType.STR)
+                                            args ~= "\"" ~ tokens[pos].value ~ "\"";
+                                        else
+                                            args ~= tokens[pos].value;
                                         pos++;
                                         if (pos < tokens.length && tokens[pos].type == TokenType
                                             .COMMA)
