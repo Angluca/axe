@@ -1007,4 +1007,51 @@ unittest
         assert(cCode.canFind("greet(\"world\", 1);"), "String literal should have quotes in function call");
         assert(!cCode.canFind("greet(world, 1);"), "String literal should not lose quotes");
     }
+
+    {
+        auto tokens = lex("// This is a comment\nmain { println \"test\"; }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Comment filtering test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("printf(\"test\\n\");"), "Should have println statement");
+        assert(!cCode.canFind("//"), "Comments should be filtered out");
+        assert(!cCode.canFind("This is a comment"), "Comment text should not appear in output");
+    }
+
+    {
+        auto tokens = lex("main { raw { printf(\"raw C\"); } }");
+        auto ast = parse(tokens, true);
+        auto cCode = generateC(ast);
+
+        writeln("Raw C block test (.axec):");
+        writeln(cCode);
+
+        assert(cCode.canFind("printf (\"raw C\");"), "Should have raw C code");
+        assert(!cCode.canFind("raw {"), "Raw keyword should not appear in output");
+    }
+
+    {
+        auto tokens = lex("main { println \"before\"; raw { int x = 5; } println \"after\"; }");
+        auto ast = parse(tokens, true);
+        auto cCode = generateC(ast);
+
+        writeln("Mixed raw C and Axe code test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("printf(\"before\\n\");"), "Should have first println");
+        assert(cCode.canFind("int x = 5;"), "Should have raw C code");
+        assert(cCode.canFind("printf(\"after\\n\");"), "Should have second println");
+    }
+
+    {
+        import std.exception : assertThrown;
+        auto tokens = lex("main { raw { test(); } }");
+        
+        writeln("Raw C block rejection test (.axe):");
+        assertThrown(parse(tokens, false), "Should reject raw blocks in .axe files");
+        writeln("Correctly rejected raw block in .axe file");
+    }
 }

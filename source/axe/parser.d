@@ -370,11 +370,18 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                             if (braceDepth == 0)
                                 break;
                         }
-                        // Preserve quotes for string literals in raw blocks
+
                         if (tokens[pos].type == TokenType.STR)
                             rawCode ~= "\"" ~ tokens[pos].value ~ "\"";
                         else
                             rawCode ~= tokens[pos].value;
+                        
+                        if (pos + 1 < tokens.length && tokens[pos].type != TokenType.LPAREN 
+                            && tokens[pos + 1].type != TokenType.RPAREN
+                            && tokens[pos + 1].type != TokenType.SEMICOLON
+                            && tokens[pos].type != TokenType.SEMICOLON)
+                            rawCode ~= " ";
+                        
                         pos++;
                     }
                     
@@ -662,17 +669,24 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                                 if (braceDepth == 0)
                                     break;
                             }
-                            // Preserve quotes for string literals in raw blocks
+
                             if (tokens[pos].type == TokenType.STR)
                                 rawCode ~= "\"" ~ tokens[pos].value ~ "\"";
                             else
                                 rawCode ~= tokens[pos].value;
+                            
+                            if (pos + 1 < tokens.length && tokens[pos].type != TokenType.LPAREN 
+                                && tokens[pos + 1].type != TokenType.RPAREN
+                                && tokens[pos + 1].type != TokenType.SEMICOLON
+                                && tokens[pos].type != TokenType.SEMICOLON)
+                                rawCode ~= " ";
+                            
                             pos++;
                         }
                         
                         enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
                             "Expected '}' after raw block");
-                        pos++; // Skip '}'
+                        pos++;
                         
                         mainNode.children ~= new RawCNode(rawCode);
                         break;
