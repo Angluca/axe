@@ -65,7 +65,6 @@ string generateC(ASTNode ast)
         g_isMutable.clear();
         g_macros.clear();
 
-        // First pass: collect all macros
         foreach (child; ast.children)
         {
             if (child.nodeType == "Macro")
@@ -152,14 +151,13 @@ string generateC(ASTNode ast)
                 import std.stdio : writeln;
                 import std.string : split, strip, indexOf, lastIndexOf;
 
-                // First pass: separate array params from dimension params
                 struct ParamInfo
                 {
                     string type;
                     string name;
                     bool isArray;
                     int dimensions;
-                    string[] dimNames; // Dimension parameter names extracted from type
+                    string[] dimNames;
                 }
 
                 ParamInfo[] paramInfos;
@@ -167,11 +165,7 @@ string generateC(ASTNode ast)
                 foreach (param; funcNode.params)
                 {
                     writeln("DEBUG: Processing param: '", param, "'");
-
-                    // Find the last space to separate type from name
                     auto lastSpace = param.lastIndexOf(' ');
-
-                    // Check if the space is inside array brackets
                     while (lastSpace > 0)
                     {
                         int openBrackets = 0;
@@ -203,7 +197,6 @@ string generateC(ASTNode ast)
 
                             info.dimensions = cast(int) paramType.count('[');
 
-                            // Extract dimension names from brackets: int[n][m] -> ["n", "m"]
                             auto dimPattern = regex(r"\[([^\]]+)\]");
                             foreach (match; matchAll(paramType, dimPattern))
                             {
@@ -529,9 +522,10 @@ string generateC(ASTNode ast)
             if (baseType == "char*" && processedExpr.length > 0 && processedExpr[0] == '"')
             {
                 import std.string : replace;
+
                 // Calculate actual string length from the literal (subtract 2 for quotes, add 1 for null terminator)
                 size_t bufferSize = processedExpr.length - 2 + 1;
-                
+
                 // Change from char* to char[] with exact size needed
                 type = declNode.isMutable ? "char" : "const char";
                 decl = type ~ " " ~ declNode.name ~ "[" ~ bufferSize.to!string ~ "]";
@@ -744,15 +738,16 @@ string generateC(ASTNode ast)
 
     case "Test":
         auto testNode = cast(TestNode) ast;
-        
+
         // Generate main function with test runner
         cCode ~= "int main() {\n";
-        version (Windows) {
+        version (Windows)
+        {
             cCode ~= "SetConsoleOutputCP(65001);\n";
         }
         cCode ~= "    int passed = 0;\n";
         cCode ~= "    int failed = 0;\n\n";
-        
+
         // Process all statements in test block
         foreach (child; testNode.children)
         {
@@ -760,7 +755,7 @@ string generateC(ASTNode ast)
             {
                 auto assertNode = cast(AssertNode) child;
                 string condition = processExpression(assertNode.condition);
-                
+
                 cCode ~= "    if (" ~ condition ~ ") {\n";
                 cCode ~= "        printf(\"\\033[32m✓ PASS:\\033[0m " ~ assertNode.message ~ "\\n\");\n";
                 cCode ~= "        passed++;\n";
@@ -782,7 +777,7 @@ string generateC(ASTNode ast)
                 }
             }
         }
-        
+
         // Print summary
         cCode ~= "    printf(\"\\n\");\n";
         cCode ~= "    if (failed == 0) {\n";
@@ -940,16 +935,16 @@ string processExpression(string expr)
     {
         import std.string : indexOf, split, strip;
         import std.regex : regex, matchFirst;
-        
+
         // Match macro name followed by optional whitespace and opening paren
         auto macroPattern = regex(macroName ~ r"\s*\(");
         auto match = matchFirst(expr, macroPattern);
-        
+
         if (match)
         {
             writeln("DEBUG processExpression: Found macro call '", macroName, "' in expression");
         }
-        
+
         while (match)
         {
             auto startIdx = match.pre.length;
@@ -958,7 +953,7 @@ string processExpression(string expr)
             while (parenStart < expr.length && (expr[parenStart] == ' ' || expr[parenStart] == '\t'))
                 parenStart++;
             parenStart++; // Skip the '(' itself
-            
+
             // Find matching closing paren
             int depth = 1;
             size_t parenEnd = parenStart;
@@ -971,11 +966,11 @@ string processExpression(string expr)
                 if (depth > 0)
                     parenEnd++;
             }
-            
+
             // Extract arguments
             string argsStr = expr[parenStart .. parenEnd];
             string[] callArgs;
-            
+
             // Simple argument parsing (split by comma, but respect nested parens)
             int argDepth = 0;
             size_t argStart = 0;
@@ -993,14 +988,15 @@ string processExpression(string expr)
             }
             if (argStart < argsStr.length)
                 callArgs ~= argsStr[argStart .. $].strip();
-            
+
             // Build parameter substitution map
             string[string] paramMap;
-            for (size_t i = 0; i < macroNode.params.length && i < callArgs.length; i++)
+            for (size_t i = 0; i < macroNode.params.length && i < callArgs.length;
+                i++)
             {
                 paramMap[macroNode.params[i]] = callArgs[i];
             }
-            
+
             // Expand macro body
             string expandedCode = "";
             foreach (child; macroNode.children)
@@ -1009,7 +1005,7 @@ string processExpression(string expr)
                 {
                     auto rawNode = cast(RawCNode) child;
                     expandedCode = rawNode.code;
-                    
+
                     // Replace parameters in the raw code
                     foreach (paramName, paramValue; paramMap)
                     {
@@ -1017,10 +1013,10 @@ string processExpression(string expr)
                     }
                 }
             }
-            
+
             // Replace macro call with expanded code
             expr = expr[0 .. startIdx] ~ "(" ~ expandedCode ~ ")" ~ expr[parenEnd + 1 .. $];
-            
+
             // Search for next occurrence
             match = matchFirst(expr, macroPattern);
         }
@@ -1030,19 +1026,21 @@ string processExpression(string expr)
 
     // Handle ref_of() built-in function - replace all occurrences (with or without spaces)
     import std.regex : regex, replaceAll;
+
     while (expr.canFind("ref_of"))
     {
         auto startIdx = expr.indexOf("ref_of");
-        if (startIdx == -1) break;
-        
+        if (startIdx == -1)
+            break;
+
         // Skip past "ref_of" and any whitespace
         size_t pos = startIdx + 6;
         while (pos < expr.length && (expr[pos] == ' ' || expr[pos] == '\t'))
             pos++;
-        
+
         if (pos >= expr.length || expr[pos] != '(')
             break;
-            
+
         auto parenStart = pos + 1; // After "("
 
         // Find matching closing paren
@@ -1066,16 +1064,17 @@ string processExpression(string expr)
     while (expr.canFind("addr_of"))
     {
         auto startIdx = expr.indexOf("addr_of");
-        if (startIdx == -1) break;
-        
+        if (startIdx == -1)
+            break;
+
         // Skip past "addr_of" and any whitespace
         size_t pos = startIdx + 7;
         while (pos < expr.length && (expr[pos] == ' ' || expr[pos] == '\t'))
             pos++;
-        
+
         if (pos >= expr.length || expr[pos] != '(')
             break;
-            
+
         auto parenStart = pos + 1; // After "("
 
         // Find matching closing paren
@@ -1137,10 +1136,10 @@ string processExpression(string expr)
             string[] parts;
             string current = "";
             bool inString = false;
-            
+
             for (size_t i = 0; i < expr.length; i++)
             {
-                if (expr[i] == '"' && (i == 0 || expr[i-1] != '\\'))
+                if (expr[i] == '"' && (i == 0 || expr[i - 1] != '\\'))
                 {
                     inString = !inString;
                     current ~= expr[i];
@@ -1157,7 +1156,7 @@ string processExpression(string expr)
                 }
             }
             parts ~= current;
-            
+
             if (parts.length == 2)
             {
                 return "(" ~ processExpression(parts[0]) ~ op ~ processExpression(parts[1]) ~ ")";
@@ -2672,75 +2671,83 @@ unittest
 
     // Macro system tests
     {
-        auto tokens = lex("macro add(a: int, b: int) { raw { a + b } } main { val x: int = add(5, 3); }");
+        auto tokens = lex(
+            "macro add(a: int, b: int) { raw { a + b } } main { val x: int = add(5, 3); }");
         auto ast = parse(tokens, true);
         auto cCode = generateC(ast);
 
         writeln("Basic macro test:");
         writeln(cCode);
 
-        assert(cCode.canFind("const int x = (5+3);") || cCode.canFind("const int x = ( 5 + 3 );"), 
+        assert(cCode.canFind("const int x = (5+3);") || cCode.canFind("const int x = ( 5 + 3 );"),
             "Should expand macro add(5, 3) to (5+3)");
         assert(!cCode.canFind("add(5, 3)"), "Should not have macro call in output");
     }
 
     {
-        auto tokens = lex("macro square(x: int) { raw { x * x } } main { val result: int = square(4); }");
+        auto tokens = lex(
+            "macro square(x: int) { raw { x * x } } main { val result: int = square(4); }");
         auto ast = parse(tokens, true);
         auto cCode = generateC(ast);
 
         writeln("Macro with repeated parameter test:");
         writeln(cCode);
 
-        assert(cCode.canFind("const int result = ( 4 * 4 );") || cCode.canFind("const int result = (4 * 4);"), 
+        assert(cCode.canFind("const int result = ( 4 * 4 );") || cCode.canFind(
+                "const int result = (4 * 4);"),
             "Should expand square(4) to (4*4)");
     }
 
     {
-        auto tokens = lex("macro max(a: int, b: int) { raw { (a > b) ? a : b } } main { val m: int = max(10, 20); }");
+        auto tokens = lex(
+            "macro max(a: int, b: int) { raw { (a > b) ? a : b } } main { val m: int = max(10, 20); }");
         auto ast = parse(tokens, true);
         auto cCode = generateC(ast);
 
         writeln("Macro with ternary operator test:");
         writeln(cCode);
 
-        assert(cCode.canFind("(10>20)?10:20") || cCode.canFind("(10 > 20) ? 10 : 20"), 
+        assert(cCode.canFind("(10>20)?10:20") || cCode.canFind("(10 > 20) ? 10 : 20"),
             "Should expand max(10, 20) to ternary expression");
     }
 
     {
-        auto tokens = lex("macro add(a: int, b: int) { raw { a + b } } def calc(x: int, y: int): int { return add(x, y); } main { }");
+        auto tokens = lex(
+            "macro add(a: int, b: int) { raw { a + b } } def calc(x: int, y: int): int { return add(x, y); } main { }");
         auto ast = parse(tokens, true);
         auto cCode = generateC(ast);
 
         writeln("Macro in function body test:");
         writeln(cCode);
 
-        assert(cCode.canFind("return ( x + y );") || cCode.canFind("return (x + y);"), 
+        assert(cCode.canFind("return ( x + y );") || cCode.canFind("return (x + y);"),
             "Should expand macro in function return statement");
     }
 
     {
-        auto tokens = lex("macro inc(x: int) { raw { x + 1 } } main { val a: int = 5; val b: int = inc(a); }");
+        auto tokens = lex(
+            "macro inc(x: int) { raw { x + 1 } } main { val a: int = 5; val b: int = inc(a); }");
         auto ast = parse(tokens, true);
         auto cCode = generateC(ast);
 
         writeln("Macro with variable argument test:");
         writeln(cCode);
 
-        assert(cCode.canFind("const int b = ( a + 1 );") || cCode.canFind("const int b = (a + 1);"), 
+        assert(cCode.canFind("const int b = ( a + 1 );") || cCode.canFind("const int b = (a + 1);"),
             "Should expand inc(a) with variable argument");
     }
 
     {
-        auto tokens = lex("macro triple(x: int) { raw { x * 3 } } main { if triple(2) == 6 { println \"yes\"; } }");
+        auto tokens = lex(
+            "macro triple(x: int) { raw { x * 3 } } main { if triple(2) == 6 { println \"yes\"; } }");
         auto ast = parse(tokens, true);
         auto cCode = generateC(ast);
 
         writeln("Macro in condition test:");
         writeln(cCode);
 
-        assert(cCode.canFind("if") && (cCode.canFind("( 2 * 3 )==6") || cCode.canFind("(2 * 3) == 6")), 
+        assert(cCode.canFind("if") && (cCode.canFind("( 2 * 3 )==6") || cCode.canFind(
+                "(2 * 3) == 6")),
             "Should expand macro in if condition");
     }
 }
