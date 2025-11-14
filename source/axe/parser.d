@@ -137,7 +137,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
         return ArrayTypeInfo(elementType, size, size2);
     }
 
-
     /** 
      * Parses println argument (string literal or expression)
      * 
@@ -204,7 +203,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
         }
     }
 
-
     /**
      * Parse a simple statement (println or print) and return the node.
      * Handles the semicolon requirement.
@@ -213,7 +211,7 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
     ASTNode parseSimpleStatement()
     {
         ASTNode result = null;
-        
+
         if (tokens[pos].type == TokenType.PRINTLN)
         {
             result = parsePrintln();
@@ -226,19 +224,18 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
         {
             return null;
         }
-        
+
         // Consume semicolon
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
             pos++;
         enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
             "Expected ';' after statement");
         pos++;
-        
+
         return result;
     }
 
     ASTNode currentScopeNode = ast;
-    
 
     /** 
      * Parses function arguments from the current position in the token stream.
@@ -314,7 +311,8 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                 }
                 else
                 {
-                    enforce(false, "Unexpected token in function arguments: " ~ tokens[pos].value);
+                    enforce(false, "Unexpected token in function arguments: " ~ tokens[pos].value ~ " (type: " ~
+                            tokens[pos].type.to!string ~ ")");
                 }
             }
 
@@ -325,7 +323,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
 
         return args;
     }
-
 
     while (pos < tokens.length)
     {
@@ -2831,7 +2828,8 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                             if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
                             {
                                 pos++;
-                                while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
+                                while (pos < tokens.length && tokens[pos].type != TokenType
+                                    .SEMICOLON)
                                 {
                                     if (tokens[pos].type == TokenType.STR)
                                         loopInitializer ~= "\"" ~ tokens[pos].value ~ "\"";
@@ -2863,7 +2861,8 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                             }
                             enforce(false, "Unexpected token in loop body at " ~ to!string(
                                     pos) ~ ": "
-                                    ~ to!string(tokens[pos].type) ~ " ('" ~ tokens[pos].value ~ "')");
+                                    ~ to!string(
+                                        tokens[pos].type) ~ " ('" ~ tokens[pos].value ~ "')");
                         }
                     }
 
@@ -3002,21 +3001,21 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
 {
     import std.array : join;
     import std.stdio : writeln;
-    
+
     writeln("[parseStatementHelper] pos=", pos, " token=", tokens[pos].type, " value='", tokens[pos].value, "'");
-    
+
     switch (tokens[pos].type)
     {
     case TokenType.WHITESPACE, TokenType.NEWLINE:
         pos++;
         return null;
-        
+
     case TokenType.PRINTLN:
         return parsePrintlnHelper(pos, tokens);
-        
+
     case TokenType.PRINT:
         return parsePrintHelper(pos, tokens);
-        
+
     case TokenType.BREAK:
         pos++;
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
@@ -3025,19 +3024,28 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             "Expected ';' after break");
         pos++;
         return new BreakNode();
-        
+
+    case TokenType.CONTINUE:
+        pos++;
+        while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+            pos++;
+        enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
+            "Expected ';' after continue");
+        pos++;
+        return new ContinueNode();
+
     case TokenType.LOOP:
         return parseLoopHelper(pos, tokens, currentScope, currentScopeNode);
-        
+
     case TokenType.IF:
         return parseIfHelper(pos, tokens, currentScope, currentScopeNode);
-        
+
     case TokenType.MUT:
         pos++;
         enforce(pos < tokens.length && tokens[pos].type == TokenType.VAL,
             "Expected 'val' after 'mut'");
         goto case TokenType.VAL;
-        
+
     case TokenType.VAL:
         bool isMutable = tokens[pos - 1].type == TokenType.MUT;
         pos++;
@@ -3045,16 +3053,16 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             "Expected identifier after 'val'");
         string varName = tokens[pos].value;
         pos++;
-        
+
         string typeName = "";
         string initializer = "";
-        
+
         if (pos < tokens.length && tokens[pos].type == TokenType.COLON)
         {
             pos++;
             typeName = parseTypeHelper(pos, tokens);
         }
-        
+
         if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
         {
             pos++;
@@ -3067,20 +3075,20 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 pos++;
             }
         }
-        
+
         enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
             "Expected ';' after variable declaration");
         pos++;
-        
+
         currentScope.addVariable(varName, isMutable);
         return new DeclarationNode(varName, isMutable, initializer, typeName);
-        
+
     case TokenType.IDENTIFIER:
         string identName = tokens[pos].value;
         pos++;
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
             pos++;
-        
+
         if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
         {
             // Variable assignment
@@ -3110,7 +3118,8 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 else
                 {
                     string arg = "";
-                    while (pos < tokens.length && tokens[pos].type != TokenType.COMMA && tokens[pos].type != TokenType.RPAREN)
+                    while (pos < tokens.length && tokens[pos].type != TokenType.COMMA && tokens[pos].type != TokenType
+                        .RPAREN)
                     {
                         arg ~= tokens[pos].value;
                         pos++;
@@ -3129,7 +3138,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             return new FunctionCallNode(identName, args.join(", "));
         }
         return null;
-        
+
     case TokenType.RETURN:
         pos++;
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
@@ -3144,11 +3153,12 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             "Expected ';' after return statement");
         pos++;
         return new ReturnNode(returnExpr);
-        
+
     default:
         // Safeguard: if we don't recognize the token, we must advance to prevent infinite loops
         writeln("[parseStatementHelper] WARNING: Unhandled token type ", tokens[pos].type, " at pos ", pos);
-        enforce(false, "Unexpected token in statement: " ~ tokens[pos].value ~ " (type: " ~ tokens[pos].type.to!string ~ ")");
+        enforce(false, "Unexpected token in statement: " ~ tokens[pos].value ~ " (type: " ~ tokens[pos]
+                .type.to!string ~ ")");
         return null;
     }
 }
@@ -3159,12 +3169,13 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
 private IfNode parseIfHelper(ref size_t pos, Token[] tokens, ref Scope currentScope, ref ASTNode currentScopeNode)
 {
     import std.stdio : writeln;
+
     writeln("[parseIfHelper] Entering at pos=", pos);
-    
+
     pos++; // Skip 'if'
     while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
         pos++;
-    
+
     string cond = "";
     bool hasParen = false;
     if (pos < tokens.length && tokens[pos].type == TokenType.LPAREN)
@@ -3172,7 +3183,7 @@ private IfNode parseIfHelper(ref size_t pos, Token[] tokens, ref Scope currentSc
         hasParen = true;
         pos++;
     }
-    
+
     while (pos < tokens.length && tokens[pos].type != TokenType.LBRACE)
     {
         if (hasParen && tokens[pos].type == TokenType.RPAREN)
@@ -3184,17 +3195,17 @@ private IfNode parseIfHelper(ref size_t pos, Token[] tokens, ref Scope currentSc
             cond ~= tokens[pos].value ~ " ";
         pos++;
     }
-    
+
     while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
         pos++;
     enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
         "Expected '{' after if condition");
     pos++;
-    
+
     auto ifNode = new IfNode(cond.strip());
     auto prevScope = currentScopeNode;
     currentScopeNode = ifNode;
-    
+
     // Parse if body using recursive parseStatementHelper
     while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
     {
@@ -3202,28 +3213,28 @@ private IfNode parseIfHelper(ref size_t pos, Token[] tokens, ref Scope currentSc
         if (stmt !is null)
             ifNode.children ~= stmt;
     }
-    
+
     enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
         "Expected '}' after if body");
     pos++;
-    
+
     // Check for else clause
     while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
         pos++;
-    
+
     if (pos < tokens.length && tokens[pos].type == TokenType.ELSE)
     {
         writeln("[parseIfHelper] Found else at pos=", pos);
         pos++; // Skip 'else'
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
             pos++;
-        
+
         enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
             "Expected '{' after else");
         pos++;
-        
+
         currentScopeNode = ifNode;
-        
+
         // Parse else body
         while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
         {
@@ -3231,12 +3242,12 @@ private IfNode parseIfHelper(ref size_t pos, Token[] tokens, ref Scope currentSc
             if (stmt !is null)
                 ifNode.elseBody ~= stmt;
         }
-        
+
         enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
             "Expected '}' after else body");
         pos++;
     }
-    
+
     currentScopeNode = prevScope;
     return ifNode;
 }
@@ -3247,20 +3258,21 @@ private IfNode parseIfHelper(ref size_t pos, Token[] tokens, ref Scope currentSc
 private LoopNode parseLoopHelper(ref size_t pos, Token[] tokens, ref Scope currentScope, ref ASTNode currentScopeNode)
 {
     import std.stdio : writeln;
+
     writeln("[parseLoopHelper] Entering at pos=", pos);
-    
+
     pos++; // Skip 'loop'
     while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
         pos++;
-    
+
     enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
         "Expected '{' after loop");
     pos++;
-    
+
     auto loopNode = new LoopNode();
     auto previousScope = currentScopeNode;
     currentScopeNode = loopNode;
-    
+
     // Parse loop body using recursive parseStatementHelper
     while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
     {
@@ -3268,11 +3280,11 @@ private LoopNode parseLoopHelper(ref size_t pos, Token[] tokens, ref Scope curre
         if (stmt !is null)
             loopNode.children ~= stmt;
     }
-    
+
     enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
         "Expected '}' after loop body");
     pos++;
-    
+
     currentScopeNode = previousScope;
     return loopNode;
 }
@@ -3283,7 +3295,7 @@ private LoopNode parseLoopHelper(ref size_t pos, Token[] tokens, ref Scope curre
 private PrintlnNode parsePrintlnHelper(ref size_t pos, Token[] tokens)
 {
     pos++;
-    
+
     if (pos < tokens.length && tokens[pos].type == TokenType.STR)
     {
         string msg = tokens[pos].value;
@@ -3321,7 +3333,7 @@ private PrintlnNode parsePrintlnHelper(ref size_t pos, Token[] tokens)
 private PrintNode parsePrintHelper(ref size_t pos, Token[] tokens)
 {
     pos++;
-    
+
     if (pos < tokens.length && tokens[pos].type == TokenType.STR)
     {
         string msg = tokens[pos].value;
@@ -3361,13 +3373,13 @@ private string parseTypeHelper(ref size_t pos, Token[] tokens)
     string typeName = "";
     while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
         pos++;
-    
+
     if (pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER)
     {
         typeName = tokens[pos].value;
         pos++;
     }
-    
+
     return typeName;
 }
 
