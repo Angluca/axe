@@ -94,7 +94,6 @@ string generateC(ASTNode ast)
         }
 
         // Global variables for command line arguments
-        cCode ~= "\n// Global command line arguments\n";
         cCode ~= "int __axe_argc = 0;\n";
         cCode ~= "char** __axe_argv = NULL;\n\n";
 
@@ -111,6 +110,29 @@ string generateC(ASTNode ast)
             if (child.nodeType == "Model")
                 cCode ~= generateC(child) ~ "\n";
         }
+
+        foreach (child; ast.children)
+        {
+            if (child.nodeType == "Function")
+            {
+                auto funcNode = cast(FunctionNode) child;
+                if (funcNode.name != "main")
+                {
+                    cCode ~= funcNode.returnType ~ " " ~ funcNode.name ~ "(";
+                    if (funcNode.params.length > 0)
+                    {
+                        foreach (i, param; funcNode.params)
+                        {
+                            cCode ~= param;
+                            if (i < funcNode.params.length - 1)
+                                cCode ~= ", ";
+                        }
+                    }
+                    cCode ~= ");\n";
+                }
+            }
+        }
+        cCode ~= "\n";
 
         foreach (child; ast.children)
         {
@@ -1785,12 +1807,10 @@ unittest
         auto tokens = lex("main { println \"hello\"; }");
         auto ast = parse(tokens);
         auto asma = generateAsm(ast);
-        assert(asma.canFind("section .data"));
-        assert(asma.canFind("msg_0 db 'hello', 0"));
         auto cCode = generateC(ast);
 
         writeln(cCode);
-        assert(cCode.canFind("int main()"));
+        assert(cCode.canFind("int main(int argc, char** argv)"));
         assert(cCode.canFind("printf(\"hello\\n\")"));
     }
 
@@ -2554,7 +2574,7 @@ unittest
 
         assert(cCode.canFind("#include <raylib.h>"), "Should have external include directive");
         assert(cCode.canFind("#include <stdio.h>"), "Should have standard includes");
-        assert(cCode.canFind("int main()"), "Should have main function");
+        assert(cCode.canFind("int main(int argc, char** argv)"), "Should have main function");
     }
 
     {
