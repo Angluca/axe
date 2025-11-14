@@ -67,6 +67,8 @@ enum TokenType
     XOR,
     MOD,
     MACRO,
+    TEST,
+    ASSERT,
 }
 
 /** 
@@ -201,6 +203,27 @@ class MacroNode : ASTNode
         this.name = name;
         this.params = params;
         this.paramTypes = paramTypes;
+    }
+}
+
+class TestNode : ASTNode
+{
+    this()
+    {
+        super("Test");
+    }
+}
+
+class AssertNode : ASTNode
+{
+    string condition;
+    string message;
+    
+    this(string condition, string message)
+    {
+        super("Assert");
+        this.condition = condition;
+        this.message = message;
     }
 }
 

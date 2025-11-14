@@ -726,6 +726,46 @@ string generateC(ASTNode ast)
         cCode ~= "} " ~ enumNode.name ~ ";\n";
         break;
 
+    case "Test":
+        auto testNode = cast(TestNode) ast;
+        
+        // Generate main function with test runner
+        cCode ~= "int main() {\n";
+        version (Windows) {
+            cCode ~= "SetConsoleOutputCP(65001);\n";
+        }
+        cCode ~= "    int passed = 0;\n";
+        cCode ~= "    int failed = 0;\n\n";
+        
+        // Process each assert
+        foreach (child; testNode.children)
+        {
+            if (child.nodeType == "Assert")
+            {
+                auto assertNode = cast(AssertNode) child;
+                string condition = processExpression(assertNode.condition);
+                
+                cCode ~= "    if (" ~ condition ~ ") {\n";
+                cCode ~= "        printf(\"\\033[32m✓ PASS:\\033[0m " ~ assertNode.message ~ "\\n\");\n";
+                cCode ~= "        passed++;\n";
+                cCode ~= "    } else {\n";
+                cCode ~= "        printf(\"\\033[31m✗ FAIL:\\033[0m " ~ assertNode.message ~ "\\n\");\n";
+                cCode ~= "        failed++;\n";
+                cCode ~= "    }\n\n";
+            }
+        }
+        
+        // Print summary
+        cCode ~= "    printf(\"\\n\");\n";
+        cCode ~= "    if (failed == 0) {\n";
+        cCode ~= "        printf(\"\\033[32mAll tests passed. (%d/%d)\\033[0m\\n\", passed, passed + failed);\n";
+        cCode ~= "    } else {\n";
+        cCode ~= "        printf(\"\\033[31m%d test(s) failed, %d passed\\033[0m\\n\", failed, passed);\n";
+        cCode ~= "    }\n";
+        cCode ~= "    return failed > 0 ? 1 : 0;\n";
+        cCode ~= "}\n";
+        break;
+
     case "Macro":
         // Store macro for later expansion, don't generate code now
         auto macroNode = cast(MacroNode) ast;

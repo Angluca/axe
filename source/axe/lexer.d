@@ -63,6 +63,19 @@ Token[] lex(string source)
             pos++;
             break;
 
+        case '!':
+            if (pos + 1 < source.length && source[pos + 1] == '=')
+            {
+                tokens ~= Token(TokenType.OPERATOR, "!=");
+                pos += 2;
+            }
+            else
+            {
+                tokens ~= Token(TokenType.OPERATOR, "!");
+                pos++;
+            }
+            break;
+
         case '=':
             if (pos + 1 < source.length && source[pos + 1] == '=')
             {
@@ -166,6 +179,24 @@ Token[] lex(string source)
             pos++;
             break;
 
+        case 'a':
+            if (pos + 5 < source.length && source[pos .. pos + 6] == "assert" &&
+                (pos + 6 >= source.length || !(source[pos + 6].isAlphaNum || source[pos + 6] == '_')))
+            {
+                tokens ~= Token(TokenType.ASSERT, "assert");
+                pos += 6;
+            }
+            else
+            {
+                size_t start = pos;
+                while (pos < source.length && (source[pos].isAlphaNum || source[pos] == '_'))
+                {
+                    pos++;
+                }
+                tokens ~= Token(TokenType.IDENTIFIER, source[start .. pos]);
+            }
+            break;
+
         case 'b':
             if (pos + 4 < source.length && source[pos .. pos + 5] == "break")
             {
@@ -191,6 +222,24 @@ Token[] lex(string source)
         case '.':
             tokens ~= Token(TokenType.DOT, ".");
             pos++;
+            break;
+
+        case 't':
+            if (pos + 3 < source.length && source[pos .. pos + 4] == "test" &&
+                (pos + 4 >= source.length || !(source[pos + 4].isAlphaNum || source[pos + 4] == '_')))
+            {
+                tokens ~= Token(TokenType.TEST, "test");
+                pos += 4;
+            }
+            else
+            {
+                size_t start = pos;
+                while (pos < source.length && (source[pos].isAlphaNum || source[pos] == '_'))
+                {
+                    pos++;
+                }
+                tokens ~= Token(TokenType.IDENTIFIER, source[start .. pos]);
+            }
             break;
 
         case 'v':

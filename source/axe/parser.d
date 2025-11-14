@@ -2315,6 +2315,100 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
             }
             goto default;
 
+        case TokenType.TEST:
+            pos++; // Skip 'test'
+            while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                pos++;
+
+            auto testNode = new TestNode();
+
+            enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
+                "Expected '{' after 'test'");
+            pos++;
+
+            // Parse test body
+            while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
+            {
+                if (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType.NEWLINE)
+                {
+                    pos++;
+                    continue;
+                }
+
+                if (tokens[pos].type == TokenType.ASSERT)
+                {
+                    pos++; // Skip 'assert'
+                    
+                    while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                        pos++;
+
+                    enforce(pos < tokens.length && tokens[pos].type == TokenType.LPAREN,
+                        "Expected '(' after 'assert'");
+                    pos++;
+
+                    // Parse condition (everything until comma)
+                    string condition = "";
+                    int parenDepth = 0;
+                    while (pos < tokens.length)
+                    {
+                        if (tokens[pos].type == TokenType.LPAREN)
+                            parenDepth++;
+                        else if (tokens[pos].type == TokenType.RPAREN)
+                        {
+                            if (parenDepth == 0)
+                                break;
+                            parenDepth--;
+                        }
+                        else if (tokens[pos].type == TokenType.COMMA && parenDepth == 0)
+                            break;
+
+                        if (tokens[pos].type != TokenType.WHITESPACE && tokens[pos].type != TokenType.NEWLINE)
+                            condition ~= tokens[pos].value ~ " ";
+                        pos++;
+                    }
+
+                    enforce(pos < tokens.length && tokens[pos].type == TokenType.COMMA,
+                        "Expected ',' after assert condition");
+                    pos++;
+
+                    while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                        pos++;
+
+                    // Parse message (should be a string)
+                    enforce(pos < tokens.length && tokens[pos].type == TokenType.STR,
+                        "Expected string message after comma in assert");
+                    string message = tokens[pos].value;
+                    pos++;
+
+                    while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                        pos++;
+
+                    enforce(pos < tokens.length && tokens[pos].type == TokenType.RPAREN,
+                        "Expected ')' after assert message");
+                    pos++;
+
+                    while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                        pos++;
+
+                    enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
+                        "Expected ';' after assert statement");
+                    pos++;
+
+                    testNode.children ~= new AssertNode(condition.strip(), message);
+                }
+                else
+                {
+                    pos++;
+                }
+            }
+
+            enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
+                "Expected '}' after test body");
+            pos++;
+
+            ast.children ~= testNode;
+            continue;
+
         case TokenType.MACRO:
             pos++; // Skip 'macro'
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
