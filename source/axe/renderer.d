@@ -317,16 +317,72 @@ string generateC(ASTNode ast)
 
         if (ifNode.elseBody.length > 0)
         {
-            cCode ~= " else {\n";
-            loopLevel++;
-
-            foreach (child; ifNode.elseBody)
+            // Check if this is an elif (else body contains single IfNode)
+            if (ifNode.elseBody.length == 1 && cast(IfNode) ifNode.elseBody[0] !is null)
             {
-                cCode ~= generateC(child);
-            }
+                // Render as 'else if' for elif
+                auto elifNode = cast(IfNode) ifNode.elseBody[0];
+                cCode ~= " else if ((" ~ elifNode.condition ~ ")) {\n";
+                loopLevel++;
 
-            loopLevel--;
-            cCode ~= "}";
+                foreach (child; elifNode.children)
+                {
+                    cCode ~= generateC(child);
+                }
+
+                loopLevel--;
+                cCode ~= "}";
+                
+                // Recursively handle the elif's else body
+                if (elifNode.elseBody.length > 0)
+                {
+                    auto tempIfNode = new IfNode("");
+                    tempIfNode.elseBody = elifNode.elseBody;
+                    
+                    // Temporarily render just the else part
+                    if (tempIfNode.elseBody.length == 1 && cast(IfNode) tempIfNode.elseBody[0] !is null)
+                    {
+                        // Another elif - recurse
+                        auto nextElif = cast(IfNode) tempIfNode.elseBody[0];
+                        auto recursiveNode = new IfNode("");
+                        recursiveNode.elseBody = [nextElif];
+                        string recursiveCode = generateC(recursiveNode);
+                        // Extract just the else part
+                        if (recursiveCode.canFind(" else"))
+                        {
+                            cCode ~= recursiveCode[recursiveCode.indexOf(" else") .. $];
+                        }
+                    }
+                    else
+                    {
+                        // Final else block
+                        cCode ~= " else {\n";
+                        loopLevel++;
+
+                        foreach (child; elifNode.elseBody)
+                        {
+                            cCode ~= generateC(child);
+                        }
+
+                        loopLevel--;
+                        cCode ~= "}";
+                    }
+                }
+            }
+            else
+            {
+                // Regular else block
+                cCode ~= " else {\n";
+                loopLevel++;
+
+                foreach (child; ifNode.elseBody)
+                {
+                    cCode ~= generateC(child);
+                }
+
+                loopLevel--;
+                cCode ~= "}";
+            }
         }
 
         cCode ~= "\n";
@@ -1679,11 +1735,11 @@ unittest
         writeln("If-elif-else test (without parens):");
         writeln(cCode);
 
-        assert(cCode.canFind("if ((score>=90))"), "Should have if condition");
+        assert(cCode.canFind("if ((score>= 90))"), "Should have if condition");
         assert(cCode.canFind("printf(\"A\\n\");"), "Should have println A");
-        assert(cCode.canFind("} else if ((score>=80)) {"), "Should have first elif");
+        assert(cCode.canFind("} else if ((score >= 80)) {"), "Should have first elif");
         assert(cCode.canFind("printf(\"B\\n\");"), "Should have println B");
-        assert(cCode.canFind("} else if ((score>=70)) {"), "Should have second elif");
+        assert(cCode.canFind("} else if ((score >= 70)) {"), "Should have second elif");
         assert(cCode.canFind("printf(\"C\\n\");"), "Should have println C");
         assert(cCode.canFind("} else {"), "Should have else");
         assert(cCode.canFind("printf(\"F\\n\");"), "Should have println F");
@@ -1700,7 +1756,7 @@ unittest
 
         assert(cCode.canFind("if ((n<10))"), "Should have if condition");
         assert(cCode.canFind("printf(\"less\\n\");"), "Should have println in if");
-        assert(cCode.canFind("} else if ((n==15)) {"), "Should have elif with parens");
+        assert(cCode.canFind("} else if ((n == 15)) {"), "Should have elif with parens");
         assert(cCode.canFind("printf(\"equal\\n\");"), "Should have println in elif");
         assert(!cCode.canFind("} else {"), "Should not have else block");
     }
@@ -1729,7 +1785,7 @@ unittest
         writeln("If-else with parens test:");
         writeln(cCode);
 
-        assert(cCode.canFind("if ((age>=18))"), "Should have if with parens");
+        assert(cCode.canFind("if ((age>= 18))"), "Should have if with parens");
         assert(cCode.canFind("printf(\"adult\\n\");"), "Should have println in if");
         assert(cCode.canFind("} else {"), "Should have else");
         assert(cCode.canFind("printf(\"minor\\n\");"), "Should have println in else");

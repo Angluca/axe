@@ -3050,6 +3050,108 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
     case TokenType.IF:
         return parseIfHelper(pos, tokens, currentScope, currentScopeNode, isAxec);
 
+    case TokenType.SWITCH:
+        pos++; // Skip 'switch'
+        while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+            pos++;
+        
+        // Parse switch expression (no parentheses required)
+        string switchExpr = "";
+        while (pos < tokens.length && tokens[pos].type != TokenType.LBRACE)
+        {
+            if (tokens[pos].type != TokenType.WHITESPACE)
+                switchExpr ~= tokens[pos].value;
+            pos++;
+        }
+        
+        enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
+            "Expected '{' after switch expression");
+        pos++;
+        
+        auto switchNode = new SwitchNode(switchExpr.strip());
+        auto prevScope = currentScopeNode;
+        currentScopeNode = switchNode;
+        
+        // Parse switch body (cases)
+        while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
+        {
+            if (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType.NEWLINE)
+            {
+                pos++;
+            }
+            else if (tokens[pos].type == TokenType.CASE)
+            {
+                pos++; // Skip 'case'
+                while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                    pos++;
+                
+                string caseValue = "";
+                while (pos < tokens.length && tokens[pos].type != TokenType.LBRACE)
+                {
+                    if (tokens[pos].type != TokenType.WHITESPACE)
+                        caseValue ~= tokens[pos].value;
+                    pos++;
+                }
+                
+                enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
+                    "Expected '{' after case value");
+                pos++;
+                
+                auto caseNode = new CaseNode(caseValue.strip());
+                
+                // Parse case body
+                while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
+                {
+                    auto stmt = parseStatementHelper(pos, tokens, currentScope, currentScopeNode, isAxec);
+                    if (stmt !is null)
+                        caseNode.children ~= stmt;
+                }
+                
+                enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
+                    "Expected '}' after case body");
+                pos++;
+                
+                switchNode.children ~= caseNode;
+            }
+            else if (tokens[pos].type == TokenType.DEFAULT)
+            {
+                pos++; // Skip 'default'
+                while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                    pos++;
+                
+                enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
+                    "Expected '{' after default");
+                pos++;
+                
+                auto defaultNode = new CaseNode("default");
+                
+                // Parse default body
+                while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
+                {
+                    auto stmt = parseStatementHelper(pos, tokens, currentScope, currentScopeNode, isAxec);
+                    if (stmt !is null)
+                        defaultNode.children ~= stmt;
+                }
+                
+                enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
+                    "Expected '}' after default body");
+                pos++;
+                
+                switchNode.children ~= defaultNode;
+            }
+            else
+            {
+                pos++;
+            }
+        }
+        
+        enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
+            "Expected '}' after switch body");
+        pos++;
+        
+        currentScopeNode = prevScope;
+        return switchNode;
+
     case TokenType.MUT:
         pos++;
         enforce(pos < tokens.length && tokens[pos].type == TokenType.VAL,
@@ -3190,6 +3292,16 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             
             if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
             {
+                // Check if the object is mutable
+                if (!currentScope.isDeclared(identName))
+                {
+                    enforce(false, "Undeclared variable: " ~ identName);
+                }
+                if (!currentScope.isMutable(identName))
+                {
+                    enforce(false, "Cannot assign to member of immutable variable: " ~ identName);
+                }
+                
                 pos++;
                 string value = "";
                 while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
@@ -3254,6 +3366,40 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 pos++;
                 return new ArrayAssignmentNode(identName, index.strip(), value.strip(), index2.strip());
             }
+        }
+        else if (pos < tokens.length && tokens[pos].type == TokenType.INCREMENT)
+        {
+            // Increment: x++
+            if (!currentScope.isDeclared(identName))
+            {
+                enforce(false, "Undeclared variable: " ~ identName);
+            }
+            if (!currentScope.isMutable(identName))
+            {
+                enforce(false, "Cannot increment immutable variable: " ~ identName);
+            }
+            pos++;
+            enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
+                "Expected ';' after increment");
+            pos++;
+            return new IncrementDecrementNode(identName, true);
+        }
+        else if (pos < tokens.length && tokens[pos].type == TokenType.DECREMENT)
+        {
+            // Decrement: x--
+            if (!currentScope.isDeclared(identName))
+            {
+                enforce(false, "Undeclared variable: " ~ identName);
+            }
+            if (!currentScope.isMutable(identName))
+            {
+                enforce(false, "Cannot decrement immutable variable: " ~ identName);
+            }
+            pos++;
+            enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
+                "Expected ';' after decrement");
+            pos++;
+            return new IncrementDecrementNode(identName, false);
         }
         else if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
         {
@@ -3433,10 +3579,68 @@ private IfNode parseIfHelper(ref size_t pos, Token[] tokens, ref Scope currentSc
         "Expected '}' after if body");
     pos++;
 
-    // Check for else clause
+    // Check for elif clauses - chain them properly
     while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
         pos++;
 
+    IfNode lastNode = ifNode;
+    while (pos < tokens.length && tokens[pos].type == TokenType.ELIF)
+    {
+        writeln("[parseIfHelper] Found elif at pos=", pos);
+        pos++; // Skip 'elif'
+        while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+            pos++;
+
+        string elifCond = "";
+        bool elifHasParen = false;
+        if (pos < tokens.length && tokens[pos].type == TokenType.LPAREN)
+        {
+            elifHasParen = true;
+            pos++;
+        }
+
+        while (pos < tokens.length && tokens[pos].type != TokenType.LBRACE)
+        {
+            if (elifHasParen && tokens[pos].type == TokenType.RPAREN)
+            {
+                pos++;
+                break;
+            }
+            if (tokens[pos].type != TokenType.WHITESPACE)
+                elifCond ~= tokens[pos].value ~ " ";
+            pos++;
+        }
+
+        while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+            pos++;
+        enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
+            "Expected '{' after elif condition");
+        pos++;
+
+        auto elifNode = new IfNode(elifCond.strip());
+        currentScopeNode = elifNode;
+
+        // Parse elif body
+        while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
+        {
+            auto stmt = parseStatementHelper(pos, tokens, currentScope, currentScopeNode, isAxec);
+            if (stmt !is null)
+                elifNode.children ~= stmt;
+        }
+
+        enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
+            "Expected '}' after elif body");
+        pos++;
+
+        // Chain elif: set it as the sole content of the previous node's else body
+        lastNode.elseBody = [elifNode];
+        lastNode = elifNode;
+
+        while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+            pos++;
+    }
+
+    // Check for else clause - attach to the last node in the chain
     if (pos < tokens.length && tokens[pos].type == TokenType.ELSE)
     {
         writeln("[parseIfHelper] Found else at pos=", pos);
@@ -3448,14 +3652,14 @@ private IfNode parseIfHelper(ref size_t pos, Token[] tokens, ref Scope currentSc
             "Expected '{' after else");
         pos++;
 
-        currentScopeNode = ifNode;
+        currentScopeNode = lastNode;
 
-        // Parse else body
+        // Parse else body and attach to the last node in the elif chain
         while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
         {
             auto stmt = parseStatementHelper(pos, tokens, currentScope, currentScopeNode, isAxec);
             if (stmt !is null)
-                ifNode.elseBody ~= stmt;
+                lastNode.elseBody ~= stmt;
         }
 
         enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
