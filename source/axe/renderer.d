@@ -145,6 +145,7 @@ string generateC(ASTNode ast)
                     string name;
                     bool isArray;
                     int dimensions;
+                    string[] dimNames;  // Dimension parameter names extracted from type
                 }
                 ParamInfo[] paramInfos;
 
@@ -183,7 +184,15 @@ string generateC(ASTNode ast)
                         if (info.isArray)
                         {
                             import std.algorithm : count;
+                            import std.regex : regex, matchAll;
                             info.dimensions = cast(int)paramType.count('[');
+                            
+                            // Extract dimension names from brackets: int[n][m] -> ["n", "m"]
+                            auto dimPattern = regex(r"\[([^\]]+)\]");
+                            foreach (match; matchAll(paramType, dimPattern))
+                            {
+                                info.dimNames ~= match[1].strip();
+                            }
                         }
                         paramInfos ~= info;
                     }
@@ -192,67 +201,79 @@ string generateC(ASTNode ast)
                 // Second pass: reorder so dimensions come before arrays
                 // and convert array syntax to VLA
                 string[] dimensionParams;
-                string[] arrayParams;
+                string[] otherParams;  // Arrays and non-dimension params
                 int[] reorderMap;  // Maps new position to original position
 
-                // Track dimension param indices
+                // Collect all dimension parameter names referenced by arrays
+                bool[string] referencedDimensions;
+                foreach (info; paramInfos)
+                {
+                    if (info.isArray)
+                    {
+                        foreach (dimName; info.dimNames)
+                        {
+                            referencedDimensions[dimName] = true;
+                        }
+                    }
+                }
+
+                // Track indices for reordering
                 int[] dimensionIndices;
-                int[] arrayIndices;
+                int[] otherIndices;
                 
                 for (int i = 0; i < paramInfos.length; i++)
                 {
-                    if (paramInfos[i].isArray)
-                        arrayIndices ~= i;
-                    else
+                    if (!paramInfos[i].isArray && paramInfos[i].name in referencedDimensions)
                         dimensionIndices ~= i;
+                    else
+                        otherIndices ~= i;
                 }
 
                 foreach (info; paramInfos)
                 {
                     if (info.isArray)
                     {
-                        // For 2D arrays, we need to find the dimension parameters
-                        // Look for int/long params that come after this array
-                        string[] dims;
-                        foreach (other; paramInfos)
-                        {
-                            if (!other.isArray && (other.type == "int" || other.type == "long"))
-                            {
-                                dims ~= other.name;
-                            }
-                        }
-                        
-                        // Convert int[][] to VLA syntax: int m[rows][cols]
+                        // Convert int[n][m] to VLA syntax: int arrayName[n][m]
                         auto bracketPos = info.type.indexOf('[');
                         string baseType = info.type[0 .. bracketPos];
                         
-                        if (info.dimensions == 2 && dims.length >= 2)
+                        if (info.dimNames.length > 0)
                         {
-                            // Use VLA syntax with dimension variables
-                            arrayParams ~= baseType ~ " " ~ info.name ~ "[" ~ dims[0] ~ "][" ~ dims[1] ~ "]";
-                        }
-                        else if (info.dimensions == 1 && dims.length >= 1)
-                        {
-                            arrayParams ~= baseType ~ " " ~ info.name ~ "[" ~ dims[0] ~ "]";
+                            // Use the dimension names from the type
+                            string dimString = "";
+                            foreach (dimName; info.dimNames)
+                            {
+                                dimString ~= "[" ~ dimName ~ "]";
+                            }
+                            otherParams ~= baseType ~ " " ~ info.name ~ dimString;
                         }
                         else
                         {
-                            // Fallback to pointer
-                            arrayParams ~= baseType ~ "* " ~ info.name;
+                            // No dimensions specified, fallback to pointer
+                            otherParams ~= baseType ~ "* " ~ info.name;
                         }
                     }
                     else
                     {
-                        dimensionParams ~= info.type ~ " " ~ info.name;
+                        // Only include dimension params if they're referenced by arrays
+                        if (info.name in referencedDimensions)
+                        {
+                            dimensionParams ~= info.type ~ " " ~ info.name;
+                        }
+                        else
+                        {
+                            // Non-dimension params stay with arrays
+                            otherParams ~= info.type ~ " " ~ info.name;
+                        }
                     }
                 }
 
-                // Build reorder map: dimensions first, then arrays
-                reorderMap = dimensionIndices ~ arrayIndices;
+                // Build reorder map: dimensions first, then others
+                reorderMap = dimensionIndices ~ otherIndices;
                 g_functionParamReordering[funcName] = reorderMap;
 
-                // Combine: dimensions first, then arrays
-                string[] processedParams = dimensionParams ~ arrayParams;
+                // Combine: dimensions first, then arrays and other params
+                string[] processedParams = dimensionParams ~ otherParams;
                 cCode ~= processedParams.join(", ");
             }
             cCode ~= ") {\n";
