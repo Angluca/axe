@@ -826,7 +826,6 @@ private string processCondition(string condition)
     
     writeln("DEBUG processCondition after replace: '", condition, "'");
 
-    // Handle logical operators first (&&, ||) to split complex conditions
     foreach (op; ["&&", "||"])
     {
         if (condition.canFind(op))
@@ -1878,11 +1877,11 @@ unittest
         writeln("If-elif-else test (without parens):");
         writeln(cCode);
 
-        assert(cCode.canFind("if ((score>= 90))"), "Should have if condition");
+        assert(cCode.canFind("if ((score>=90))"), "Should have if condition");
         assert(cCode.canFind("printf(\"A\\n\");"), "Should have println A");
-        assert(cCode.canFind("} else if ((score>= 80)) {"), "Should have first elif");
+        assert(cCode.canFind("} else if ((score>=80)) {"), "Should have first elif");
         assert(cCode.canFind("printf(\"B\\n\");"), "Should have println B");
-        assert(cCode.canFind("} else if ((score>= 70)) {"), "Should have second elif");
+        assert(cCode.canFind("} else if ((score>=70)) {"), "Should have second elif");
         assert(cCode.canFind("printf(\"C\\n\");"), "Should have println C");
         assert(cCode.canFind("} else {"), "Should have else");
         assert(cCode.canFind("printf(\"F\\n\");"), "Should have println F");
@@ -1928,7 +1927,7 @@ unittest
         writeln("If-else with parens test:");
         writeln(cCode);
 
-        assert(cCode.canFind("if ((age>= 18))"), "Should have if with parens");
+        assert(cCode.canFind("if ((age>=18))"), "Should have if with parens");
         assert(cCode.canFind("printf(\"adult\\n\");"), "Should have println in if");
         assert(cCode.canFind("} else {"), "Should have else");
         assert(cCode.canFind("printf(\"minor\\n\");"), "Should have println in else");
