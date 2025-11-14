@@ -3001,6 +3001,9 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
 private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope currentScope, ref ASTNode currentScopeNode)
 {
     import std.array : join;
+    import std.stdio : writeln;
+    
+    writeln("[parseStatementHelper] pos=", pos, " token=", tokens[pos].type, " value='", tokens[pos].value, "'");
     
     switch (tokens[pos].type)
     {
@@ -3143,6 +3146,9 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
         return new ReturnNode(returnExpr);
         
     default:
+        // Safeguard: if we don't recognize the token, we must advance to prevent infinite loops
+        writeln("[parseStatementHelper] WARNING: Unhandled token type ", tokens[pos].type, " at pos ", pos);
+        enforce(false, "Unexpected token in statement: " ~ tokens[pos].value ~ " (type: " ~ tokens[pos].type.to!string ~ ")");
         return null;
     }
 }
@@ -3152,6 +3158,9 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
  */
 private IfNode parseIfHelper(ref size_t pos, Token[] tokens, ref Scope currentScope, ref ASTNode currentScopeNode)
 {
+    import std.stdio : writeln;
+    writeln("[parseIfHelper] Entering at pos=", pos);
+    
     pos++; // Skip 'if'
     while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
         pos++;
@@ -3198,6 +3207,36 @@ private IfNode parseIfHelper(ref size_t pos, Token[] tokens, ref Scope currentSc
         "Expected '}' after if body");
     pos++;
     
+    // Check for else clause
+    while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+        pos++;
+    
+    if (pos < tokens.length && tokens[pos].type == TokenType.ELSE)
+    {
+        writeln("[parseIfHelper] Found else at pos=", pos);
+        pos++; // Skip 'else'
+        while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+            pos++;
+        
+        enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
+            "Expected '{' after else");
+        pos++;
+        
+        currentScopeNode = ifNode;
+        
+        // Parse else body
+        while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
+        {
+            auto stmt = parseStatementHelper(pos, tokens, currentScope, currentScopeNode);
+            if (stmt !is null)
+                ifNode.elseBody ~= stmt;
+        }
+        
+        enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
+            "Expected '}' after else body");
+        pos++;
+    }
+    
     currentScopeNode = prevScope;
     return ifNode;
 }
@@ -3207,6 +3246,9 @@ private IfNode parseIfHelper(ref size_t pos, Token[] tokens, ref Scope currentSc
  */
 private LoopNode parseLoopHelper(ref size_t pos, Token[] tokens, ref Scope currentScope, ref ASTNode currentScopeNode)
 {
+    import std.stdio : writeln;
+    writeln("[parseLoopHelper] Entering at pos=", pos);
+    
     pos++; // Skip 'loop'
     while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
         pos++;
