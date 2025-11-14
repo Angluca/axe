@@ -134,16 +134,7 @@ string generateC(ASTNode ast)
                 import std.stdio : writeln;
                 import std.string : split, strip, indexOf, lastIndexOf;
                 
-                // First pass: parse all parameters
-                struct ParsedParam
-                {
-                    string type;
-                    string name;
-                    string arrayPart;
-                    bool isArray;
-                }
-                
-                ParsedParam[] parsedParams;
+                string[] processedParams;
                 
                 foreach (param; params)
                 {
@@ -169,74 +160,24 @@ string generateC(ASTNode ast)
                     {
                         string paramType = param[0 .. lastSpace].strip();
                         string paramName = param[lastSpace + 1 .. $].strip();
-                        string arrayPart = "";
-                        bool isArray = false;
                         
-                        // Extract all array brackets from type
+                        // Check if this is an array type
                         auto bracketPos = paramType.indexOf('[');
                         if (bracketPos >= 0)
                         {
-                            arrayPart = paramType[bracketPos .. $];
-                            paramType = paramType[0 .. bracketPos].strip();
-                            isArray = true;
+                            // Flatten arrays to pointers: int[][] -> int*, int[] -> int*
+                            paramType = paramType[0 .. bracketPos].strip() ~ "*";
                         }
                         
-                        parsedParams ~= ParsedParam(paramType, paramName, arrayPart, isArray);
+                        processedParams ~= paramType ~ " " ~ paramName;
                     }
                     else
                     {
-                        parsedParams ~= ParsedParam("", param, "", false);
+                        processedParams ~= param;
                     }
                 }
                 
-                // Second pass: reorder for VLAs - non-array params first, then array params
-                string[] orderedParams;
-                string[] dimensionNames;
-                
-                // Add non-array parameters first (these are likely dimensions)
-                foreach (p; parsedParams)
-                {
-                    if (!p.isArray && p.type.length > 0)
-                    {
-                        orderedParams ~= p.type ~ " " ~ p.name;
-                        dimensionNames ~= p.name;
-                    }
-                }
-                
-                // Then add array parameters with VLA syntax
-                foreach (p; parsedParams)
-                {
-                    if (p.isArray)
-                    {
-                        string arrayPart = p.arrayPart;
-                        
-                        // Replace empty brackets with dimension names for VLA
-                        // For [][] we need [dim1][dim2], for [] we need [dim1]
-                        if (arrayPart == "[][]" && dimensionNames.length >= 2)
-                        {
-                            // Use last two dimensions (typically height, width)
-                            arrayPart = "[" ~ dimensionNames[$-2] ~ "][" ~ dimensionNames[$-1] ~ "]";
-                        }
-                        else if (arrayPart == "[]" && dimensionNames.length >= 1)
-                        {
-                            // Use last dimension
-                            arrayPart = "[" ~ dimensionNames[$-1] ~ "]";
-                        }
-                        
-                        orderedParams ~= p.type ~ " " ~ p.name ~ arrayPart;
-                    }
-                }
-                
-                // Add any remaining parameters (shouldn't happen, but be safe)
-                foreach (p; parsedParams)
-                {
-                    if (p.type.length == 0)
-                    {
-                        orderedParams ~= p.name;
-                    }
-                }
-                
-                cCode ~= orderedParams.join(", ");
+                cCode ~= processedParams.join(", ");
             }
             cCode ~= ") {\n";
         }
@@ -265,12 +206,24 @@ string generateC(ASTNode ast)
 
     case "Assignment":
         auto assignNode = cast(AssignmentNode) ast;
-        string dest = assignNode.variable.strip();
+        import std.stdio : writeln;
+        writeln("DEBUG Assignment: variable='", assignNode.variable, "'");
+        string dest = processExpression(assignNode.variable.strip());  // Transform array access in dest too
+        writeln("DEBUG Assignment: dest after processExpression='", dest, "'");
         string expr = assignNode.expression.strip();
-
-        if (dest !in variables && !functionParams.canFind(dest) && currentFunction != "")
+        
+        // Extract base variable name for lookups (e.g., "arr[i]" -> "arr")
+        import std.string : indexOf;
+        string baseVarName = dest;
+        auto bracketPos = dest.indexOf('[');
+        if (bracketPos > 0)
         {
-            variables[dest] = "int";
+            baseVarName = dest[0 .. bracketPos];
+        }
+
+        if (baseVarName !in variables && !functionParams.canFind(baseVarName) && currentFunction != "")
+        {
+            variables[baseVarName] = "int";
             cCode ~= "int " ~ dest;
 
             if (expr.length > 0)
@@ -282,16 +235,16 @@ string generateC(ASTNode ast)
         }
         else
         {
-            if (dest in g_isMutable && !g_isMutable[dest])
+            if (baseVarName in g_isMutable && !g_isMutable[baseVarName])
                 throw new Exception(
-                    "Cannot assign to immutable variable '" ~ dest ~ "' (declared with 'val')");
+                    "Cannot assign to immutable variable '" ~ baseVarName ~ "' (declared with 'val')");
 
             string processedExpr = processExpression(expr);
 
             string destWithDeref = dest;
-            if (dest in g_refDepths && g_refDepths[dest] > 0)
+            if (baseVarName in g_refDepths && g_refDepths[baseVarName] > 0)
             {
-                for (int i = 0; i < g_refDepths[dest]; i++)
+                for (int i = 0; i < g_refDepths[baseVarName]; i++)
                 {
                     destWithDeref = "*" ~ destWithDeref;
                 }
@@ -341,8 +294,10 @@ string generateC(ASTNode ast)
         string processedValue = processExpression(arrayAssignNode.value);
         if (arrayAssignNode.index2.length > 0)
         {
+            // 2D array assignment - use flattened syntax
             string processedIndex2 = processExpression(arrayAssignNode.index2);
-            cCode ~= arrayAssignNode.arrayName ~ "[" ~ processedIndex ~ "][" ~ processedIndex2 ~ "] = " ~ processedValue ~ ";\n";
+            string widthVar = "width"; // Default assumption
+            cCode ~= arrayAssignNode.arrayName ~ "[(" ~ processedIndex ~ ") * " ~ widthVar ~ " + (" ~ processedIndex2 ~ ")] = " ~ processedValue ~ ";\n";
         }
         else
         {
@@ -363,12 +318,35 @@ string generateC(ASTNode ast)
         string arrayPart = "";
         
         // Extract array dimensions from type (e.g., "int[5]" -> "int" and "[5]")
-        import std.string : indexOf;
+        import std.string : indexOf, count;
+        import std.conv : to;
         auto bracketPos = baseType.indexOf('[');
         if (bracketPos >= 0)
         {
             arrayPart = baseType[bracketPos .. $];
             baseType = baseType[0 .. bracketPos];
+            
+            // Flatten 2D arrays: int[10][10] -> int[100]
+            if (arrayPart.count('[') == 2)
+            {
+                // Extract dimensions
+                import std.regex : matchAll, regex;
+                auto dimPattern = regex(r"\[(\d+)\]");
+                auto matches = matchAll(arrayPart, dimPattern);
+                if (!matches.empty)
+                {
+                    auto match1 = matches.front;
+                    matches.popFront();
+                    if (!matches.empty)
+                    {
+                        auto match2 = matches.front;
+                        int dim1 = match1[1].to!int;
+                        int dim2 = match2[1].to!int;
+                        int totalSize = dim1 * dim2;
+                        arrayPart = "[" ~ totalSize.to!string ~ "]";
+                    }
+                }
+            }
         }
 
         for (int i = 0; i < declNode.refDepth; i++)
@@ -745,6 +723,50 @@ string generateC(ASTNode ast)
 string processExpression(string expr)
 {
     expr = expr.strip();
+    
+    import std.regex : regex, matchAll, replaceAll, matchFirst;
+    import std.array : replace;
+    
+    // First, transform 2D array accesses before any other processing
+    // This must happen early to avoid the expression being wrapped in parens first
+    string widthVar = "width"; // Default assumption for 2D arrays
+    
+    // Keep replacing until no more 2D accesses found
+    bool foundMatch = true;
+    int maxIterations = 10; // Prevent infinite loops
+    int iterations = 0;
+    
+    bool hadArrayTransform = false;
+    while (foundMatch && iterations < maxIterations)
+    {
+        iterations++;
+        // Match: word [ anything-without-nested-brackets ] [ anything-without-nested-brackets ]
+        auto arrayAccessPattern = regex(r"(\w+)\s*\[\s*([^\[\]]+)\s*\]\s*\[\s*([^\[\]]+)\s*\]");
+        auto match = matchFirst(expr, arrayAccessPattern);
+        if (!match.empty)
+        {
+            string arrayName = match[1];
+            string index1 = match[2].strip();
+            string index2 = match[3].strip();
+            
+            // Replace with flattened access - wrap the index calculation in parens
+            // to prevent operator precedence issues
+            string flattened = arrayName ~ "[(" ~ index1 ~ ") * " ~ widthVar ~ " + (" ~ index2 ~ ")]";
+            expr = replace(expr, match[0], flattened);
+            hadArrayTransform = true;
+        }
+        else
+        {
+            foundMatch = false;
+        }
+    }
+    
+    // If we transformed array accesses, return immediately to avoid
+    // the operator-splitting logic below from breaking our syntax
+    if (hadArrayTransform)
+    {
+        return expr;
+    }
 
     // Handle ref_of() built-in function
     if (expr.canFind("ref_of(") && expr.endsWith(")"))
