@@ -780,7 +780,15 @@ string processExpression(string expr)
     import std.array : replace;
 
     // FIRST: Replace Axe operators with C equivalents before any other processing
-    expr = expr.replace(" mod ", " % ");
+    import std.regex : replaceAll;
+    import std.string : replace;
+    
+    // Use regex to replace operators that are not part of identifiers
+    // Match 'mod' when preceded/followed by non-letter/underscore characters
+    expr = expr.replaceAll(regex(r"([^a-zA-Z_])mod([^a-zA-Z_])"), "$1%$2");
+    expr = expr.replaceAll(regex(r"^mod([^a-zA-Z_])"), "%$1");
+    expr = expr.replaceAll(regex(r"([^a-zA-Z_])mod$"), "$1%");
+    
     expr = expr.replace(" and ", " && ");
     expr = expr.replace(" or ", " || ");
     expr = expr.replace(" xor ", " ^ ");
@@ -858,8 +866,8 @@ string processExpression(string expr)
         }
     }
 
-    // Don't process if it's already parenthesized
-    if (expr.canFind("(") && expr.endsWith(")"))
+    // Don't process if it's already parenthesized or contains array access
+    if (expr.canFind("[") || (expr.canFind("(") && expr.endsWith(")")))
     {
         return expr;
     }
