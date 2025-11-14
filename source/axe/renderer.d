@@ -2307,4 +2307,40 @@ unittest
         assert(cCode.canFind("2%5==0") || cCode.canFind("(2 % 5 == 0)") || 
                cCode.canFind("(2%5)==0"), "Should have proper second comparison");
     }
+
+    {
+        auto tokens = lex("def get_value(x: int): int { return x; } def wrapper(y: int): int { return get_value(y); } main { }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Nested function call test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("int get_value(int x)"), "Should have get_value function");
+        assert(cCode.canFind("int wrapper(int y)"), "Should have wrapper function");
+        assert(cCode.canFind("return get_value(y)"), "Should have nested function call");
+    }
+
+    {
+        auto tokens = lex("def destroy(ptr: long) { } main { val x: int = 5; destroy(thing_of(x)); }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Nested function call in main test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("void destroy(long ptr)"), "Should have destroy function");
+        assert(cCode.canFind("destroy(thing_of(x))"), "Should have nested function call with ref_of(x)");
+    }
+
+    {
+        auto tokens = lex("def inner(a: int): int { return a; } def middle(b: int): int { return inner(b); } def outer(c: int): int { return middle(inner(c)); } main { }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Deeply nested function call test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("return middle(inner(c))"), "Should handle deeply nested calls: middle(inner(c))");
+    }
 }

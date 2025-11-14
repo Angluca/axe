@@ -715,30 +715,39 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                         string args = "";
                         pos++;
 
-                        while (pos < tokens.length && tokens[pos].type != TokenType.RPAREN)
+                        int parenDepth = 0;
+                        while (pos < tokens.length && (tokens[pos].type != TokenType.RPAREN || parenDepth > 0))
                         {
-                            if (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType
-                                .COMMA)
+                            if (tokens[pos].type == TokenType.LPAREN)
+                            {
+                                parenDepth++;
+                                args ~= tokens[pos].value;
+                                pos++;
+                            }
+                            else if (tokens[pos].type == TokenType.RPAREN)
+                            {
+                                parenDepth--;
+                                args ~= tokens[pos].value;
+                                pos++;
+                            }
+                            else if (tokens[pos].type == TokenType.WHITESPACE)
                             {
                                 pos++;
                             }
-                            else if (tokens[pos].type == TokenType.STR || tokens[pos].type == TokenType
-                                .IDENTIFIER)
+                            else if (tokens[pos].type == TokenType.COMMA)
                             {
-                                if (tokens[pos].type == TokenType.STR)
-                                    args ~= "\"" ~ tokens[pos].value ~ "\"";
-                                else
-                                    args ~= tokens[pos].value;
+                                args ~= ", ";
                                 pos++;
-                                if (pos < tokens.length && tokens[pos].type == TokenType.COMMA)
-                                {
-                                    args ~= ", ";
-                                    pos++;
-                                }
+                            }
+                            else if (tokens[pos].type == TokenType.STR)
+                            {
+                                args ~= "\"" ~ tokens[pos].value ~ "\"";
+                                pos++;
                             }
                             else
                             {
-                                enforce(false, "Unexpected token in function call arguments");
+                                args ~= tokens[pos].value;
+                                pos++;
                             }
                         }
 
@@ -3717,27 +3726,48 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             // Function call
             pos++;
             string[] args;
-            while (pos < tokens.length && tokens[pos].type != TokenType.RPAREN)
+            string currentArg = "";
+            int parenDepth = 0;
+            
+            while (pos < tokens.length && (tokens[pos].type != TokenType.RPAREN || parenDepth > 0))
             {
-                if (tokens[pos].type == TokenType.COMMA || tokens[pos].type == TokenType.WHITESPACE)
+                if (tokens[pos].type == TokenType.LPAREN)
                 {
+                    parenDepth++;
+                    currentArg ~= tokens[pos].value;
+                    pos++;
+                }
+                else if (tokens[pos].type == TokenType.RPAREN)
+                {
+                    parenDepth--;
+                    currentArg ~= tokens[pos].value;
+                    pos++;
+                }
+                else if (tokens[pos].type == TokenType.COMMA && parenDepth == 0)
+                {
+                    args ~= currentArg.strip();
+                    currentArg = "";
+                    pos++;
+                }
+                else if (tokens[pos].type == TokenType.WHITESPACE)
+                {
+                    pos++;
+                }
+                else if (tokens[pos].type == TokenType.STR)
+                {
+                    currentArg ~= "\"" ~ tokens[pos].value ~ "\"";
                     pos++;
                 }
                 else
                 {
-                    string arg = "";
-                    while (pos < tokens.length && tokens[pos].type != TokenType.COMMA && tokens[pos].type != TokenType
-                        .RPAREN)
-                    {
-                        if (tokens[pos].type == TokenType.STR)
-                            arg ~= "\"" ~ tokens[pos].value ~ "\"";
-                        else
-                            arg ~= tokens[pos].value;
-                        pos++;
-                    }
-                    args ~= arg.strip();
+                    currentArg ~= tokens[pos].value;
+                    pos++;
                 }
             }
+            
+            if (currentArg.strip().length > 0)
+                args ~= currentArg.strip();
+            
             enforce(pos < tokens.length && tokens[pos].type == TokenType.RPAREN,
                 "Expected ')' after function arguments");
             pos++;
