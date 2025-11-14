@@ -2220,4 +2220,85 @@ unittest
         assert(cCode.canFind("STOPPED"), "Should have enum value STOPPED");
         assert(cCode.canFind("State s = RUNNING;"), "Should use enum value without prefix");
     }
+
+    {
+        auto tokens = lex("main { val grid: int[10][10]; }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("2D array declaration flattening test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("int grid[100]"), "Should flatten int[10][10] to int[100]");
+        assert(!cCode.canFind("[10][10]"), "Should not have 2D array syntax");
+    }
+
+    {
+        auto tokens = lex("def foo(grid: int[][], width: int, height: int) { } main { }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("2D array parameter flattening test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("void foo(int* grid, int width, int height)"), 
+            "Should flatten int[][] parameter to int*");
+        assert(!cCode.canFind("int[][]"), "Should not have 2D array syntax in parameters");
+    }
+
+    {
+        auto tokens = lex("def foo(grid: int[][], width: int) { val x = grid[2][3]; } main { }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("2D array access flattening test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("grid[(2) * width + (3)]"), 
+            "Should flatten grid[2][3] to grid[(2) * width + (3)]");
+        assert(!cCode.canFind("grid[2][3]"), "Should not have 2D array access syntax");
+    }
+
+    {
+        auto tokens = lex("main { if 5 mod 3 == 2 { println \"yes\"; } }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Modulo operator test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("5%3"), "Should translate 'mod' to '%'");
+        assert(!cCode.canFind("mod"), "Should not have 'mod' keyword in output");
+    }
+
+    {
+        auto tokens = lex("main { if 1 == 1 and 2 == 2 { println \"yes\"; } }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Logical AND operator test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("&&"), "Should translate 'and' to '&&'");
+        assert(!cCode.canFind(" and "), "Should not have 'and' keyword in output");
+    }
+
+    {
+        auto tokens = lex("main { if 1 mod 3 == 0 and 2 mod 5 == 0 { println \"yes\"; } }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Complex condition with mod and and test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("1%3"), "Should translate first 'mod' to '%'");
+        assert(cCode.canFind("2%5"), "Should translate second 'mod' to '%'");
+        assert(cCode.canFind("&&"), "Should translate 'and' to '&&'");
+        assert(!cCode.canFind("mod"), "Should not have 'mod' keyword in output");
+        assert(!cCode.canFind("and"), "Should not have 'and' keyword in output");
+        assert(cCode.canFind("1%3==0") || cCode.canFind("(1 % 3 == 0)") || 
+               cCode.canFind("(1%3)==0"), "Should have proper first comparison");
+        assert(cCode.canFind("2%5==0") || cCode.canFind("(2 % 5 == 0)") || 
+               cCode.canFind("(2%5)==0"), "Should have proper second comparison");
+    }
 }
