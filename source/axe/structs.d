@@ -91,7 +91,9 @@ class DeclarationNode : ASTNode
     bool isMutable;
     string initializer;
     string typeName;
-    int refDepth;  // Number of 'ref' modifiers (0 = not a reference, 1 = ref, 2 = ref ref, etc.)
+
+    // Number of 'ref' modifiers (0 = not a reference, 1 = ref, 2 = ref ref, etc.)
+    int refDepth;
 
     this(string name, bool isMutable, string initializer = "", string typeName = "", int refDepth = 0)
     {
@@ -109,10 +111,15 @@ class ArrayDeclarationNode : ASTNode
     string name;
     bool isMutable;
     string elementType;
-    string size;  // Can be a number or expression
-    string[] initializer;  // For array literals like [1, 2, 3]
 
-    this(string name, bool isMutable, string elementType, string size, string[] initializer = [])
+    // Can be a number or expression
+    string size;
+
+    // For array literals like [1, 2, 3]
+    string[] initializer;
+
+    this(string name, bool isMutable, string elementType, string size, string[] initializer = [
+        ])
     {
         super("ArrayDeclaration");
         this.name = name;
@@ -169,8 +176,12 @@ class FunctionNode : ASTNode
 class IfNode : ASTNode
 {
     string condition;
-    ASTNode[] elifBranches;  // Array of IfNode for elif branches
-    ASTNode[] elseBody;      // Statements in else block
+
+    // Array of IfNode for elif branches
+    ASTNode[] elifBranches;
+
+    // Statements in else block
+    ASTNode[] elseBody;
 
     this(string condition)
     {
@@ -252,13 +263,13 @@ class LoopNode : ASTNode
 
 class ForNode : ASTNode
 {
-    string initialization;  // e.g., "mut val i = 0"
-    string condition;       // e.g., "i < 10"
-    string increment;       // e.g., "i++"
-    bool isMutable;         // whether the loop variable is mutable
-    string varName;         // loop variable name
-    string varType;         // loop variable type
-    string initValue;       // initial value
+    string initialization; // e.g., "mut val i = 0"
+    string condition; // e.g., "i < 10"
+    string increment; // e.g., "i++"
+    bool isMutable; // whether the loop variable is mutable
+    string varName; // loop variable name
+    string varType; // loop variable type
+    string initValue; // initial value
 
     this(string initialization, string condition, string increment)
     {
@@ -271,9 +282,9 @@ class ForNode : ASTNode
 
 class ForInNode : ASTNode
 {
-    string varName;         // loop variable name
-    string arrayName;       // array to iterate over
-    string arraySize;       // size of the array (for C code generation)
+    string varName; // loop variable name
+    string arrayName; // array to iterate over
+    string arraySize; // size of the array (for C code generation)
 
     this(string varName, string arrayName, string arraySize = "")
     {
@@ -421,7 +432,9 @@ class CaseNode : ASTNode
 class IncrementDecrementNode : ASTNode
 {
     string variable;
-    bool isIncrement; // true for ++, false for --
+
+    // true for ++, false for --
+    bool isIncrement;
 
     this(string variable, bool isIncrement)
     {
