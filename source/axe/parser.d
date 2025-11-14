@@ -2826,6 +2826,51 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                                 break;
                             }
 
+                        case TokenType.MUT:
+                            pos++;
+                            enforce(pos < tokens.length && tokens[pos].type == TokenType.VAL,
+                                "Expected 'val' after 'mut'");
+                            goto case TokenType.VAL;
+
+                        case TokenType.VAL:
+                            bool loopIsMutable = tokens[pos - 1].type == TokenType.MUT;
+                            pos++;
+
+                            enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
+                                "Expected identifier after 'val'");
+                            string loopVarName = tokens[pos].value;
+                            pos++;
+
+                            string loopTypeName = "";
+                            string loopInitializer = "";
+
+                            if (pos < tokens.length && tokens[pos].type == TokenType.COLON)
+                            {
+                                pos++;
+                                loopTypeName = parseType();
+                            }
+
+                            if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
+                            {
+                                pos++;
+                                while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
+                                {
+                                    if (tokens[pos].type == TokenType.STR)
+                                        loopInitializer ~= "\"" ~ tokens[pos].value ~ "\"";
+                                    else
+                                        loopInitializer ~= tokens[pos].value;
+                                    pos++;
+                                }
+                            }
+
+                            enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
+                                "Expected ';' after variable declaration");
+                            pos++;
+
+                            currentScope.addVariable(loopVarName, loopIsMutable);
+                            loopNode.children ~= new DeclarationNode(loopVarName, loopIsMutable, loopInitializer, loopTypeName);
+                            break;
+
                         default:
                             import std.stdio;
 
