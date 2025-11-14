@@ -1836,7 +1836,8 @@ unittest
 
     {
         auto tokens = lex(
-            "def test() { mut val x = 0; loop { println \"test\"; x = x + 1; if x == 5 { break; } } }");
+            "def testfunc() { mut val x = 0; loop { println \"test\"; x = x + 1; if x == 5 { break; } } }"
+        );
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
@@ -2319,14 +2320,14 @@ unittest
     }
 
     {
-        auto tokens = lex("def test { return; } main { }");
+        auto tokens = lex("def testfunc { return; } main { }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
         writeln("Headless return test:");
         writeln(cCode);
 
-        assert(cCode.canFind("void test()"), "Should have function");
+        assert(cCode.canFind("void testfunc()"), "Should have function");
         assert(cCode.canFind("return;"), "Should have headless return");
         assert(!cCode.canFind("return ;"), "Should not have space before semicolon");
     }
