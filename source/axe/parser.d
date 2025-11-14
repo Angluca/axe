@@ -119,9 +119,10 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
             enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACKET,
                 "Expected ']' after array size");
             pos++; // Skip ']'
-            
+
             if (pos < tokens.length)
-                writeln("DEBUG parseArrayType: After first ], pos=", pos, " token=", tokens[pos].type, " value='", tokens[pos].value, "'");
+                writeln("DEBUG parseArrayType: After first ], pos=", pos, " token=", tokens[pos].type, " value='", tokens[pos]
+                        .value, "'");
             else
                 writeln("DEBUG parseArrayType: After first ], pos=", pos, " END OF TOKENS");
 
@@ -130,9 +131,10 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                 writeln("DEBUG parseArrayType: Found second [");
                 hasSecondDimension = true;
                 pos++; // Skip '['
-                
+
                 if (pos < tokens.length)
-                    writeln("DEBUG parseArrayType: After second [, token=", tokens[pos].type, " value='", tokens[pos].value, "'");
+                    writeln("DEBUG parseArrayType: After second [, token=", tokens[pos].type, " value='", tokens[pos]
+                            .value, "'");
 
                 while (pos < tokens.length && tokens[pos].type != TokenType.RBRACKET)
                 {
@@ -140,7 +142,7 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                     size2 ~= tokens[pos].value;
                     pos++;
                 }
-                
+
                 writeln("DEBUG parseArrayType: size2='", size2, "' hasSecondDimension=", hasSecondDimension);
 
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACKET,
@@ -289,7 +291,8 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                             // Array parameter - parse full array type
                             pos = savedPos;
                             auto arrayInfo = parseArrayType();
-                            writeln("DEBUG parseArgs: elementType='", arrayInfo.elementType, "' size='", arrayInfo.size, "' size2='", arrayInfo.size2, "' hasSecondDimension=", arrayInfo.hasSecondDimension);
+                            writeln("DEBUG parseArgs: elementType='", arrayInfo.elementType, "' size='", arrayInfo.size, "' size2='", arrayInfo
+                                    .size2, "' hasSecondDimension=", arrayInfo.hasSecondDimension);
                             string fullType = arrayInfo.elementType;
                             if (arrayInfo.size.length > 0)
                                 fullType ~= "[" ~ arrayInfo.size ~ "]";
@@ -303,7 +306,7 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                                 else
                                     fullType ~= "[]";
                             }
-                            
+
                             writeln("DEBUG parseArgs: fullType='", fullType, "' paramName='", paramName, "'");
                             args ~= fullType ~ " " ~ paramName;
                         }
@@ -457,14 +460,15 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
             {
                 moduleName ~= "/";
                 pos++;
-                
+
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
                     "Expected identifier after '/' in module path");
                 moduleName ~= tokens[pos].value;
                 pos++;
             }
 
-            while (pos < tokens.length && (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType.NEWLINE))
+            while (pos < tokens.length && (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType
+                    .NEWLINE))
                 pos++;
 
             enforce(pos < tokens.length && tokens[pos].type == TokenType.LPAREN,
@@ -474,12 +478,13 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
             string[] imports;
             while (pos < tokens.length && tokens[pos].type != TokenType.RPAREN)
             {
-                while (pos < tokens.length && (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType.NEWLINE))
+                while (pos < tokens.length && (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType
+                        .NEWLINE))
                     pos++;
-                    
+
                 if (pos >= tokens.length || tokens[pos].type == TokenType.RPAREN)
                     break;
-                    
+
                 if (tokens[pos].type == TokenType.IDENTIFIER)
                 {
                     imports ~= tokens[pos].value;
@@ -499,7 +504,8 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                 "Expected ')' after imports");
             pos++; // Skip ')'
 
-            while (pos < tokens.length && (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType.NEWLINE))
+            while (pos < tokens.length && (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType
+                    .NEWLINE))
                 pos++;
 
             enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
@@ -893,7 +899,8 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                             }
                             else
                             {
-                                enforce(false, "Unexpected token after identifier in loop body: " ~ tokens[pos].value);
+                                enforce(false, "Unexpected token after identifier in loop body: " ~ tokens[pos]
+                                        .value);
                             }
                             break;
 
@@ -1941,21 +1948,22 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
 
                 auto mainNode = new FunctionNode("main", []);
                 writeln("Entering main block at pos ", pos);
-                
+
                 auto previousScope = currentScopeNode;
                 currentScopeNode = mainNode;
-                
+
                 while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
                 {
                     auto stmt = parseStatementHelper(pos, tokens, currentScope, currentScopeNode, isAxec);
                     if (stmt !is null)
                         mainNode.children ~= stmt;
                 }
-                
+
                 currentScopeNode = previousScope;
-                
+
                 // OLD CODE - keeping structure for reference
-                static if (false) {
+                static if (false)
+                {
                     switch (tokens[pos].type)
                     {
                     case TokenType.PRINTLN:
@@ -2044,7 +2052,7 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                             }
                         }
                         // Check if this is an assignment
-            else if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
+                else if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
                         {
                             // Variable assignment
                             if (!currentScope.isDeclared(identName))
@@ -2072,30 +2080,39 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                             string args = "";
                             pos++;
 
-                            while (pos < tokens.length && tokens[pos].type != TokenType.RPAREN)
+                            int parenDepth = 0;
+                            while (pos < tokens.length && (tokens[pos].type != TokenType.RPAREN || parenDepth > 0))
                             {
-                                if (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType
-                                    .COMMA)
+                                if (tokens[pos].type == TokenType.LPAREN)
+                                {
+                                    parenDepth++;
+                                    args ~= tokens[pos].value;
+                                    pos++;
+                                }
+                                else if (tokens[pos].type == TokenType.RPAREN)
+                                {
+                                    parenDepth--;
+                                    args ~= tokens[pos].value;
+                                    pos++;
+                                }
+                                else if (tokens[pos].type == TokenType.WHITESPACE)
                                 {
                                     pos++;
                                 }
-                                else if (tokens[pos].type == TokenType.STR || tokens[pos].type == TokenType
-                                    .IDENTIFIER)
+                                else if (tokens[pos].type == TokenType.COMMA)
                                 {
-                                    if (tokens[pos].type == TokenType.STR)
-                                        args ~= "\"" ~ tokens[pos].value ~ "\"";
-                                    else
-                                        args ~= tokens[pos].value;
+                                    args ~= ", ";
                                     pos++;
-                                    if (pos < tokens.length && tokens[pos].type == TokenType.COMMA)
-                                    {
-                                        args ~= ", ";
-                                        pos++;
-                                    }
+                                }
+                                else if (tokens[pos].type == TokenType.STR)
+                                {
+                                    args ~= "\"" ~ tokens[pos].value ~ "\"";
+                                    pos++;
                                 }
                                 else
                                 {
-                                    enforce(false, "Unexpected token in function call arguments");
+                                    args ~= tokens[pos].value;
+                                    pos++;
                                 }
                             }
 
@@ -2289,7 +2306,7 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                         enforce(false, "Unexpected statement in main block: " ~ tokens[pos].value);
                     }
                 }
-                
+
                 writeln("Exited main block at pos ", pos);
                 writeln("Current token: ", pos < tokens.length ? to!string(
                         tokens[pos].type) : "EOF", " ('",
@@ -2568,7 +2585,7 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                             }
                             else
                             {
-                                enforce(false, "Unexpected token in function call arguments");
+                                enforce(false, "Unexpected token in function call arguments: " ~ tokens[pos].value);
                             }
                         }
 
@@ -2712,10 +2729,12 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                                     break;
                                 case TokenType.RETURN:
                                     pos++;
-                                    while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                                    while (pos < tokens.length && tokens[pos].type == TokenType
+                                        .WHITESPACE)
                                         pos++;
                                     string returnExpr = "";
-                                    while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
+                                    while (pos < tokens.length && tokens[pos].type != TokenType
+                                        .SEMICOLON)
                                     {
                                         returnExpr ~= tokens[pos].value;
                                         pos++;
@@ -2867,7 +2886,8 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                                     }
                                     else
                                     {
-                                        enforce(false, "Unexpected token in function call arguments");
+                                        enforce(false, "Unexpected token in function call arguments: " ~
+                                                tokens[pos].value);
                                     }
                                 }
 
@@ -3125,12 +3145,13 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
         pos++; // Skip 'for'
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
             pos++;
-        
+
         // Check if this is a for-in loop or C-style for loop
         // Look ahead to see if there's an 'in' keyword
         size_t lookAhead = pos;
         bool isForIn = false;
-        while (lookAhead < tokens.length && tokens[lookAhead].type != TokenType.LBRACE && tokens[lookAhead].type != TokenType.SEMICOLON)
+        while (lookAhead < tokens.length && tokens[lookAhead].type != TokenType.LBRACE && tokens[lookAhead].type != TokenType
+            .SEMICOLON)
         {
             if (tokens[lookAhead].type == TokenType.IN)
             {
@@ -3139,7 +3160,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             }
             lookAhead++;
         }
-        
+
         if (isForIn)
         {
             // for-in loop: for item in collection { }
@@ -3147,34 +3168,34 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 "Expected variable name in for-in loop");
             string itemVar = tokens[pos].value;
             pos++;
-            
+
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
-            
+
             enforce(pos < tokens.length && tokens[pos].type == TokenType.IN,
                 "Expected 'in' in for-in loop");
             pos++;
-            
+
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
-            
+
             enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
                 "Expected collection name in for-in loop");
             string collection = tokens[pos].value;
             pos++;
-            
+
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
-            
+
             enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
                 "Expected '{' after for-in");
             pos++;
-            
+
             auto forInNode = new ForInNode(itemVar, collection);
             auto prevScope = currentScopeNode;
             currentScopeNode = forInNode;
             currentScope.addVariable(itemVar, false); // Loop variable is immutable
-            
+
             // Parse for-in body
             while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
             {
@@ -3182,11 +3203,11 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 if (stmt !is null)
                     forInNode.children ~= stmt;
             }
-            
+
             enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
                 "Expected '}' after for-in body");
             pos++;
-            
+
             currentScopeNode = prevScope;
             return forInNode;
         }
@@ -3199,7 +3220,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             string varName = "";
             string varType = "";
             bool isMutable = false;
-            
+
             // Parse init - handle variable declaration
             if (pos < tokens.length && tokens[pos].type == TokenType.MUT)
             {
@@ -3208,18 +3229,18 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
             }
-            
+
             if (pos < tokens.length && tokens[pos].type == TokenType.VAL)
             {
                 pos++;
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
-                
+
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
                     "Expected variable name in for init");
                 varName = tokens[pos].value;
                 pos++;
-                
+
                 // Check for type annotation
                 if (pos < tokens.length && tokens[pos].type == TokenType.COLON)
                 {
@@ -3232,7 +3253,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                         pos++;
                     }
                 }
-                
+
                 // Parse initializer
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
@@ -3246,7 +3267,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                         pos++;
                     }
                 }
-                
+
                 currentScope.addVariable(varName, isMutable);
             }
             else
@@ -3258,11 +3279,11 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                     pos++;
                 }
             }
-            
+
             enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
                 "Expected ';' after for init");
             pos++;
-            
+
             // Parse condition (until semicolon)
             while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
             {
@@ -3273,7 +3294,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
                 "Expected ';' after for condition");
             pos++;
-            
+
             // Parse increment (until '{')
             while (pos < tokens.length && tokens[pos].type != TokenType.LBRACE)
             {
@@ -3281,11 +3302,11 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                     increment ~= tokens[pos].value;
                 pos++;
             }
-            
+
             enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
                 "Expected '{' after for increment");
             pos++;
-            
+
             // Build initialization string
             string initStr = "";
             if (varName.length > 0)
@@ -3293,14 +3314,14 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 // Default to int if no type specified
                 if (varType.length == 0)
                     varType = "int";
-                
+
                 if (isMutable)
                     initStr = "mut val " ~ varName;
                 else
                     initStr = "val " ~ varName;
-                
+
                 initStr ~= ": " ~ varType;
-                
+
                 if (init.length > 0)
                     initStr ~= " = " ~ init;
             }
@@ -3308,16 +3329,16 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             {
                 initStr = init;
             }
-            
+
             auto forNode = new ForNode(initStr, condition.strip(), increment.strip());
             forNode.varName = varName;
             forNode.varType = varType;
             forNode.isMutable = isMutable;
             forNode.initValue = init.strip();
-            
+
             auto prevScope = currentScopeNode;
             currentScopeNode = forNode;
-            
+
             // Parse for body
             while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
             {
@@ -3325,11 +3346,11 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 if (stmt !is null)
                     forNode.children ~= stmt;
             }
-            
+
             enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
                 "Expected '}' after for body");
             pos++;
-            
+
             currentScopeNode = prevScope;
             return forNode;
         }
@@ -3341,7 +3362,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
         pos++; // Skip 'switch'
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
             pos++;
-        
+
         // Parse switch expression (no parentheses required)
         string switchExpr = "";
         while (pos < tokens.length && tokens[pos].type != TokenType.LBRACE)
@@ -3350,15 +3371,15 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 switchExpr ~= tokens[pos].value;
             pos++;
         }
-        
+
         enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
             "Expected '{' after switch expression");
         pos++;
-        
+
         auto switchNode = new SwitchNode(switchExpr.strip());
         auto prevScope = currentScopeNode;
         currentScopeNode = switchNode;
-        
+
         // Parse switch body (cases)
         while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
         {
@@ -3371,7 +3392,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 pos++; // Skip 'case'
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
-                
+
                 string caseValue = "";
                 while (pos < tokens.length && tokens[pos].type != TokenType.LBRACE)
                 {
@@ -3379,13 +3400,13 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                         caseValue ~= tokens[pos].value;
                     pos++;
                 }
-                
+
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
                     "Expected '{' after case value");
                 pos++;
-                
+
                 auto caseNode = new CaseNode(caseValue.strip());
-                
+
                 // Parse case body
                 while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
                 {
@@ -3393,11 +3414,11 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                     if (stmt !is null)
                         caseNode.children ~= stmt;
                 }
-                
+
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
                     "Expected '}' after case body");
                 pos++;
-                
+
                 switchNode.children ~= caseNode;
             }
             else if (tokens[pos].type == TokenType.DEFAULT)
@@ -3405,13 +3426,13 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 pos++; // Skip 'default'
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
-                
+
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
                     "Expected '{' after default");
                 pos++;
-                
+
                 auto defaultNode = new CaseNode("default");
-                
+
                 // Parse default body
                 while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
                 {
@@ -3419,11 +3440,11 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                     if (stmt !is null)
                         defaultNode.children ~= stmt;
                 }
-                
+
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
                     "Expected '}' after default body");
                 pos++;
-                
+
                 switchNode.children ~= defaultNode;
             }
             else
@@ -3431,11 +3452,11 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 pos++;
             }
         }
-        
+
         enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
             "Expected '}' after switch body");
         pos++;
-        
+
         currentScopeNode = prevScope;
         return switchNode;
 
@@ -3462,7 +3483,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             pos++;
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
-            
+
             // Handle ref keyword(s)
             while (pos < tokens.length && tokens[pos].type == TokenType.REF)
             {
@@ -3471,7 +3492,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
             }
-            
+
             typeName = parseTypeHelper(pos, tokens);
         }
 
@@ -3480,30 +3501,31 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             pos++;
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
-            
+
             // Check for model instantiation: new ModelName(...)
             if (pos < tokens.length && tokens[pos].type == TokenType.NEW)
             {
                 pos++; // Skip 'new'
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
-                
+
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
                     "Expected model name after 'new'");
                 string modelName = tokens[pos].value;
                 pos++;
-                
+
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
-                
+
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.LPAREN,
                     "Expected '(' after model name");
                 pos++;
-                
+
                 string[string] fieldValues;
                 while (pos < tokens.length && tokens[pos].type != TokenType.RPAREN)
                 {
-                    if (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType.NEWLINE)
+                    if (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType
+                        .NEWLINE)
                     {
                         pos++;
                     }
@@ -3511,16 +3533,17 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                     {
                         string fieldName = tokens[pos].value;
                         pos++;
-                        
+
                         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                             pos++;
-                        
+
                         enforce(pos < tokens.length && tokens[pos].type == TokenType.COLON,
                             "Expected ':' after field name");
                         pos++;
-                        
+
                         string fieldValue = "";
-                        while (pos < tokens.length && tokens[pos].type != TokenType.COMMA && tokens[pos].type != TokenType.RPAREN)
+                        while (pos < tokens.length && tokens[pos].type != TokenType.COMMA && tokens[pos].type != TokenType
+                            .RPAREN)
                         {
                             if (tokens[pos].type == TokenType.STR)
                                 fieldValue ~= "\"" ~ tokens[pos].value ~ "\"";
@@ -3528,9 +3551,9 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                                 fieldValue ~= tokens[pos].value;
                             pos++;
                         }
-                        
+
                         fieldValues[fieldName] = fieldValue.strip();
-                        
+
                         if (pos < tokens.length && tokens[pos].type == TokenType.COMMA)
                             pos++;
                     }
@@ -3539,15 +3562,15 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                         pos++;
                     }
                 }
-                
+
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.RPAREN,
                     "Expected ')' after model fields");
                 pos++;
-                
+
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
                     "Expected ';' after model instantiation");
                 pos++;
-                
+
                 currentScope.addVariable(varName, isMutable);
                 return new ModelInstantiationNode(modelName, varName, fieldValues, isMutable);
             }
@@ -3586,10 +3609,10 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 "Expected field name after '.'");
             string fieldName = tokens[pos].value;
             pos++;
-            
+
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
-            
+
             if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
             {
                 // Check if the object is mutable
@@ -3601,7 +3624,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 {
                     enforce(false, "Cannot assign to member of immutable variable: " ~ identName);
                 }
-                
+
                 pos++;
                 string value = "";
                 while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
@@ -3631,7 +3654,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACKET,
                 "Expected ']' after array index");
             pos++;
-            
+
             string index2 = "";
             if (pos < tokens.length && tokens[pos].type == TokenType.LBRACKET)
             {
@@ -3645,10 +3668,10 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                     "Expected ']' after second array index");
                 pos++;
             }
-            
+
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
-            
+
             if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
             {
                 pos++;
@@ -3708,7 +3731,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             {
                 enforce(false, "Undeclared variable: " ~ identName);
             }
-            
+
             pos++;
             string value = "";
             while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
@@ -3728,7 +3751,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             string[] args;
             string currentArg = "";
             int parenDepth = 0;
-            
+
             while (pos < tokens.length && (tokens[pos].type != TokenType.RPAREN || parenDepth > 0))
             {
                 if (tokens[pos].type == TokenType.LPAREN)
@@ -3764,10 +3787,10 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                     pos++;
                 }
             }
-            
+
             if (currentArg.strip().length > 0)
                 args ~= currentArg.strip();
-            
+
             enforce(pos < tokens.length && tokens[pos].type == TokenType.RPAREN,
                 "Expected ')' after function arguments");
             pos++;
@@ -3798,11 +3821,11 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
     case TokenType.RAW:
         enforce(isAxec, "Raw C blocks are only allowed in .axec files");
         pos++; // Skip 'raw'
-        
+
         enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
             "Expected '{' after 'raw'");
         pos++; // Skip '{'
-        
+
         string rawCode = "";
         int braceDepth = 1;
         while (pos < tokens.length && braceDepth > 0)
@@ -3815,25 +3838,25 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 if (braceDepth == 0)
                     break;
             }
-            
+
             if (tokens[pos].type == TokenType.STR)
                 rawCode ~= "\"" ~ tokens[pos].value ~ "\"";
             else
                 rawCode ~= tokens[pos].value;
-            
+
             if (pos + 1 < tokens.length && tokens[pos].type != TokenType.LPAREN
                 && tokens[pos + 1].type != TokenType.RPAREN
                 && tokens[pos + 1].type != TokenType.SEMICOLON
                 && tokens[pos].type != TokenType.SEMICOLON)
                 rawCode ~= " ";
-            
+
             pos++;
         }
-        
+
         enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
             "Expected '}' after raw block");
         pos++;
-        
+
         return new RawCNode(rawCode);
 
     default:
@@ -4118,27 +4141,27 @@ private string parseTypeHelper(ref size_t pos, Token[] tokens)
     {
         typeName = tokens[pos].value;
         pos++;
-        
+
         // Handle array syntax: type[] or type[size]
         while (pos < tokens.length && tokens[pos].type == TokenType.LBRACKET)
         {
             typeName ~= "[";
             pos++;
-            
+
             // Parse array size if present
             while (pos < tokens.length && tokens[pos].type != TokenType.RBRACKET)
             {
                 typeName ~= tokens[pos].value;
                 pos++;
             }
-            
+
             if (pos < tokens.length && tokens[pos].type == TokenType.RBRACKET)
             {
                 typeName ~= "]";
                 pos++;
             }
         }
-        
+
         // Handle pointer syntax: type*
         while (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "*")
         {
