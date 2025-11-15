@@ -17,6 +17,7 @@ private bool[string] g_isMutable;
 private string[string] g_arrayWidthVars;
 private int[][string] g_functionParamReordering;
 private MacroNode[string] g_macros;
+private bool[string] g_pointerFields;
 
 /** 
  * Converts a string to an operand.
@@ -64,6 +65,7 @@ string generateC(ASTNode ast)
         g_refDepths.clear();
         g_isMutable.clear();
         g_macros.clear();
+        g_pointerFields.clear();
 
         foreach (child; ast.children)
         {
@@ -72,6 +74,19 @@ string generateC(ASTNode ast)
                 auto macroNode = cast(MacroNode) child;
                 g_macros[macroNode.name] = macroNode;
                 writeln("DEBUG: Pre-stored macro '", macroNode.name, "' with ", macroNode.params.length, " parameters");
+            }
+        }
+
+        foreach (child; ast.children)
+        {
+            if (child.nodeType == "Model")
+            {
+                auto modelNode = cast(ModelNode) child;
+                foreach (field; modelNode.fields)
+                {
+                    if (field.type == modelNode.name)
+                        g_pointerFields[modelNode.name ~ "." ~ field.name] = true;
+                }
             }
         }
 
@@ -885,15 +900,23 @@ string generateC(ASTNode ast)
         auto memberNode = cast(MemberAccessNode) ast;
         string indent = loopLevel > 0 ? "    ".replicate(loopLevel) : "";
 
+        string accessOp = ".";
+        // Check if this member access is to a pointer field or if the object is already a pointer (contains ->)
+        if (memberNode.objectName.canFind("->") || 
+            (memberNode.objectName ~ "." ~ memberNode.memberName in g_pointerFields))
+        {
+            accessOp = "->";
+        }
+
         if (memberNode.value.length > 0)
         {
             // Member write
-            cCode ~= indent ~ memberNode.objectName ~ "." ~ memberNode.memberName ~ " = " ~ memberNode.value ~ ";\n";
+            cCode ~= indent ~ memberNode.objectName ~ accessOp ~ memberNode.memberName ~ " = " ~ memberNode.value ~ ";\n";
         }
         else
         {
             // Member read (used in expressions)
-            cCode ~= memberNode.objectName ~ "." ~ memberNode.memberName;
+            cCode ~= memberNode.objectName ~ accessOp ~ memberNode.memberName;
         }
         break;
 
