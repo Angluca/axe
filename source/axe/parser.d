@@ -381,7 +381,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
                 "Expected '{' after model name");
             pos++; // Skip '{'
 
-            // Build fields array in source order
             ModelNode.Field[] orderedFields;
             while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
             {
