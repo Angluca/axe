@@ -18,6 +18,7 @@ private string[string] g_arrayWidthVars;
 private int[][string] g_functionParamReordering;
 private MacroNode[string] g_macros;
 private bool[string] g_pointerFields;
+private bool[string] g_isPointerVar;
 
 /** 
  * Converts a string to an operand.
@@ -66,6 +67,7 @@ string generateC(ASTNode ast)
         g_isMutable.clear();
         g_macros.clear();
         g_pointerFields.clear();
+        g_isPointerVar.clear();
 
         foreach (child; ast.children)
         {
@@ -547,6 +549,9 @@ string generateC(ASTNode ast)
         for (int i = 0; i < declNode.refDepth; i++)
             baseType ~= "*";
 
+        if (declNode.refDepth > 0 || baseType.canFind("*"))
+            g_isPointerVar[declNode.name] = true;
+
         string type = declNode.isMutable ? baseType : "const " ~ baseType;
         string decl = type ~ " " ~ declNode.name ~ arrayPart;
 
@@ -878,9 +883,10 @@ string generateC(ASTNode ast)
         string indent = loopLevel > 0 ? "    ".replicate(loopLevel) : "";
 
         string accessOp = ".";
-        // Check if this member access is to a pointer field or if the object is already a pointer (contains ->)
+        // Check if this member access is to a pointer field, if the object is already a pointer (contains ->), or if the object is a pointer variable
         if (memberNode.objectName.canFind("->") ||
-            (memberNode.objectName ~ "." ~ memberNode.memberName in g_pointerFields))
+            (memberNode.objectName ~ "." ~ memberNode.memberName in g_pointerFields) ||
+            (memberNode.objectName in g_isPointerVar))
         {
             accessOp = "->";
         }
@@ -1185,17 +1191,23 @@ string processExpression(string expr)
         expr = expr[0 .. startIdx] ~ "*" ~ varName ~ expr[parenEnd + 1 .. $];
     }
 
+    // Handle member access with auto-detection of pointer types
     if (expr.canFind(".") && !expr.canFind(".len"))
     {
         auto parts = expr.split(".");
         if (parts.length == 2)
         {
-            string firstPart = parts[0].strip();
-            string secondPart = parts[1].strip();
-            if (firstPart.length > 0 && firstPart[0] >= 'A' && firstPart[0] <= 'Z')
+            string first = parts[0].strip();
+            string second = parts[1].strip();
+            if (first.length > 0 && first[0] >= 'A' && first[0] <= 'Z')
             {
-                return secondPart;
+                // Enum access: State.RUNNING -> RUNNING
+                return second;
             }
+            string op = ".";
+            if (first in g_isPointerVar || (first ~ "." ~ second in g_pointerFields))
+                op = "->";
+            return first ~ op ~ second;
         }
     }
 
@@ -2889,5 +2901,27 @@ unittest
         writeln(cCode);
 
         assert(cCode.canFind("(*ptr) = 10;"), "Should handle deref on left side of assignment");
+    }
+
+    {
+        auto tokens = lex("model Test { field: int } main { mut val obj: Test; obj.field = 5; }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Non-pointer member access test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("obj.field = 5;"), "Should use . for non-pointer object");
+    }
+
+    {
+        auto tokens = lex("model Test { field: int } main { mut val ptr: ref Test; ptr.field = 5; }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Pointer variable member access test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("ptr->field = 5;"), "Should use -> for pointer variable");
     }
 }
