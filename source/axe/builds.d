@@ -140,6 +140,7 @@ bool handleMachineArgs(string[] args)
                 if (runResult.status != 0)
                 {
                     stderr.writeln("Program exited with code ", runResult.status);
+                    return false;
                 }
 
                 if (runResult.output.length > 0)
