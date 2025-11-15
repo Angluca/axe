@@ -1927,6 +1927,7 @@ string generateAsm(ASTNode ast)
 
 string generateStackTraceHandlers()
 {
+    string code = "";
     version(Windows)
     {
         code ~= "#include <dbghelp.h>\n";
