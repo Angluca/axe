@@ -94,10 +94,12 @@ string generateC(ASTNode ast)
             }
         }
 
+        cCode ~= "#define nil ((void*)0)\n";
         cCode ~= "#include <stdio.h>\n";
         cCode ~= "#include <stdbool.h>\n";
         cCode ~= "#include <stdlib.h>\n";
         cCode ~= "#include <string.h>\n";
+        cCode ~= "\n";
 
         version (Windows)
         {
@@ -1343,6 +1345,10 @@ string processExpression(string expr)
         }
         return result;
     }
+
+
+    if (expr == "nil")
+        return "NULL";
 
     return expr;
 }

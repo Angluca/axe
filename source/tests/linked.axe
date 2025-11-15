@@ -11,82 +11,60 @@ use stdlib/memory (
 
 model Node {
     value: int;
-    next: long;   // pointer (numeric) to another Node, 0 == null
+    next: ref Node;
 }
 
-/// Returns a null list head (0).
-def make_null_head(): long {
-    return 0;
-}
-
-/// Push a new value to the front of the list. Returns new head pointer.
-def list_push_front(head: long, arena: Arena, value: int): long {
-    // allocate a new Node from the arena
+def new_node(arena: Arena, value: int): ref Node {
     val ptr: long = arena_alloc(ref_of(arena), size_of(Node));
     mut val n: ref Node = deref(ptr);
-
     n.value = value;
-    n.next = head;
-
-    return ptr;
+    n.next = nil;
+    return n;
 }
 
-/// Push a new value to the back of the list. Returns head pointer (unchanged for non-empty lists).
-def list_push_back(head: long, arena: Arena, value: int): long {
-    // empty list -> push front
-    if head == 0 {
-        return list_push_front(head, arena, value);
+def list_push_front(head: ref Node, arena: Arena, value: int): ref Node {
+    mut val new_head: ref Node = new_node(arena, value);
+    new_head.next = head;
+    return new_head;
+}
+
+def list_push_back(head: ref Node, arena: Arena, value: int): ref Node {
+    if head == nil {
+        return new_node(arena, value);
     }
 
-    // traverse to last node
-    mut val cur_ptr: long = head;
+    mut val cur: ref Node = head;
     loop {
-        mut val cur: ref Node = deref(cur_ptr);
-        if cur.next == 0 {
+        if cur.next == nil {
             break;
         }
-        cur_ptr = cur.next;
+        cur = cur.next;
     }
 
-    // allocate new node and append
-    val ptr: long = arena_alloc(ref_of(arena), size_of(Node));
-    mut val newn: ref Node = deref(ptr);
-    newn.value = value;
-    newn.next = 0;
-
-    // set last.next = ptr
-    mut val last: ref Node = deref(cur_ptr);
-    last.next = ptr;
-
+    cur.next = new_node(arena, value);
     return head;
 }
 
-/// Print values from head to null.
-def list_print(head: long) {
-    mut val cur_ptr: long = head;
+/// Print linked list
+def list_print(head: Node) {
+    mut val cur: Node = head;
 
     loop {
-        if cur_ptr == 0 {
+        if cur.next == nil {
             break;
         }
 
-        mut val cur: ref Node = deref(cur_ptr);
         print cur.value;
         print " ";
-
-        cur_ptr = cur.next;
+        cur = deref(cur.next);
     }
 
     println "";
 }
 
 main {
-    println "=== LINKED LIST (arena-backed) ===";
-
     mut val arena: Arena = arena_create(65536);
-
-    // start with empty list
-    mut val head: long = make_null_head();
+    mut val head: ref Node = nil;
 
     head = list_push_front(head, arena, 10);
     head = list_push_front(head, arena, 5);
