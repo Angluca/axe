@@ -1982,14 +1982,6 @@ string generateStackTraceHandlers()
     code ~= "    return EXCEPTION_EXECUTE_HANDLER;\n";
     code ~= "}\n";
     code ~= "\n";
-    code ~= "static LONG CALLBACK axe_vectored_exception_handler(EXCEPTION_POINTERS* info) {\n";
-    code ~= "    (void)info;\n";
-    code ~= "    fprintf(stderr, \"Fatal: Vectored exception.\\n\");\n";
-    code ~= "    axe_win_print_backtrace();\n";
-    code ~= "    fflush(stderr);\n";
-    code ~= "    return EXCEPTION_EXECUTE_HANDLER;\n";
-    code ~= "}\n";
-    code ~= "\n";
     return code;
 }
 
@@ -1997,7 +1989,6 @@ string generateStackTraceSetup()
 {
     string code = "#if defined(_WIN32)\n";
     code ~= "    SetUnhandledExceptionFilter(axe_unhandled_exception_filter);\n";
-    code ~= "    AddVectoredExceptionHandler(1, axe_vectored_exception_handler);\n";
     code ~= "#endif\n";
     return code;
 }
