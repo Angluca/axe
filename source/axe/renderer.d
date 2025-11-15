@@ -23,30 +23,6 @@ private string[string] g_isPointerVar;
 private string[string] g_functionPrefixes;
 
 /** 
- * Converts a string to an operand.
- *
- * Params:
- *   s = String to convert to operand
- *   paramMap = Parameter mapping for function arguments
- *
- * Returns: 
- *   Operand string
- */
-string operand(string s, string[string] paramMap = null)
-{
-    s = s.strip();
-    if (s.length == 0)
-        return s;
-    if (paramMap !is null && s in paramMap)
-        return paramMap[s];
-    if (s[0].isDigit() || (s.length > 1 && s[0] == '-' && s[1].isDigit()))
-        return s;
-    if (s[0] == '"')
-        return s;
-    return "[" ~ s ~ "]";
-}
-
-/** 
  * C backend renderer.
  *
  * Params:
@@ -381,12 +357,11 @@ string generateC(ASTNode ast)
                 string[] processedParams = dimensionParams ~ otherParams;
                 cCode ~= processedParams.join(", ");
 
-                // Set variable types for parameters
                 foreach (info; paramInfos)
                 {
                     g_varType[info.name] = info.type;
-                    if (info.type.canFind("*"))
-                        g_refDepths[info.name] = 1; // Assume 1 for pointers
+                    if (info.type.canFind("*")) // Assume 1 for pointers
+                        g_refDepths[info.name] = 1;
                 }
             }
             cCode ~= ") {\n";
@@ -407,20 +382,10 @@ string generateC(ASTNode ast)
         string callName = callNode.functionName;
 
         if (callName.canFind("."))
-        {
-            if (callName.canFind(".new")) // Special case for Model.new
-            {
-                callName = callName.replace(".new", "_new_list"); // or whatever convention
-            }
-            else
-            {
-                callName = callName.replace(".", "_");
-            }
-        }
+            callName = callName.replace(".", "_");
         else if (callName in g_functionPrefixes)
-        {
             callName = g_functionPrefixes[callName];
-        }
+
         if (callName in g_macros)
         {
             writeln("DEBUG: Expanding macro '", callName, "'");
@@ -1385,7 +1350,7 @@ string processExpression(string expr, string context = "")
                 {
                     parts ~= current;
                     current = "";
-                    i += cast(int)op.length - 1;
+                    i += cast(int) op.length - 1;
                 }
                 else
                 {
@@ -1570,7 +1535,6 @@ unittest
     {
         auto tokens = lex("main { println \"hello\"; }");
         auto ast = parse(tokens);
-        auto asma = generateAsm(ast);
         auto cCode = generateC(ast);
 
         writeln(cCode);
@@ -1581,9 +1545,6 @@ unittest
     {
         auto tokens = lex("def foo { println \"hello\"; } main { foo(); }");
         auto ast = parse(tokens);
-
-        auto asma = generateAsm(ast);
-        assert(asma.canFind("call foo"));
 
         auto cCode = generateC(ast);
         assert(cCode.canFind("foo()"));

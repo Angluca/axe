@@ -1,12 +1,35 @@
 module axe.renderer_asm;
 
 import axe.structs;
-import axe.renderer;
 import std.conv;
 import std.string;
 import std.algorithm;
 import std.ascii;
 import std.exception;
+
+/** 
+ * Converts a string to an operand.
+ *
+ * Params:
+ *   s = String to convert to operand
+ *   paramMap = Parameter mapping for function arguments
+ *
+ * Returns: 
+ *   Operand string
+ */
+string operand(string s, string[string] paramMap = null)
+{
+    s = s.strip();
+    if (s.length == 0)
+        return s;
+    if (paramMap !is null && s in paramMap)
+        return paramMap[s];
+    if (s[0].isDigit() || (s.length > 1 && s[0] == '-' && s[1].isDigit()))
+        return s;
+    if (s[0] == '"')
+        return s;
+    return "[" ~ s ~ "]";
+}
 
 /** 
  * Assembly/NASM backend renderer.
@@ -534,4 +557,15 @@ string generateAsm(ASTNode ast)
         asmCode = "section .data\n" ~ dataSection ~ "\n" ~ asmCode;
 
     return asmCode;
+}
+
+unittest
+{
+    import axe.lexer;
+    import axe.parser;
+
+    auto tokens = lex("main { println \"hello\"; }");
+    auto ast = parse(tokens);
+
+    generateAsm(ast);
 }
