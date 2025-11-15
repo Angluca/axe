@@ -571,6 +571,35 @@ string generateC(ASTNode ast)
         {
             string processedExpr = processExpression(declNode.initializer);
 
+            // Special handling for deref on long variables (e.g., from arena_alloc)
+            string var = "";
+            if (processedExpr.startsWith("*"))
+            {
+                var = processedExpr[1..$];
+            }
+            else if (processedExpr.startsWith("(*") && processedExpr.endsWith(")"))
+            {
+                var = processedExpr[2..$-1];
+            }
+            if (var != "")
+            {
+                writeln("DEBUG: Checking deref for processedExpr ", processedExpr, " var ", var);
+                if (var in g_varType && g_varType[var] == "long")
+                {
+                    string T = type;
+                    if (T.endsWith("*"))
+                        T = T[0..$-1];
+                    if (type.endsWith("*"))
+                        processedExpr = "(" ~ T ~ "*)" ~ var;
+                    else
+                        processedExpr = "*(" ~ T ~ "*)" ~ var;
+                }
+                else
+                {
+                    writeln("DEBUG: Not casting, var in g_varType: ", (var in g_varType), " g_varType[var]: ", g_varType.get(var, "not found"));
+                }
+            }
+
             // Special case: char* with string literal should become char[] for writability
             if (baseType == "char*" && processedExpr.length > 0 && processedExpr[0] == '"')
             {
@@ -2961,5 +2990,17 @@ unittest
         writeln(cCode);
 
         assert(cCode.canFind("if ((head.next->value==5))"), "Should use -> for pointer field access in if condition");
+    }
+
+    {
+        // Test deref on long variable (e.g., from arena_alloc)
+        auto tokens = lex("model Test { value: int } main { val ptr: long = 123; mut val n: ref Test = deref(ptr); }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Deref on long test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("Test* n = (Test*)ptr;"), "Should cast long to pointer type when deref in declaration");
     }
 }

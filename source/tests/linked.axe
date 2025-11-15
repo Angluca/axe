@@ -6,91 +6,87 @@ use stdlib/arena (
 );
 
 use stdlib/memory (
-    size_of,
-    copy
+    size_of
 );
 
 model Node {
     value: int;
-    next: Node;   // recursive!
+    next: long;   // pointer (numeric) to another Node, 0 == null
 }
 
-/// Create a "null" node with value=0 and next=itself (self-loop sentinel)
-def make_null_node(): Node {
-    mut val n: Node;
-    n.value = 0;
-    copy(n.next, n, Node);   // next = itself
-    return n;
+/// Returns a null list head (0).
+def make_null_head(): long {
+    return 0;
 }
 
-def list_push_front(head: Node, arena: Arena, value: int): Node {
+/// Push a new value to the front of the list. Returns new head pointer.
+def list_push_front(head: long, arena: Arena, value: int): long {
     // allocate a new Node from the arena
     val ptr: long = arena_alloc(ref_of(arena), size_of(Node));
-    mut val newv: ref Node = deref(ptr);
+    mut val n: ref Node = deref(ptr);
 
-    newv.value = value;
-    copy(newv.next, head, Node);
+    n.value = value;
+    n.next = head;
 
-    return newv;
+    return ptr;
 }
 
-def list_push_back(head: Node, arena: Arena, value: int): Node {
-    // empty list?
-    if head.next.value == head.value and head.value == 0 {
-        // list is empty, reuse push_front for clarity
+/// Push a new value to the back of the list. Returns head pointer (unchanged for non-empty lists).
+def list_push_back(head: long, arena: Arena, value: int): long {
+    // empty list -> push front
+    if head == 0 {
         return list_push_front(head, arena, value);
     }
 
-    mut val cur: Node;
-    copy(cur, head, Node);
-
-    // traverse to end
+    // traverse to last node
+    mut val cur_ptr: long = head;
     loop {
-        if cur.next.value == cur.value and cur.value == 0 {
+        mut val cur: ref Node = deref(cur_ptr);
+        if cur.next == 0 {
             break;
         }
-        copy(cur, cur.next, Node);
+        cur_ptr = cur.next;
     }
 
-    // add new tail
+    // allocate new node and append
     val ptr: long = arena_alloc(ref_of(arena), size_of(Node));
-    mut val newv: ref Node = deref(ptr);
+    mut val newn: ref Node = deref(ptr);
+    newn.value = value;
+    newn.next = 0;
 
-    newv.value = value;
-    newv.next = make_null_node();  // set sentinel
-
-    // overwrite tail.next
-    copy(cur.next, newv, Node);
+    // set last.next = ptr
+    mut val last: ref Node = deref(cur_ptr);
+    last.next = ptr;
 
     return head;
 }
 
-/// Print linked list until sentinel is reached
-def list_print(head: Node) {
-    mut val cur: Node;
-    copy(cur, head, Node);
+/// Print values from head to null.
+def list_print(head: long) {
+    mut val cur_ptr: long = head;
 
     loop {
-        if cur.next.value == cur.value and cur.value == 0 {
+        if cur_ptr == 0 {
             break;
         }
 
+        mut val cur: ref Node = deref(cur_ptr);
         print cur.value;
         print " ";
 
-        copy(cur, cur.next, Node);
+        cur_ptr = cur.next;
     }
 
     println "";
 }
 
 main {
-    println "=== RECURSIVE NODE LINKED LIST ===";
+    println "=== LINKED LIST (arena-backed) ===";
 
     mut val arena: Arena = arena_create(65536);
 
-    // Start with null node sentinel
-    mut val head: Node = make_null_node();
+    // start with empty list
+    mut val head: long = make_null_head();
 
     head = list_push_front(head, arena, 10);
     head = list_push_front(head, arena, 5);
