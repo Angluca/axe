@@ -423,9 +423,9 @@ string generateC(ASTNode ast)
         auto assignNode = cast(AssignmentNode) ast;
         import std.stdio : writeln;
 
-        writeln("DEBUG Assignment: variable='", assignNode.variable, "'");
+        debug writeln("DEBUG Assignment: variable='", assignNode.variable, "'");
         string dest = processExpression(assignNode.variable.strip());
-        writeln("DEBUG Assignment: dest after processExpression='", dest, "'");
+        debug writeln("DEBUG Assignment: dest after processExpression='", dest, "'");
         string expr = assignNode.expression.strip();
 
         import std.string : indexOf;
