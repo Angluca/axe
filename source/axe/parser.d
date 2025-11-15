@@ -3579,7 +3579,8 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
         writeln("[MUT case] Starting at pos=", pos);
         pos++;
         writeln("[MUT case] After pos++, pos=", pos, " token=", tokens[pos].type);
-        while (pos < tokens.length && (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType.NEWLINE))
+        while (pos < tokens.length && (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType
+                .NEWLINE))
             pos++;
         writeln("[MUT case] After whitespace skip, pos=", pos, " token=", tokens[pos].type);
         enforce(pos < tokens.length && tokens[pos].type == TokenType.VAL,
@@ -3592,11 +3593,12 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             writeln("[VAL case] Starting at pos=", pos);
             // Check if previous non-whitespace token was MUT
             size_t checkPos = pos - 1;
-            while (checkPos > 0 && (tokens[checkPos].type == TokenType.WHITESPACE || tokens[checkPos].type == TokenType.NEWLINE))
+            while (checkPos > 0 && (tokens[checkPos].type == TokenType.WHITESPACE || tokens[checkPos].type == TokenType
+                    .NEWLINE))
                 checkPos--;
             bool isMutable = tokens[checkPos].type == TokenType.MUT;
             writeln("[VAL case] isMutable=", isMutable);
-            
+
             pos++;
             writeln("[VAL case] After pos++, pos=", pos);
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
@@ -3716,9 +3718,11 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                     writeln("[VAL case] Parsing initializer, starting at pos=", pos);
                     while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
                     {
-                        writeln("[VAL case] Initializer loop: pos=", pos, " token=", tokens[pos].type);
-                        if (initializer.length > 0 && tokens[pos].type != TokenType.LPAREN && 
-                            tokens[pos].type != TokenType.RPAREN && tokens[pos].type != TokenType.COMMA)
+                        writeln("[VAL case] Initializer loop: pos=", pos, " token=", tokens[pos]
+                                .type);
+                        if (initializer.length > 0 && tokens[pos].type != TokenType.LPAREN &&
+                            tokens[pos].type != TokenType.RPAREN && tokens[pos].type != TokenType
+                            .COMMA)
                         {
                             // Add space before token (except for parens and commas)
                             initializer ~= " ";
@@ -3777,7 +3781,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 string value = "";
                 while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
                 {
-                    if (value.length > 0 && tokens[pos].type != TokenType.LPAREN && 
+                    if (value.length > 0 && tokens[pos].type != TokenType.LPAREN &&
                         tokens[pos].type != TokenType.RPAREN && tokens[pos].type != TokenType.COMMA)
                     {
                         value ~= " ";
@@ -3843,8 +3847,9 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                     string value = "";
                     while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
                     {
-                        if (value.length > 0 && tokens[pos].type != TokenType.LPAREN && 
-                            tokens[pos].type != TokenType.RPAREN && tokens[pos].type != TokenType.COMMA)
+                        if (value.length > 0 && tokens[pos].type != TokenType.LPAREN &&
+                            tokens[pos].type != TokenType.RPAREN && tokens[pos].type != TokenType
+                            .COMMA)
                         {
                             value ~= " ";
                         }
@@ -3871,7 +3876,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 string value = "";
                 while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
                 {
-                    if (value.length > 0 && tokens[pos].type != TokenType.LPAREN && 
+                    if (value.length > 0 && tokens[pos].type != TokenType.LPAREN &&
                         tokens[pos].type != TokenType.RPAREN && tokens[pos].type != TokenType.COMMA)
                     {
                         value ~= " ";
@@ -3934,7 +3939,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             string value = "";
             while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
             {
-                if (value.length > 0 && tokens[pos].type != TokenType.LPAREN && 
+                if (value.length > 0 && tokens[pos].type != TokenType.LPAREN &&
                     tokens[pos].type != TokenType.RPAREN && tokens[pos].type != TokenType.COMMA)
                 {
                     value ~= " ";
@@ -4093,7 +4098,7 @@ private IfNode parseIfHelper(ref size_t pos, Token[] tokens, ref Scope currentSc
         pos++;
     enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
         "Expected '{' after if condition here: " ~ tokens[pos - 5 .. pos + 5].map!(t => t.value)
-                .join(""));
+            .join(""));
     pos++;
 
     auto ifNode = new IfNode(cond.strip());
@@ -4323,6 +4328,7 @@ private PrintNode parsePrintHelper(ref size_t pos, Token[] tokens)
 private string parseTypeHelper(ref size_t pos, Token[] tokens)
 {
     import std.stdio : writeln;
+
     writeln("[parseTypeHelper] Starting at pos=", pos);
     string typeName = "";
     while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
