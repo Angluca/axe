@@ -366,33 +366,25 @@ void renameTypeReferences(ASTNode node, string[string] typeMap)
     {
         auto funcNode = cast(FunctionNode) node;
 
-        // Update return type
         if (funcNode.returnType in typeMap)
-        {
             funcNode.returnType = typeMap[funcNode.returnType];
-        }
 
-        // Update parameter types
         for (size_t i = 0; i < funcNode.params.length; i++)
         {
             string param = funcNode.params[i];
             auto parts = param.split(" ");
             if (parts.length >= 2)
             {
-                // Handle "Type name" or "Type[] name" or "ref Type name"
                 foreach (oldType, newType; typeMap)
                 {
-                    // Replace standalone type names
                     if (parts[0] == oldType)
                     {
                         parts[0] = newType;
                     }
-                    // Handle ref types
             else if (parts.length >= 3 && parts[0] == "ref" && parts[1] == oldType)
                     {
                         parts[1] = newType;
                     }
-                    // Handle array types
             else if (parts[0].startsWith(oldType ~ "["))
                     {
                         parts[0] = parts[0].replace(oldType ~ "[", newType ~ "[");
