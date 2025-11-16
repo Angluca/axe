@@ -85,6 +85,15 @@ struct Token
 }
 
 /** 
+ * Some macro definition.
+ */
+struct MacroDef
+{
+    string[] params;
+    Token[] bodyTokens;
+}
+
+/** 
  * Abstract syntax tree node for the Axe language.
  */
 abstract class ASTNode

@@ -7,13 +7,6 @@ import std.algorithm;
 import axe.structs;
 
 private string[string] g_typeAliases;
-
-struct MacroDef
-{
-    string[] params;
-    Token[] bodyTokens;
-}
-
 private MacroDef[string] g_macros;
 
 /**
