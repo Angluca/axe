@@ -103,6 +103,9 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
             enforce(false, "Invalid type specification");
         }
 
+        // Validate that the type is not forbidden
+        validateTypeNotForbidden(typeName);
+
         if (typeName in g_typeAliases)
         {
             typeName = g_typeAliases[typeName];
@@ -5215,6 +5218,9 @@ private string parseTypeHelper(ref size_t pos, Token[] tokens)
         writeln("[parseTypeHelper] Got type name: ", typeName);
         pos++;
 
+        // Validate that the type is not forbidden
+        validateTypeNotForbidden(typeName);
+
         // Handle array syntax: type[] or type[size]
         while (pos < tokens.length && tokens[pos].type == TokenType.LBRACKET)
         {
@@ -5305,4 +5311,25 @@ unittest
     auto funcAst = parse(funcIfTokens);
     assert(funcAst.children[0].nodeType == "Function");
     assert((cast(IfNode) funcAst.children[0].children[0]).condition == "y == 1");
+}
+
+
+static immutable string[] g_forbiddenCTypes = [
+    "int", "long", "short", "char", "float", "double", "void",
+    "signed", "unsigned", "int8_t", "int16_t", "int32_t", "int64_t",
+    "uint8_t", "uint16_t", "uint32_t", "uint64_t", "intptr_t", "uintptr_t",
+    "size_t", "ptrdiff_t", "bool", "_Bool"
+];
+
+/**
+ * Validates that a type is not a forbidden C type.
+ * Throws an error if the type is forbidden.
+ */
+void validateTypeNotForbidden(string typeName)
+{
+    import std.algorithm : canFind;
+    if (g_forbiddenCTypes.canFind(typeName))
+    {
+        throw new Exception("Forbidden C type '" ~ typeName ~ "' cannot be used directly. Use the corresponding Axe type instead (e.g., i32, u64, f32, etc.)");
+    }
 }
