@@ -1,32 +1,17 @@
-import stdlib.os;
-
-/// Initializes the random number generator with the current time.
-def rand_init {
-    u32 seed -> void
-    srand(seed);
+def randomize(): void {
+    raw {
+        srand(time(NULL));
+    }
 }
 
-/// Returns a random unsigned 32-bit integer.
-def rand_u32 {
-    -> u32
-    return rand();
-}
-
-/// Returns a random integer between min and max (inclusive).
-def rand_range {
-    i32 min, i32 max -> i32
-    return min + (rand() % (max - min + 1));
-}
-
-/// Returns a random floating-point number between 0 and 1.
-def rand_f32 {
-    -> f32
-    return cast(f32)rand() / cast(f32)RAND_MAX;
+def random(a: i32, b: i32): i32 {
+    randomize();
+    raw {
+        return rand() % (b - a + 1) + a;
+    }
 }
 
 test {
-    rand_init(cast(u32)time(NULL));
-    mut val r: i32 = rand_range(1, 10);
-    assert(r >= 1, "rand_range(1, 10) should be >= 1");
-    assert(r <= 10, "rand_range(1, 10) should be <= 10");
+    assert(random(1, 10) >= 1, "Random number should be between 1 and 10");
+    assert(random(1, 10) <= 10, "Random number should be between 1 and 10");
 }
