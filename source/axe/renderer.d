@@ -2063,4 +2063,87 @@ unittest
         assert(cCode.canFind("void test_func(int32_t width, int32_t height, int32_t grid[height][width])"), 
                "Function definition should have dimension parameters before array parameter");
     }
+
+    {
+        auto tokens = lex(
+            "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
+            "main { val arena = Arena.create(1024); }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Prefixed model method call test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("struct stdlib_arena_Arena"), "Should have prefixed struct name");
+        assert(cCode.canFind("stdlib_arena_Arena_create"), "Should have prefixed function name");
+        assert(cCode.canFind("Arena_create( 1024)"), "Should find the original call in source");
+        assert(cCode.canFind("stdlib_arena_Arena_create( 1024 )") || cCode.canFind("stdlib_arena_Arena_create( 1024)"), 
+               "Function call should use prefixed name stdlib_arena_Arena_create");
+    }
+
+    {
+        auto tokens = lex(
+            "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
+            "main { val cap = Arena.create(1024).capacity; }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Member access after function call test:");
+        writeln(cCode);
+
+        assert((cCode.canFind("stdlib_arena_Arena_create( 1024).capacity") || 
+                cCode.canFind("stdlib_arena_Arena_create(1024).capacity") ||
+                cCode.canFind("stdlib_arena_Arena_create( 1024 ).capacity")), 
+               "Should preserve member access after prefixed function call");
+    }
+
+    {
+        auto tokens = lex(
+            "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
+            "test { assert(Arena.create(1024).capacity == 1024, \"test message\"); }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Assertion with function call and member access test:");
+        writeln(cCode);
+
+        assert((cCode.canFind("stdlib_arena_Arena_create( 1024 ) . capacity == 1024") ||
+                cCode.canFind("stdlib_arena_Arena_create(1024).capacity == 1024") ||
+                cCode.canFind("stdlib_arena_Arena_create( 1024 ).capacity == 1024")), 
+               "Assertion condition should preserve full expression chain with member access");
+        assert(!cCode.canFind("if (stdlib_arena_Arena_create( 1024 )) {") &&
+               !cCode.canFind("if (stdlib_arena_Arena_create(1024)) {"), 
+               "Should not have incomplete condition without member access");
+    }
+
+    {
+        auto tokens = lex(
+            "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
+            "main { val x = Arena.create(2048).offset; }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Multiple member access after function call test:");
+        writeln(cCode);
+
+        assert((cCode.canFind("stdlib_arena_Arena_create( 2048 ) . offset") ||
+                cCode.canFind("stdlib_arena_Arena_create(2048).offset") ||
+                cCode.canFind("stdlib_arena_Arena_create( 2048).offset")), 
+               "Should preserve member access for offset field");
+    }
+
+    {
+        auto tokens = lex(
+            "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
+            "main { val arena = Arena.create(512); }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Function call without member access test:");
+        writeln(cCode);
+
+        assert((cCode.canFind("stdlib_arena_Arena_create( 512 )") ||
+                cCode.canFind("stdlib_arena_Arena_create( 512)")), 
+               "Should still prefix function call even without member access");
+    }
 }
