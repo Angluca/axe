@@ -8,16 +8,17 @@ import axe.structs;
 
 private string[string] g_typeAliases;
 
-/** 
+/**
  * Parses an array of tokens into an abstract syntax tree (AST).
  * 
  * Params:
  *   tokens = Array of tokens to parse
  *   isAxec = Whether the source file is .axec
+ *   checkEntryPoint = Whether to validate that the file has an entry point (main/test)
  * Returns: 
  *   ASTNode = Abstract syntax tree representing the parsed tokens
  */
-ASTNode parse(Token[] tokens, bool isAxec = false)
+ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
 {
     import std.stdio;
     import std.exception : enforce;
@@ -3581,28 +3582,31 @@ ASTNode parse(Token[] tokens, bool isAxec = false)
         }
     }
 
-    bool hasEntryPoint = false;
-    foreach (child; ast.children)
+    if (checkEntryPoint)
     {
-        if (child.nodeType == "Function")
+        bool hasEntryPoint = false;
+        foreach (child; ast.children)
         {
-            auto funcNode = cast(FunctionNode) child;
-            if (funcNode.name == "main")
+            if (child.nodeType == "Function")
+            {
+                auto funcNode = cast(FunctionNode) child;
+                if (funcNode.name == "main")
+                {
+                    hasEntryPoint = true;
+                    break;
+                }
+            }
+            else if (child.nodeType == "Test")
             {
                 hasEntryPoint = true;
                 break;
             }
         }
-        else if (child.nodeType == "Test")
-        {
-            hasEntryPoint = true;
-            break;
-        }
-    }
 
-    if (!hasEntryPoint)
-    {
-        enforce(false, "No entry point defined. You must have either a 'main { }' or 'test { }' block.");
+        if (!hasEntryPoint)
+        {
+            enforce(false, "No entry point defined. You must have either a 'main { }' or 'test { }' block.");
+        }
     }
 
     return ast;
@@ -5141,6 +5145,9 @@ unittest
         Token(TokenType.SEMICOLON, ";"),
         Token(TokenType.RBRACE, "}"),
         Token(TokenType.RBRACE, "}"),
+        Token(TokenType.RBRACE, "}"),
+        Token(TokenType.MAIN, "main"),
+        Token(TokenType.LBRACE, "{"),
         Token(TokenType.RBRACE, "}")
     ];
 
@@ -5163,6 +5170,9 @@ unittest
         Token(TokenType.BREAK, "break"),
         Token(TokenType.SEMICOLON, ";"),
         Token(TokenType.RBRACE, "}"),
+        Token(TokenType.RBRACE, "}"),
+        Token(TokenType.MAIN, "main"),
+        Token(TokenType.LBRACE, "{"),
         Token(TokenType.RBRACE, "}")
     ];
 

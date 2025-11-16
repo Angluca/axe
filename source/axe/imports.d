@@ -62,7 +62,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec)
 
             string importSource = readText(modulePath);
             auto importTokens = lex(importSource);
-            auto importAst = parse(importTokens, true);
+            auto importAst = parse(importTokens, true, false);
             auto importProgram = cast(ProgramNode) importAst;
             string sanitizedModuleName = useNode.moduleName.replace("/", "_");
 

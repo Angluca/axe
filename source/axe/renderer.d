@@ -1779,7 +1779,7 @@ unittest
 
     {
         auto tokens = lex(
-            "def testfunc() { mut val x = 0; loop { println \"test\"; x = x + 1; if x == 5 { break; } } }"
+            "def testfunc() { mut val x = 0; loop { println \"test\"; x = x + 1; if x == 5 { break; } } } main { testfunc(); }"
         );
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
