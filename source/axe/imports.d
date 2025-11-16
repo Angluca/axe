@@ -88,6 +88,20 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec)
                     string prefixedName = sanitizedModuleName ~ "_" ~ modelNode.name;
                     moduleModelMap[modelNode.name] = prefixedName;
                     writeln("  DEBUG: Mapped model '", modelNode.name, "' -> '", prefixedName, "'");
+                    
+                    // Also map all methods within this model
+                    foreach (method; modelNode.methods)
+                    {
+                        auto methodFunc = cast(FunctionNode) method;
+                        if (methodFunc !is null)
+                        {
+                            // Method names are already prefixed as ModelName_methodName in parser
+                            // We need to prefix them with the module name
+                            string prefixedMethodName = sanitizedModuleName ~ "_" ~ methodFunc.name;
+                            moduleFunctionMap[methodFunc.name] = prefixedMethodName;
+                            writeln("  DEBUG: Mapped method '", methodFunc.name, "' -> '", prefixedMethodName, "'");
+                        }
+                    }
                 }
                 else if (importChild.nodeType == "Macro")
                 {
@@ -130,6 +144,29 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec)
                         importedModels[modelNode.name] = prefixedName;
                         auto newModel = new ModelNode(prefixedName, null);
                         newModel.fields = modelNode.fields;
+                        
+                        // Process model methods - rename and add them to newChildren
+                        foreach (method; modelNode.methods)
+                        {
+                            auto methodFunc = cast(FunctionNode) method;
+                            if (methodFunc !is null)
+                            {
+                                string prefixedMethodName = moduleFunctionMap[methodFunc.name];
+                                auto newMethod = new FunctionNode(prefixedMethodName, methodFunc.params);
+                                newMethod.returnType = methodFunc.returnType;
+                                newMethod.children = methodFunc.children;
+                                
+                                writeln("  DEBUG: Processing model method '", prefixedMethodName, "'");
+                                
+                                // Rename function calls within the method to use prefixed names
+                                renameFunctionCalls(newMethod, moduleFunctionMap);
+                                renameTypeReferences(newMethod, moduleModelMap);
+                                
+                                // Add method to newModel's methods array
+                                newModel.methods ~= newMethod;
+                            }
+                        }
+                        
                         newChildren ~= newModel;
                     }
                 }
@@ -150,6 +187,18 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec)
             // This is user code - rename function calls and type references
             renameFunctionCalls(child, importedFunctions);
             renameTypeReferences(child, importedModels);
+            
+            // If this is a model with methods, also rename calls within those methods
+            if (child.nodeType == "Model")
+            {
+                auto modelNode = cast(ModelNode) child;
+                foreach (method; modelNode.methods)
+                {
+                    renameFunctionCalls(method, importedFunctions);
+                    renameTypeReferences(method, importedModels);
+                }
+            }
+            
             newChildren ~= child;
         }
     }

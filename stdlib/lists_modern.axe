@@ -59,7 +59,7 @@ model IntList {
 
 test {
     mut val arena: Arena = arena_create(65536);
-    mut val my_list: ref IntList = IntList.new(ref_of(arena), 4);
+    mut val my_list: ref IntList = IntList.new_list(ref_of(arena), 4);
 
     IntList.push(my_list, ref_of(arena), 10);
     IntList.push(my_list, ref_of(arena), 20);

@@ -121,18 +121,6 @@ string generateC(ASTNode ast)
 
         foreach (child; ast.children)
         {
-            if (child.nodeType == "Model")
-            {
-                auto modelNode = cast(ModelNode) child;
-                foreach (method; modelNode.methods)
-                {
-                    cCode ~= generateC(method) ~ "\n";
-                }
-            }
-        }
-
-        foreach (child; ast.children)
-        {
             if (child.nodeType == "Function")
             {
                 auto funcNode = cast(FunctionNode) child;
@@ -168,8 +156,60 @@ string generateC(ASTNode ast)
                     cCode ~= ");\n";
                 }
             }
+            else if (child.nodeType == "Model")
+            {
+                // Also generate forward declarations for model methods
+                auto modelNode = cast(ModelNode) child;
+                foreach (method; modelNode.methods)
+                {
+                    auto methodFunc = cast(FunctionNode) method;
+                    if (methodFunc !is null)
+                    {
+                        string processedReturnType = methodFunc.returnType;
+                        if (processedReturnType.startsWith("ref "))
+                        {
+                            processedReturnType = processedReturnType[4 .. $].strip() ~ "*";
+                        }
+                        cCode ~= processedReturnType ~ " " ~ methodFunc.name ~ "(";
+                        if (methodFunc.params.length > 0)
+                        {
+                            foreach (i, param; methodFunc.params)
+                            {
+                                import std.string : replace, split, strip;
+
+                                string cParam = param;
+                                if (param.canFind("ref "))
+                                {
+                                    cParam = param.replace("ref ", "");
+                                    auto parts = cParam.split();
+                                    if (parts.length >= 2)
+                                    {
+                                        cParam = parts[0] ~ "* " ~ parts[1];
+                                    }
+                                }
+                                cCode ~= cParam;
+                                if (i < cast(int) methodFunc.params.length - 1)
+                                    cCode ~= ", ";
+                            }
+                        }
+                        cCode ~= ");\n";
+                    }
+                }
+            }
         }
         cCode ~= "\n";
+
+        foreach (child; ast.children)
+        {
+            if (child.nodeType == "Model")
+            {
+                auto modelNode = cast(ModelNode) child;
+                foreach (method; modelNode.methods)
+                {
+                    cCode ~= generateC(method) ~ "\n";
+                }
+            }
+        }
 
         foreach (child; ast.children)
         {
@@ -1281,6 +1321,17 @@ string processExpression(string expr, string context = "")
         {
             // Handle enum access if first part is uppercase
             string first = parts[0].strip();
+            string second = parts[1].strip();
+            
+            // Check if this is a function call (Model.method(...)) - convert to Model_method(...)
+            if (second.canFind("("))
+            {
+                // This is a static method call like IntList.new_list(...)
+                // Replace the dot (and any surrounding spaces) with underscore
+                import std.regex : regex, replaceFirst;
+                return replaceFirst(expr, regex(r"\s*\.\s*"), "_");
+            }
+            
             if (first.length > 0 && first[0] >= 'A' && first[0] <= 'Z')
             {
                 // Enum access: State.RUNNING -> RUNNING
