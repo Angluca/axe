@@ -21,6 +21,11 @@ def absolute(value: float): float {
     }
 }
 
+/// Returns true if two floats are approximately equal
+def approx_equal(a: float, b: float, eps: float): bool {
+    return absolute(a - b) <= eps;
+}
+
 /// Returns the minimum of two numbers
 def minimum(a: float, b: float): float {
     if a < b { return a; } else { return b; }
@@ -34,12 +39,16 @@ def maximum(a: float, b: float): float {
 /// Approximate square root using Newton-Raphson
 def sqrt(value: float): float {
     if value <= 0.0 { return 0.0; }
-    mut val x: float = value;
-    mut val last: float = 0.0;
-    for mut val i = 0; i < 20; i++ {
-        last = x;
+    mut val x: float = 0.0;
+    if value >= 1.0 {
+        x = value * 0.5;
+    } else {
+        x = 1.0;
+    }
+    for mut val i = 0; i < 50; i++ {
+        mut val last: float = x;
         x = 0.5 * (x + value / x);
-        if last == x { break; }
+        if approx_equal(last, x, 0.00000000000110) { break; }
     }
     return x;
 }
