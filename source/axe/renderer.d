@@ -1505,6 +1505,11 @@ private string processCondition(string condition)
 
     condition = condition.replace(" mod ", " % ");
     condition = condition.replace(" and ", " && ");
+    condition = condition.replace(" band ", " & ");
+    condition = condition.replace(" bor ", " | ");
+    condition = condition.replace(" shl ", " << ");
+    condition = condition.replace(" shr ", " >> ");
+    condition = condition.replace(" not ", " ! ");
     condition = condition.replace(" or ", " || ");
     condition = condition.replace(" xor ", " ^ ");
 
