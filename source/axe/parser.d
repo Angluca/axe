@@ -2796,6 +2796,53 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
             enforce(braceDepth == 0, "Expected '}' after macro body");
             macroNode.bodyTokens = bodyTokens;
 
+            // Parse the macro body to populate children (e.g., RawCNode)
+            if (bodyTokens.length > 0)
+            {
+                size_t bodyPos = 0;
+                while (bodyPos < bodyTokens.length)
+                {
+                    if (bodyTokens[bodyPos].type == TokenType.WHITESPACE || 
+                        bodyTokens[bodyPos].type == TokenType.NEWLINE)
+                    {
+                        bodyPos++;
+                        continue;
+                    }
+                    
+                    if (bodyTokens[bodyPos].type == TokenType.RAW)
+                    {
+                        bodyPos++; // Skip 'raw'
+                        
+                        while (bodyPos < bodyTokens.length && 
+                               (bodyTokens[bodyPos].type == TokenType.WHITESPACE || 
+                                bodyTokens[bodyPos].type == TokenType.NEWLINE))
+                            bodyPos++;
+                        
+                        enforce(bodyPos < bodyTokens.length && 
+                                bodyTokens[bodyPos].type == TokenType.LBRACE,
+                            "Expected '{' after 'raw' in macro");
+                        bodyPos++; // Skip '{'
+                        
+                        enforce(bodyPos < bodyTokens.length && 
+                                bodyTokens[bodyPos].type == TokenType.IDENTIFIER,
+                            "Expected raw code content in macro");
+                        string rawCode = bodyTokens[bodyPos].value;
+                        bodyPos++;
+                        
+                        enforce(bodyPos < bodyTokens.length && 
+                                bodyTokens[bodyPos].type == TokenType.RBRACE,
+                            "Expected '}' after raw block in macro");
+                        bodyPos++;
+                        
+                        macroNode.children ~= new RawCNode(rawCode);
+                    }
+                    else
+                    {
+                        bodyPos++;
+                    }
+                }
+            }
+
             // Store macro for later expansion
             g_macros[macroName] = MacroDef(macroParams, bodyTokens);
 
