@@ -2926,4 +2926,33 @@ unittest
         assert(cCode.canFind("void test_func(int32_t width, int32_t height, int32_t grid[height][width])"), 
                "Function definition should have dimension parameters before array parameter");
     }
+
+    {
+        auto tokens = lex(
+            "model stdlib_string_String { data: char*, len: usize } " ~
+            "def str_copy(src: String, dest: mut String): void { " ~
+            "dest.data = src.data; " ~
+            "dest.len = src.len; " ~
+            "} " ~
+            "main { }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Mut parameter with prefixed type test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("void str_copy(stdlib_string_String src, stdlib_string_String dest);") ||
+               cCode.canFind("void str_copy(stdlib_string_String src,stdlib_string_String dest);"),
+               "Forward declaration should strip mut keyword and apply type prefix");
+        
+        assert(cCode.canFind("void str_copy(stdlib_string_String src, stdlib_string_String dest)") ||
+               cCode.canFind("void str_copy(stdlib_string_String src,stdlib_string_String dest)"),
+               "Function definition should strip mut keyword and apply type prefix");
+        
+        assert(!cCode.canFind("mut stdlib_string_String") && !cCode.canFind("mut String"),
+               "mut keyword should not appear in generated C code");
+        
+        assert(cCode.canFind("dest.data = src.data;") || cCode.canFind("dest.data=src.data;"),
+               "Function parameter should be usable in function body");
+    }
 }
