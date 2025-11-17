@@ -5,14 +5,12 @@ def randomize(): void {
 }
 
 def random(a: i32, b: i32): i32 {
-    randomize();
     raw {
         return rand() % (b - a + 1) + a;
     }
 }
 
 def random_float(a: f32, b: f32): f32 {
-    randomize();
     raw {
         return (rand() / (float)RAND_MAX) * (b - a) + a;
     }
