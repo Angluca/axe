@@ -257,7 +257,7 @@ string mapAxeTypeToC(string axeType)
         string baseType = axeType[4 .. $].strip();
         return mapAxeTypeToC(baseType);
     }
-    
+
     // Handle pointers/references first
     if (axeType.startsWith("ref "))
     {
@@ -276,24 +276,28 @@ string mapAxeTypeToC(string axeType)
     }
     else if (axeType.endsWith("*"))
     {
-        string baseType = axeType[0 .. $-1].strip();
+        string baseType = axeType[0 .. $ - 1].strip();
         return mapAxeTypeToC(baseType) ~ "*";
     }
-    
+
     // Check if it's a standard type with mapping
     if (axeType in g_typeMappings)
     {
         return g_typeMappings[axeType];
     }
-    
+
     // Check if it's a model name that needs prefixing
     if (axeType in g_modelNames)
     {
         return g_modelNames[axeType];
     }
-    
+
     // Default case (user-defined types, etc)
     return axeType;
+}
+
+static class RendererConfiguration {
+    static bool releaseBuild = false;
 }
 
 /** 
@@ -376,7 +380,7 @@ string generateC(ASTNode ast)
                     else
                         g_modelNames[modelNode.name] = modelNode.name;
                 }
-                
+
                 foreach (field; modelNode.fields)
                 {
                     if (field.type == modelNode.name)
@@ -515,11 +519,17 @@ string generateC(ASTNode ast)
 
         if (funcNode.name == "main")
         {
-            cCode ~= generateStackTraceHandlers();
+            if (!RendererConfiguration.releaseBuild)
+            {
+                cCode ~= generateStackTraceHandlers();
+            }
             cCode ~= "int main(int argc, char** argv) {\n";
             cCode ~= "__axe_argc = argc;\n";
             cCode ~= "__axe_argv = argv;\n";
-            cCode ~= generateStackTraceSetup();
+            if (!RendererConfiguration.releaseBuild)
+            {
+                cCode ~= generateStackTraceSetup();
+            }
             version (Windows)
             {
                 cCode ~= "SetConsoleOutputCP(CP_UTF8);\n";
@@ -567,7 +577,7 @@ string generateC(ASTNode ast)
             auto parts = callName.split(".");
             string modelName = parts[0].strip();
             string methodName = parts[1].strip();
-            
+
             // Look up the prefixed model name
             if (modelName in g_modelNames)
             {
@@ -623,7 +633,7 @@ string generateC(ASTNode ast)
                 {
                     auto rawNode = cast(RawCNode) child;
                     string expandedCode = rawNode.code;
-                    
+
                     writeln("  DEBUG: RawC code before substitution: '", expandedCode, "'");
                     writeln("  DEBUG: Parameter map: ", paramMap);
 
@@ -631,6 +641,7 @@ string generateC(ASTNode ast)
                     {
                         // Use {{param}} syntax for explicit macro parameter substitution
                         import std.string : replace;
+
                         string pattern = "{{" ~ paramName ~ "}}";
                         if (expandedCode.canFind(pattern))
                         {
@@ -645,13 +656,13 @@ string generateC(ASTNode ast)
                             }
                         }
                         // Also support exact match for backward compatibility (but prefer {{param}})
-                        else if (expandedCode == paramName)
+                else if (expandedCode == paramName)
                         {
                             writeln("  DEBUG: Exact match (legacy) - replacing '", paramName, "' with '", paramValue, "'");
                             expandedCode = paramValue;
                         }
                     }
-                    
+
                     writeln("  DEBUG: RawC code after substitution: '", expandedCode, "'");
 
                     cCode ~= indent ~ expandedCode ~ "\n";
@@ -735,8 +746,7 @@ string generateC(ASTNode ast)
         writeln("DEBUG ArrayDeclaration: elementType='", arrayNode.elementType, "' name='", arrayNode.name, "'");
         string mappedElementType = mapAxeTypeToC(arrayNode.elementType);
         writeln("DEBUG ArrayDeclaration: mappedElementType='", mappedElementType, "'");
-        string arrayType = arrayNode.isMutable ? mappedElementType
-            : "const " ~ mappedElementType;
+        string arrayType = arrayNode.isMutable ? mappedElementType : "const " ~ mappedElementType;
 
         if (arrayNode.size2.length > 0)
         {
@@ -859,7 +869,7 @@ string generateC(ASTNode ast)
             {
                 import std.string : replace;
 
-                size_t bufferSize = cast(int)processedExpr.length - 2 + 1;
+                size_t bufferSize = cast(int) processedExpr.length - 2 + 1;
 
                 type = declNode.isMutable ? "char" : "const char";
                 decl = type ~ " " ~ declNode.name ~ "[" ~ bufferSize.to!string ~ "]";
@@ -893,7 +903,7 @@ string generateC(ASTNode ast)
         {
             string formatString = "";
             string[] exprArgs;
-            
+
             // Build format string and collect expression arguments
             for (size_t i = 0; i < printlnNode.messages.length; i++)
             {
@@ -911,9 +921,9 @@ string generateC(ASTNode ast)
                     formatString ~= printlnNode.messages[i];
                 }
             }
-            
+
             formatString ~= "\\n";
-            
+
             // Generate printf call
             if (exprArgs.length > 0)
             {
@@ -931,7 +941,7 @@ string generateC(ASTNode ast)
         {
             string formatString = "";
             string[] exprArgs;
-            
+
             // Build format string and collect expression arguments
             for (size_t i = 0; i < printNode.messages.length; i++)
             {
@@ -949,7 +959,7 @@ string generateC(ASTNode ast)
                     formatString ~= printNode.messages[i];
                 }
             }
-            
+
             // Generate printf call
             if (exprArgs.length > 0)
             {
@@ -1158,12 +1168,18 @@ string generateC(ASTNode ast)
     case "Test":
         auto testNode = cast(TestNode) ast;
 
-        // Generate main function with test runner
-        cCode ~= generateStackTraceHandlers();
+        if (!RendererConfiguration.releaseBuild)
+        {
+            writeln("Not a release build, adding stack trace handlers.");
+            cCode ~= generateStackTraceHandlers();
+        }
         cCode ~= "int main(int argc, char** argv) {\n";
         cCode ~= "    __axe_argc = argc;\n";
         cCode ~= "    __axe_argv = argv;\n";
-        cCode ~= generateStackTraceSetup();
+        if (!RendererConfiguration.releaseBuild)
+        {
+            cCode ~= generateStackTraceSetup();
+        }
         version (Windows)
         {
             cCode ~= "SetConsoleOutputCP(65001);\n";
@@ -1171,7 +1187,6 @@ string generateC(ASTNode ast)
         cCode ~= "    int passed = 0;\n";
         cCode ~= "    int failed = 0;\n\n";
 
-        // Process all statements in test block
         foreach (child; testNode.children)
         {
             if (child.nodeType == "Assert")
@@ -1227,7 +1242,7 @@ string generateC(ASTNode ast)
 
         cCode ~= "struct " ~ modelName ~ ";\n";
         cCode ~= "typedef struct " ~ modelName ~ " {\n";
-        
+
         bool hasSelfReference = false;
         foreach (field; modelNode.fields)
         {
@@ -1237,21 +1252,22 @@ string generateC(ASTNode ast)
             {
                 fieldType = fieldType[0 .. bracketPos].strip();
             }
-            
+
             if (fieldType == modelNode.name)
             {
                 hasSelfReference = true;
                 break;
             }
         }
-        
+
         foreach (field; modelNode.fields)
         {
             string fieldType;
             string arrayPart = "";
-            
+
             // Extract array part first, then map the base type to C
             import std.string : indexOf;
+
             auto bracketPos = field.type.indexOf('[');
             if (bracketPos >= 0)
             {
@@ -1263,7 +1279,7 @@ string generateC(ASTNode ast)
             {
                 fieldType = mapAxeTypeToC(field.type);
             }
-            
+
             writeln("DEBUG model field: name='", field.name, "' type='", field.type, "' mapped='", fieldType, "' arrayPart='", arrayPart, "'");
 
             // Handle ref types - convert "ref T" to "T*"
@@ -1707,7 +1723,7 @@ string processExpression(string expr, string context = "")
                 // Look up the prefixed model name and construct the function name
                 string modelName = first.strip();
                 string methodPart = second.strip();
-                
+
                 if (modelName in g_modelNames)
                 {
                     string prefixedModelName = g_modelNames[modelName];
@@ -1729,7 +1745,7 @@ string processExpression(string expr, string context = "")
                         }
                         string args = methodPart[parenPos .. argEnd];
                         string functionCall = prefixedModelName ~ "_" ~ methodName ~ args;
-                        
+
                         // If there are more parts after the function call, process them as member access
                         if (parts.length > 2)
                         {
@@ -1755,6 +1771,7 @@ string processExpression(string expr, string context = "")
                 {
                     // Fallback: Replace the dot (and any surrounding spaces) with underscore
                     import std.regex : regex, replaceFirst;
+
                     return replaceFirst(expr, regex(r"\s*\.\s*"), "_");
                 }
             }
@@ -1894,11 +1911,12 @@ private string getFormatSpecifier(string expr)
     {
         return "%s";
     }
-    
+
     // Check if it's a simple variable with string type
     import std.string : strip;
+
     string varName = expr.strip();
-    
+
     // Remove any member access to get base variable name
     if (varName.canFind("."))
     {
@@ -1908,7 +1926,7 @@ private string getFormatSpecifier(string expr)
     {
         varName = varName[0 .. varName.indexOf("->")];
     }
-    
+
     // Check if variable type is a string/pointer type
     if (varName in g_varType)
     {
@@ -1918,7 +1936,7 @@ private string getFormatSpecifier(string expr)
             return "%s";
         }
     }
-    
+
     // Default to integer format (maintains backward compatibility)
     return "%d";
 }
@@ -2357,24 +2375,25 @@ unittest
     }
 
     {
-        auto tokens = lex("def test_func(grid: i32[height][width], width: i32, height: i32) { } main { }");
+        auto tokens = lex(
+            "def test_func(grid: i32[height][width], width: i32, height: i32) { } main { }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
         writeln("Variable-length array parameter reordering test:");
         writeln(cCode);
 
-        assert(cCode.canFind("void test_func(int32_t width, int32_t height, int32_t grid[height][width]);"), 
-               "Forward declaration should have dimension parameters before array parameter");
-        
-        assert(cCode.canFind("void test_func(int32_t width, int32_t height, int32_t grid[height][width])"), 
-               "Function definition should have dimension parameters before array parameter");
+        assert(cCode.canFind("void test_func(int32_t width, int32_t height, int32_t grid[height][width]);"),
+            "Forward declaration should have dimension parameters before array parameter");
+
+        assert(cCode.canFind("void test_func(int32_t width, int32_t height, int32_t grid[height][width])"),
+            "Function definition should have dimension parameters before array parameter");
     }
 
     {
         auto tokens = lex(
             "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
-            "main { val arena = Arena.create(1024); }");
+                "main { val arena = Arena.create(1024); }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
@@ -2384,30 +2403,30 @@ unittest
         assert(cCode.canFind("struct stdlib_arena_Arena"), "Should have prefixed struct name");
         assert(cCode.canFind("stdlib_arena_Arena_create"), "Should have prefixed function name");
         assert(cCode.canFind("Arena_create( 1024)"), "Should find the original call in source");
-        assert(cCode.canFind("stdlib_arena_Arena_create( 1024 )") || cCode.canFind("stdlib_arena_Arena_create( 1024)"), 
-               "Function call should use prefixed name stdlib_arena_Arena_create");
+        assert(cCode.canFind("stdlib_arena_Arena_create( 1024 )") || cCode.canFind("stdlib_arena_Arena_create( 1024)"),
+            "Function call should use prefixed name stdlib_arena_Arena_create");
     }
 
     {
         auto tokens = lex(
             "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
-            "main { val cap = Arena.create(1024).capacity; }");
+                "main { val cap = Arena.create(1024).capacity; }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
         writeln("Member access after function call test:");
         writeln(cCode);
 
-        assert((cCode.canFind("stdlib_arena_Arena_create( 1024).capacity") || 
+        assert((cCode.canFind("stdlib_arena_Arena_create( 1024).capacity") ||
                 cCode.canFind("stdlib_arena_Arena_create(1024).capacity") ||
-                cCode.canFind("stdlib_arena_Arena_create( 1024 ).capacity")), 
-               "Should preserve member access after prefixed function call");
+                cCode.canFind("stdlib_arena_Arena_create( 1024 ).capacity")),
+            "Should preserve member access after prefixed function call");
     }
 
     {
         auto tokens = lex(
             "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
-            "test { assert(Arena.create(1024).capacity == 1024, \"test message\"); }");
+                "test { assert(Arena.create(1024).capacity == 1024, \"test message\"); }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
@@ -2416,17 +2435,17 @@ unittest
 
         assert((cCode.canFind("stdlib_arena_Arena_create( 1024 ) . capacity == 1024") ||
                 cCode.canFind("stdlib_arena_Arena_create(1024).capacity == 1024") ||
-                cCode.canFind("stdlib_arena_Arena_create( 1024 ).capacity == 1024")), 
-               "Assertion condition should preserve full expression chain with member access");
+                cCode.canFind("stdlib_arena_Arena_create( 1024 ).capacity == 1024")),
+            "Assertion condition should preserve full expression chain with member access");
         assert(!cCode.canFind("if (stdlib_arena_Arena_create( 1024 )) {") &&
-               !cCode.canFind("if (stdlib_arena_Arena_create(1024)) {"), 
-               "Should not have incomplete condition without member access");
+                !cCode.canFind("if (stdlib_arena_Arena_create(1024)) {"),
+                "Should not have incomplete condition without member access");
     }
 
     {
         auto tokens = lex(
             "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
-            "main { val x = Arena.create(2048).offset; }");
+                "main { val x = Arena.create(2048).offset; }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
@@ -2435,14 +2454,14 @@ unittest
 
         assert((cCode.canFind("stdlib_arena_Arena_create( 2048 ) . offset") ||
                 cCode.canFind("stdlib_arena_Arena_create(2048).offset") ||
-                cCode.canFind("stdlib_arena_Arena_create( 2048).offset")), 
-               "Should preserve member access for offset field");
+                cCode.canFind("stdlib_arena_Arena_create( 2048).offset")),
+            "Should preserve member access for offset field");
     }
 
     {
         auto tokens = lex(
             "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
-            "main { val arena = Arena.create(512); }");
+                "main { val arena = Arena.create(512); }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
@@ -2450,46 +2469,46 @@ unittest
         writeln(cCode);
 
         assert((cCode.canFind("stdlib_arena_Arena_create( 512 )") ||
-                cCode.canFind("stdlib_arena_Arena_create( 512)")), 
-               "Should still prefix function call even without member access");
+                cCode.canFind("stdlib_arena_Arena_create( 512)")),
+            "Should still prefix function call even without member access");
     }
 
     {
         auto tokens = lex(
             "model String { data: char*, len: usize } " ~
-            "def str_cmp(a: String, b: String): i32 { " ~
-            "    mut val len: usize = 0; " ~
-            "    if a.len < b.len { len = a.len; } else { len = b.len; } " ~
-            "    for mut val i = 0; i < len; i++ { " ~
-            "        if a.data[i] < b.data[i] { return -1; } " ~
-            "    } " ~
-            "    return 0; " ~
-            "} " ~
-            "main { }");
+                "def str_cmp(a: String, b: String): i32 { " ~
+                "    mut val len: usize = 0; " ~
+                "    if a.len < b.len { len = a.len; } else { len = b.len; } " ~
+                "    for mut val i = 0; i < len; i++ { " ~
+                "        if a.data[i] < b.data[i] { return -1; } " ~
+                "    } " ~
+                "    return 0; " ~
+                "} " ~
+                "main { }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
         writeln("Function parameter and variable scope test:");
         writeln(cCode);
 
-        assert(cCode.canFind("int32_t str_cmp(String a, String b)"), 
-               "Should have function declaration with parameters");
-        
-        assert(cCode.canFind("uintptr_t len = 0;") || cCode.canFind("uintptr_t len=0;"), 
-               "Should have len variable declaration");
-        
+        assert(cCode.canFind("int32_t str_cmp(String a, String b)"),
+            "Should have function declaration with parameters");
+
+        assert(cCode.canFind("uintptr_t len = 0;") || cCode.canFind("uintptr_t len=0;"),
+            "Should have len variable declaration");
+
         assert((cCode.canFind("if ((a.len<b.len)") || cCode.canFind("if ((a.len < b.len)") ||
-                cCode.canFind("if (a.len < b.len")), 
-               "Should use function parameter 'a' in if condition");
-        
-        assert((cCode.canFind("i < len") || cCode.canFind("i<len")), 
-               "Should use declared variable 'len' in for loop condition");
-        
-        assert((cCode.canFind("a.data[i]") || cCode.canFind("a.data[ i ]")), 
-               "Should use function parameter 'a' in for loop body");
+                cCode.canFind("if (a.len < b.len")),
+            "Should use function parameter 'a' in if condition");
+
+        assert((cCode.canFind("i < len") || cCode.canFind("i<len")),
+            "Should use declared variable 'len' in for loop condition");
+
+        assert((cCode.canFind("a.data[i]") || cCode.canFind("a.data[ i ]")),
+            "Should use function parameter 'a' in for loop body");
     }
 
-        {
+    {
         auto tokens = lex("main { println \"hello\"; }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
@@ -3026,7 +3045,8 @@ unittest
         writeln("Basic macro test:");
         writeln(cCode);
 
-        assert(cCode.canFind("const int32_t x = (5+3);") || cCode.canFind("const int32_t x = ( 5 + 3 );"),
+        assert(cCode.canFind("const int32_t x = (5+3);") || cCode.canFind(
+                "const int32_t x = ( 5 + 3 );"),
             "Should expand macro add(5, 3) to (5+3)");
         assert(!cCode.canFind("add(5, 3)"), "Should not have macro call in output");
     }
@@ -3080,7 +3100,8 @@ unittest
         writeln("Macro with variable argument test:");
         writeln(cCode);
 
-        assert(cCode.canFind("const int32_t b = ( a + 1 );") || cCode.canFind("const int32_t b = (a + 1);"),
+        assert(cCode.canFind("const int32_t b = ( a + 1 );") || cCode.canFind(
+                "const int32_t b = (a + 1);"),
             "Should expand inc(a) with variable argument");
     }
 
@@ -3207,28 +3228,29 @@ unittest
     }
 
     {
-        auto tokens = lex("def test_func(grid: i32[height][width], width: i32, height: i32) { } main { }");
+        auto tokens = lex(
+            "def test_func(grid: i32[height][width], width: i32, height: i32) { } main { }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
         writeln("Variable-length array parameter reordering test:");
         writeln(cCode);
 
-        assert(cCode.canFind("void test_func(int32_t width, int32_t height, int32_t grid[height][width]);"), 
-               "Forward declaration should have dimension parameters before array parameter");
-        
-        assert(cCode.canFind("void test_func(int32_t width, int32_t height, int32_t grid[height][width])"), 
-               "Function definition should have dimension parameters before array parameter");
+        assert(cCode.canFind("void test_func(int32_t width, int32_t height, int32_t grid[height][width]);"),
+            "Forward declaration should have dimension parameters before array parameter");
+
+        assert(cCode.canFind("void test_func(int32_t width, int32_t height, int32_t grid[height][width])"),
+            "Function definition should have dimension parameters before array parameter");
     }
 
     {
         auto tokens = lex(
             "model stdlib_string_String { data: char*, len: usize } " ~
-            "def str_copy(src: String, dest: mut String): void { " ~
-            "dest.data = src.data; " ~
-            "dest.len = src.len; " ~
-            "} " ~
-            "main { }");
+                "def str_copy(src: String, dest: mut String): void { " ~
+                "dest.data = src.data; " ~
+                "dest.len = src.len; " ~
+                "} " ~
+                "main { }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
@@ -3236,18 +3258,18 @@ unittest
         writeln(cCode);
 
         assert(cCode.canFind("void str_copy(stdlib_string_String src, stdlib_string_String dest);") ||
-               cCode.canFind("void str_copy(stdlib_string_String src,stdlib_string_String dest);"),
-               "Forward declaration should strip mut keyword and apply type prefix");
-        
+                cCode.canFind("void str_copy(stdlib_string_String src,stdlib_string_String dest);"),
+                "Forward declaration should strip mut keyword and apply type prefix");
+
         assert(cCode.canFind("void str_copy(stdlib_string_String src, stdlib_string_String dest)") ||
-               cCode.canFind("void str_copy(stdlib_string_String src,stdlib_string_String dest)"),
-               "Function definition should strip mut keyword and apply type prefix");
-        
+                cCode.canFind("void str_copy(stdlib_string_String src,stdlib_string_String dest)"),
+                "Function definition should strip mut keyword and apply type prefix");
+
         assert(!cCode.canFind("mut stdlib_string_String") && !cCode.canFind("mut String"),
-               "mut keyword should not appear in generated C code");
-        
+            "mut keyword should not appear in generated C code");
+
         assert(cCode.canFind("dest.data = src.data;") || cCode.canFind("dest.data=src.data;"),
-               "Function parameter should be usable in function body");
+            "Function parameter should be usable in function body");
     }
 
     {
@@ -3264,7 +3286,7 @@ unittest
     {
         auto tokens = lex(
             "model Node { value: i32; next: ref Node; } " ~
-            "main { mut val head: ref Node = nil; }");
+                "main { mut val head: ref Node = nil; }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
@@ -3280,7 +3302,7 @@ unittest
     {
         auto tokens = lex(
             "def use_grid(grid: ref i32[], width: i32) { } " ~
-            "main { use_grid(nil, 0); }");
+                "main { use_grid(nil, 0); }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
@@ -3314,8 +3336,8 @@ unittest
         writeln(cCode);
 
         assert(cCode.canFind("struct stdlib_errors_error"), "Should have generated struct with prefixed name");
-        assert(cCode.canFind("struct stdlib_errors_error){.msg = string_create(\"test\")}"), 
-        "Should instantiate with correct prefixed struct name");
+        assert(cCode.canFind("struct stdlib_errors_error){.msg = string_create(\"test\")}"),
+            "Should instantiate with correct prefixed struct name");
     }
 
     {
@@ -3334,7 +3356,7 @@ unittest
         }`);
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
-        
+
         writeln("Increment/decrement on struct member test:");
         writeln(cCode);
 

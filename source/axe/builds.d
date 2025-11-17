@@ -104,7 +104,16 @@ bool handleMachineArgs(string[] args)
         }
         else
         {
-            string cCode = generateC(ast);
+            string cCode = "";
+            if (args.canFind("--release"))
+            {
+                RendererConfiguration.releaseBuild = true;
+                cCode = generateC(ast);
+            }
+            else
+            {
+                cCode = generateC(ast);
+            }
             string ext = isAxec ? ".axec" : ".axe";
             std.file.write(replace(name, ext, ".c"), cCode);
             bool needsOpenMP = hasParallelBlocks(ast);
