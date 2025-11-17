@@ -6,7 +6,7 @@ use stdlib/string (
     String
 );
 
-macro make_list(name: string, type: string, nullval: untyped) {
+macro make_list(name: string, type: string, nullval: untyped, cep: untyped) {
     model name {
         data: ref type;
         length: i32;
@@ -15,8 +15,8 @@ macro make_list(name: string, type: string, nullval: untyped) {
         def new_list(arena: ref Arena, capacity: i32): ref name {
             mut val lst: ref name;
             raw {
-                lst = (name*)stdlib_arena_Arena_alloc(arena, sizeof(name));
-                lst->data = (type*)stdlib_arena_Arena_alloc_array(arena, sizeof(type), capacity);
+                lst = ({{name}}*)stdlib_arena_Arena_alloc(arena, sizeof({{name}}));
+                lst->data = ({{cep}}*)stdlib_arena_Arena_alloc_array(arena, sizeof({{cep}}), capacity);
             }
             lst.length = 0;
             lst.cap = capacity;
@@ -28,9 +28,9 @@ macro make_list(name: string, type: string, nullval: untyped) {
                 val new_cap: i32 = lst.cap * 2;
                 mut val new_data: ref type;
                 raw {
-                    new_data = (type*)stdlib_arena_Arena_alloc_array(arena, sizeof(type), new_cap);
+                    new_data = ({{cep}}*)stdlib_arena_Arena_alloc_array(arena, sizeof({{cep}}), new_cap);
                     for (int i = 0; i < lst->length; i++) {
-                        memcpy(&new_data[i], &lst->data[i], sizeof(type));
+                        memcpy(&new_data[i], &lst->data[i], sizeof({{cep}}));
                     }
                 }
                 lst.data = new_data;
@@ -58,11 +58,11 @@ macro make_list(name: string, type: string, nullval: untyped) {
     }
 }
 
-make_list(IntList, i32, 0);
-make_list(FloatList, f32, 0.0);
-make_list(CharList, char, "");
-make_list(LongList, i64, 0);
-make_list(DoubleList, f64, 0.0);
+make_list(IntList, i32, 0, int);
+make_list(FloatList, f32, 0.0, float);
+make_list(CharList, char, "", char);
+make_list(LongList, i64, 0, long);
+make_list(DoubleList, f64, 0.0, double);
 
 test {
     mut val arena: Arena = Arena.create(65536);

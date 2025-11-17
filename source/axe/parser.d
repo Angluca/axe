@@ -2608,25 +2608,59 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                     "Expected '(' after macro name");
                 pos++; // Skip '('
 
-                // Parse macro arguments
+                // Parse macro arguments (handle comma-separated arguments properly)
                 string[] macroArgs;
-                while (pos < tokens.length && tokens[pos].type != TokenType.RPAREN)
+                string currentArg = "";
+                int parenDepth = 0;
+                bool hasContent = false; // Track if current arg has any non-whitespace content
+                
+                while (pos < tokens.length && (tokens[pos].type != TokenType.RPAREN || parenDepth > 0))
                 {
-                    if (tokens[pos].type == TokenType.WHITESPACE)
+                    if (tokens[pos].type == TokenType.LPAREN)
                     {
+                        parenDepth++;
+                        currentArg ~= tokens[pos].value;
                         pos++;
-                        continue;
                     }
-
-                    if (tokens[pos].type == TokenType.COMMA)
+                    else if (tokens[pos].type == TokenType.RPAREN)
                     {
+                        parenDepth--;
+                        if (parenDepth > 0)
+                            currentArg ~= tokens[pos].value;
                         pos++;
-                        continue;
                     }
-
-                    macroArgs ~= tokens[pos].value;
-                    pos++;
+                    else if (tokens[pos].type == TokenType.COMMA && parenDepth == 0)
+                    {
+                        // Always add the argument, even if it's empty (for empty string literals)
+                        macroArgs ~= currentArg.strip();
+                        currentArg = "";
+                        hasContent = false;
+                        pos++;
+                    }
+                    else if (tokens[pos].type == TokenType.WHITESPACE)
+                    {
+                        // Preserve whitespace within arguments, but don't add it between args
+                        if (currentArg.length > 0 || parenDepth > 0)
+                            currentArg ~= " ";
+                        pos++;
+                    }
+                    else if (tokens[pos].type == TokenType.STR)
+                    {
+                        // String literals (including empty strings) are important
+                        currentArg ~= "\"" ~ tokens[pos].value ~ "\"";
+                        hasContent = true;
+                        pos++;
+                    }
+                    else
+                    {
+                        currentArg ~= tokens[pos].value;
+                        hasContent = true;
+                        pos++;
+                    }
                 }
+                
+                // Add the last argument if there is one (even if empty)
+                macroArgs ~= currentArg.strip();
 
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.RPAREN,
                     "Expected ')' after macro arguments");
@@ -2644,25 +2678,45 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                 Token[] expandedTokens = macroDef.bodyTokens.dup;
 
                 // Substitute parameters in the token stream
+                // Use {{param}} syntax for explicit macro parameter substitution
+                writeln("DEBUG macro expansion: Substituting parameters for macro '", identName, "'");
+                writeln("  Macro params: ", macroDef.params);
+                writeln("  Macro args: ", macroArgs);
+                writeln("  Number of expanded tokens: ", expandedTokens.length);
                 foreach (ref token; expandedTokens)
                 {
                     for (size_t i = 0; i < macroDef.params.length && i < macroArgs.length;
                         i++)
                     {
-                        if (token.type == TokenType.IDENTIFIER)
+                        // Substitute in all token types that have string values
+                        // Look for {{param}} pattern for explicit macro parameter substitution
+                        if (token.value.length > 0)
                         {
-                            // For raw blocks, substitute within the entire string content
-                            // For other identifiers, exact match only
-                            if (token.value == macroDef.params[i])
+                            import std.string : replace;
+                            string pattern = "{{" ~ macroDef.params[i] ~ "}}";
+                            
+                            if (token.value.canFind(pattern))
                             {
-                                token.value = macroArgs[i];
+                                string oldValue = token.value;
+                                writeln("  DEBUG: Found pattern '", pattern, "' in token value (type: ", token.type, ")");
+                                writeln("    Token value: '", oldValue, "'");
+                                // replace() in std.string replaces all occurrences
+                                token.value = token.value.replace(pattern, macroArgs[i]);
+                                if (oldValue != token.value)
+                                {
+                                    writeln("  DEBUG: Replaced '", pattern, "' with '", macroArgs[i], "'");
+                                    writeln("    Result: '", token.value, "'");
+                                }
+                                else
+                                {
+                                    writeln("  DEBUG: WARNING - pattern found but replacement didn't change value!");
+                                }
                             }
-                            else
+                            // Also support exact match for backward compatibility (but prefer {{param}})
+                            else if (token.value == macroDef.params[i])
                             {
-                                // Also substitute within multi-line raw blocks
-                                import std.array : replace;
-
-                                token.value = token.value.replace(macroDef.params[i], macroArgs[i]);
+                                writeln("  DEBUG: Exact match (legacy) - replacing '", token.value, "' with '", macroArgs[i], "'");
+                                token.value = macroArgs[i];
                             }
                         }
                     }

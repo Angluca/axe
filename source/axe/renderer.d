@@ -532,7 +532,10 @@ string generateC(ASTNode ast)
             for (size_t i = 0; i < macroNode.params.length && i < callArgs.length;
                 i++)
             {
-                string processedArg = processExpression(callArgs[i]);
+                // For macro arguments, use them as-is without processing
+                // This is important for untyped parameters used in raw C blocks
+                // They should be literal string substitutions, not processed expressions
+                string processedArg = callArgs[i].strip();
                 paramMap[macroNode.params[i]] = processedArg;
                 writeln("  DEBUG: Mapping '", macroNode.params[i], "' -> '", processedArg, "'");
             }
@@ -544,13 +547,43 @@ string generateC(ASTNode ast)
                 {
                     auto rawNode = cast(RawCNode) child;
                     string expandedCode = rawNode.code;
+                    
+                    writeln("  DEBUG: RawC code before substitution: '", expandedCode, "'");
+                    writeln("  DEBUG: Parameter map: ", paramMap);
 
                     foreach (paramName, paramValue; paramMap)
                     {
-                        expandedCode = expandedCode.replace(paramName, paramValue);
+                        // Use {{param}} syntax for explicit macro parameter substitution
+                        import std.string : replace;
+                        string pattern = "{{" ~ paramName ~ "}}";
+                        if (expandedCode.canFind(pattern))
+                        {
+                            writeln("  DEBUG: Found pattern '", pattern, "' in code");
+                            writeln("  DEBUG: Replacing '", pattern, "' with '", paramValue, "'");
+                            string beforeReplace = expandedCode;
+                            // replace() in std.string replaces all occurrences
+                            expandedCode = expandedCode.replace(pattern, paramValue);
+                            if (beforeReplace == expandedCode)
+                            {
+                                writeln("  DEBUG: WARNING - replacement didn't change code!");
+                            }
+                        }
+                        // Also support exact match for backward compatibility (but prefer {{param}})
+                        else if (expandedCode == paramName)
+                        {
+                            writeln("  DEBUG: Exact match (legacy) - replacing '", paramName, "' with '", paramValue, "'");
+                            expandedCode = paramValue;
+                        }
                     }
+                    
+                    writeln("  DEBUG: RawC code after substitution: '", expandedCode, "'");
 
                     cCode ~= indent ~ expandedCode ~ "\n";
+                }
+                else
+                {
+                    // Handle non-RawC children (e.g., other AST nodes from macro body)
+                    cCode ~= generateC(child);
                 }
             }
             break;
@@ -1261,7 +1294,10 @@ string processExpression(string expr, string context = "")
             for (size_t i = 0; i < macroNode.params.length && i < callArgs.length;
                 i++)
             {
-                paramMap[macroNode.params[i]] = processExpression(callArgs[i]);
+                // For macro arguments, use them as-is without processing
+                // This is important for untyped parameters used in raw C blocks
+                // They should be literal string substitutions, not processed expressions
+                paramMap[macroNode.params[i]] = callArgs[i].strip();
             }
 
             // Expand macro body
