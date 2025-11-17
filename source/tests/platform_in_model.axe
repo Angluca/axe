@@ -1,5 +1,5 @@
 model TestModel {
-    value: int;
+    value: i32;
     
     def test_method() {
         platform windows {
