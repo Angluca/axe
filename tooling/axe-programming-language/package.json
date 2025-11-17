@@ -1,0 +1,25 @@
+{
+  "name": "axe-programming-language",
+  "displayName": "Axe Programming Language",
+  "description": "Language support for Axe",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.106.1"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "axe",
+      "aliases": ["Axe", "axe"],
+      "extensions": [".axe",".axec"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "axe",
+      "scopeName": "source.axe",
+      "path": "./syntaxes/axe.tmLanguage.json"
+    }]
+  }
+}
