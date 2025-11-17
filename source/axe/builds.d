@@ -108,8 +108,6 @@ bool handleMachineArgs(string[] args)
             string cCode = generateC(ast);
             string ext = isAxec ? ".axec" : ".axe";
             std.file.write(replace(name, ext, ".c"), cCode);
-            
-            // Check if we need to link OpenMP
             bool needsOpenMP = hasParallelBlocks(ast);
             
             string[] clangCmd;
@@ -131,10 +129,8 @@ bool handleMachineArgs(string[] args)
                 }
             }
             
-            // Add OpenMP flags if needed
             if (needsOpenMP)
             {
-                writeln("Detected parallel blocks, adding OpenMP support (-fopenmp)");
                 clangCmd ~= ["-fopenmp"];
             }
 
