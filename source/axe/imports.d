@@ -365,6 +365,17 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                             g_addedNodeNames[modelNode.name] = true;
                             isTransitiveDependency[modelNode.name] = true;
                             writeln("DEBUG: Adding transitive model: ", modelNode.name);
+                            
+                            foreach (method; modelNode.methods)
+                            {
+                                auto methodFunc = cast(FunctionNode) method;
+                                if (methodFunc !is null)
+                                {
+                                    renameFunctionCalls(methodFunc, moduleFunctionMap);
+                                    renameTypeReferences(methodFunc, moduleModelMap);
+                                }
+                            }
+                            
                             newChildren ~= modelNode;
                         }
                     }
@@ -483,7 +494,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 renameFunctionCalls(child, importedFunctions);
                 renameTypeReferences(child, importedModels);
             }
-            else if (child.nodeType == "Function" && currentModulePrefix.length > 0)
+            else if (child.nodeType == "Function" && (currentModulePrefix.length > 0 || importedFunctions.length > 0))
             {
                 auto funcNode = cast(FunctionNode) child;
                 if (funcNode.name in isTransitiveDependency)
