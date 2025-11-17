@@ -13,22 +13,32 @@
     "url": "https://github.com/axelang/axe.git"
   },
   "engines": {
-    "vscode": "^1.106.1"
+    "vscode": ">=1.80.0"
   },
   "categories": [
     "Programming Languages"
   ],
   "contributes": {
-    "languages": [{
-      "id": "axe",
-      "aliases": ["Axe", "axe"],
-      "extensions": [".axe",".axec"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "axe",
-      "scopeName": "source.axe",
-      "path": "./syntaxes/axe.tmLanguage.json"
-    }]
+    "languages": [
+      {
+        "id": "axe",
+        "aliases": [
+          "Axe",
+          "axe"
+        ],
+        "extensions": [
+          ".axe",
+          ".axec"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "axe",
+        "scopeName": "source.axe",
+        "path": "./syntaxes/axe.tmLanguage.json"
+      }
+    ]
   }
 }
