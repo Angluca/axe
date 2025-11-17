@@ -33,8 +33,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 auto modelNode = cast(ModelNode) child;
                 if (startsWithLower(modelNode.name))
                 {
-                    throw new Exception("Declaring primitive types outside of the standard library is disallowed: " ~
-                        modelNode.name);
+                    throw new Exception(
+                        "Declaring primitive types outside of the standard library is disallowed: " ~
+                            modelNode.name);
                 }
             }
         }
@@ -129,6 +130,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             bool importIsAxec = modulePath.endsWith(".axec");
             auto importAst = parse(importTokens, importIsAxec, false);
             auto importProgram = cast(ProgramNode) importAst;
+
             if (!modulePath.canFind("stdlib") && importProgram !is null)
             {
                 foreach (importChild; importProgram.children)
@@ -138,7 +140,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         auto mNode = cast(ModelNode) importChild;
                         if (startsWithLower(mNode.name))
                         {
-                            string msg = "Declaring primitive types outside of the standard library is disallowed: " ~ mNode.name;
+                            string msg = "Declaring primitive types outside of the standard library is disallowed: "
+                                ~ mNode.name;
                             throw new Exception(msg);
                         }
                     }
@@ -254,7 +257,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             {
                 if (importName !in resolvedImports)
                 {
-                    throw new Exception("Import '" ~ importName ~ "' not found in module '" ~
+                    throw new Exception(
+                        "Import '" ~ importName ~ "' not found in module '" ~
                             useNode.moduleName ~ "'");
                 }
             }
