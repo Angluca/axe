@@ -1,6 +1,3 @@
-use external("string.h");
-use external("stdint.h");
-
 /// Copies a value from one location to another.
 macro copy(src: untyped, dest: untyped, type: untyped) {
     raw {
