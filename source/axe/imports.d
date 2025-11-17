@@ -427,6 +427,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                             useNode.moduleName ~ "'");
                 }
             }
+
+            newChildren ~= child;
         }
         else
         {

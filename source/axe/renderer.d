@@ -491,7 +491,7 @@ string generateC(ASTNode ast)
 
         foreach (child; ast.children)
         {
-            if (child.nodeType != "Model" && child.nodeType != "ExternalImport" && child.nodeType != "Enum")
+            if (child.nodeType != "Model" && child.nodeType != "ExternalImport" && child.nodeType != "Enum" && child.nodeType != "Use")
                 cCode ~= generateC(child) ~ "\n";
         }
         break;
