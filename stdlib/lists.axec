@@ -14,7 +14,7 @@ use stdlib/string (
 macro make_list(name: string, type: string, nullval: untyped, cep: untyped, printer: untyped) {
     model name {
         data: ref type;
-        length: i32;
+        len: i32;
         cap: i32;
 
         def new_list(arena: ref Arena, capacity: i32): ref name {
@@ -23,30 +23,30 @@ macro make_list(name: string, type: string, nullval: untyped, cep: untyped, prin
                 lst = ({{name}}*)stdlib_arena_Arena_alloc(arena, sizeof({{name}}));
                 lst->data = ({{cep}}*)stdlib_arena_Arena_alloc_array(arena, sizeof({{cep}}), capacity);
             }
-            lst.length = 0;
+            lst.len = 0;
             lst.cap = capacity;
             return lst;
         }
 
         def push(lst: ref name, arena: ref Arena, value: type) {
-            if lst.length >= lst.cap {
+            if lst.len >= lst.cap {
                 val new_cap: i32 = lst.cap * 2;
                 mut val new_data: ref type;
                 raw {
                     new_data = ({{cep}}*)stdlib_arena_Arena_alloc_array(arena, sizeof({{cep}}), new_cap);
-                    for (int i = 0; i < lst->length; i++) {
+                    for (int i = 0; i < lst->len; i++) {
                         memcpy(&new_data[i], &lst->data[i], sizeof({{cep}}));
                     }
                 }
                 lst.data = new_data;
                 lst.cap = new_cap;
             }
-            lst.data[lst.length] = value;
-            lst.length = lst.length + 1;
+            lst.data[lst.len] = value;
+            lst.len = lst.len + 1;
         }
 
         def get(lst: ref name, index: i32): type {
-            if index < 0 or index >= lst.length {
+            if index < 0 or index >= lst.len {
                 println "Index out of bounds!";
                 return nullval;
             }
@@ -54,7 +54,7 @@ macro make_list(name: string, type: string, nullval: untyped, cep: untyped, prin
         }
 
         def print_all(lst: ref name) {
-            for mut val i = 0; i < lst.length; i++ {
+            for mut val i = 0; i < lst.len; i++ {
                 printer(lst.data[i]);
                 print " ";
             }
