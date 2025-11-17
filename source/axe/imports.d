@@ -283,10 +283,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                             }
                         }
                         
-                        if (!alreadyAdded && funcNode.name !in g_addedNodeNames)
+                        if (!alreadyAdded)
                         {
-                            g_addedNodeNames[funcNode.name] = true;
-                            isTransitiveDependency[funcNode.name] = true;
                             writeln("DEBUG: Adding transitive function: ", funcNode.name);
 
                             renameFunctionCalls(funcNode, moduleFunctionMap);
@@ -359,9 +357,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                             }
                         }
                         
-                        if (!alreadyAdded && modelNode.name !in g_addedNodeNames)
+                        if (!alreadyAdded)
                         {
-                            g_addedNodeNames[modelNode.name] = true;
                             isTransitiveDependency[modelNode.name] = true;
                             writeln("DEBUG: Adding transitive model: ", modelNode.name);
                             
@@ -409,9 +406,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                             }
                         }
                         
-                        if (!alreadyAdded && macroNode.name !in g_addedNodeNames)
+                        if (!alreadyAdded)
                         {
-                            g_addedNodeNames[macroNode.name] = true;
                             newChildren ~= macroNode;
                         }
                     }
@@ -473,6 +469,12 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     renameTypeReferences(method, modelTypeMap);
                 }
 
+                foreach (ref field; modelNode.fields)
+                {
+                    if (field.type in modelTypeMap)
+                        field.type = modelTypeMap[field.type];
+                }
+
                 renameFunctionCalls(child, importedFunctions);
                 renameTypeReferences(child, modelTypeMap);
             }
@@ -490,6 +492,12 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 {
                     renameFunctionCalls(method, importedFunctions);
                     renameTypeReferences(method, importedModels);
+                }
+
+                foreach (ref field; modelNode.fields)
+                {
+                    if (field.type in importedModels)
+                        field.type = importedModels[field.type];
                 }
 
                 renameFunctionCalls(child, importedFunctions);
