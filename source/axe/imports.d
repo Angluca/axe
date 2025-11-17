@@ -195,8 +195,6 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             string[string] moduleModelMap;
             string[string] moduleMacroMap;
 
-            // First pass: build maps ONLY for items explicitly imported (not transitive deps)
-            // This allows us to correctly identify which items to rename
             foreach (importChild; importProgram.children)
             {
                 if (importChild.nodeType == "Function")
@@ -386,7 +384,6 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 
                 string originalModelName = modelNode.name;
                 string prefixedModelName = currentModulePrefix ~ "_" ~ originalModelName;
-
                 string[string] modelTypeMap = importedModels.dup;
                 modelTypeMap[originalModelName] = prefixedModelName;
                 modelNode.name = prefixedModelName;
@@ -415,10 +412,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             {
                 auto modelNode = cast(ModelNode) child;
                 
-                // Skip renaming for transitive dependencies
                 if (modelNode.name in isTransitiveDependency)
                 {
-                    // Don't rename transitive dependencies
                     newChildren ~= child;
                     continue;
                 }
@@ -434,11 +429,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             }
             else if (child.nodeType == "Function" && currentModulePrefix.length > 0)
             {
-                // Skip renaming for transitive dependencies
                 auto funcNode = cast(FunctionNode) child;
                 if (funcNode.name in isTransitiveDependency)
                 {
-                    // Don't rename transitive dependencies
                     newChildren ~= child;
                     continue;
                 }
