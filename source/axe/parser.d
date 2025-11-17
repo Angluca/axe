@@ -5431,7 +5431,7 @@ void validateTypeNotForbidden(string typeName)
 
     if (g_forbiddenCTypes.canFind(typeName))
     {
-        throw new Exception("Forbidden C type '" ~ typeName ~
+        throw new Exception("C type '" ~ typeName ~
                 "' cannot be used directly. Use the corresponding Axe type instead (e.g., i32, u64, f32, etc.)");
     }
 }
