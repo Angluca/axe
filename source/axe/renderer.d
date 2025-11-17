@@ -655,8 +655,12 @@ string generateC(ASTNode ast)
 
     case "ArrayDeclaration":
         auto arrayNode = cast(ArrayDeclarationNode) ast;
-        string arrayType = arrayNode.isMutable ? arrayNode.elementType
-            : "const " ~ arrayNode.elementType;
+        // Map the element type to C type (e.g., i32 -> int32_t)
+        writeln("DEBUG ArrayDeclaration: elementType='", arrayNode.elementType, "' name='", arrayNode.name, "'");
+        string mappedElementType = mapAxeTypeToC(arrayNode.elementType);
+        writeln("DEBUG ArrayDeclaration: mappedElementType='", mappedElementType, "'");
+        string arrayType = arrayNode.isMutable ? mappedElementType
+            : "const " ~ mappedElementType;
 
         if (arrayNode.size2.length > 0)
         {
@@ -711,17 +715,30 @@ string generateC(ASTNode ast)
             g_refDepths[declNode.name] = declNode.refDepth;
         }
 
-        string baseType = declNode.typeName.length > 0 ? mapAxeTypeToC(declNode.typeName) : "int";
         string arrayPart = "";
+        string baseType;
 
         import std.string : indexOf, count;
         import std.conv : to;
 
-        auto bracketPos = baseType.indexOf('[');
-        if (bracketPos >= 0)
+        // Extract array part first, then map the base type to C
+        if (declNode.typeName.length > 0)
         {
-            arrayPart = baseType[bracketPos .. $];
-            baseType = baseType[0 .. bracketPos];
+            auto bracketPos = declNode.typeName.indexOf('[');
+            if (bracketPos >= 0)
+            {
+                arrayPart = declNode.typeName[bracketPos .. $];
+                string rawBaseType = declNode.typeName[0 .. bracketPos].strip();
+                baseType = mapAxeTypeToC(rawBaseType);
+            }
+            else
+            {
+                baseType = mapAxeTypeToC(declNode.typeName);
+            }
+        }
+        else
+        {
+            baseType = "int";
         }
 
         for (int i = 0; i < declNode.refDepth; i++)
