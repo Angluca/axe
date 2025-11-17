@@ -130,7 +130,7 @@
         },
         {
           "name": "constant.language.null.axe",
-          "match": "\\bnull\\b"
+          "match": "\\bnil\\b"
         },
         {
           "name": "constant.other.axe",
