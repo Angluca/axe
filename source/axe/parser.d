@@ -36,6 +36,11 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
         writeln(i, ": ", token.type, " ('", token.value, "')");
     }
 
+    if (!isAxec)
+    {
+        enforceNoCKeys(tokens);
+    }
+
     size_t pos = 0;
     auto ast = new ProgramNode();
     Scope currentScope;
@@ -5616,5 +5621,49 @@ void validateTypeNotForbidden(string typeName)
     {
         throw new Exception("C type '" ~ typeName ~
                 "' cannot be used directly. Use the corresponding Axe type instead (e.g., i32, u64, f32, etc.)");
+    }
+}
+
+private immutable string[] C_KEYS = [
+    "printf", "fprintf", "sprintf", "snprintf", "vprintf", "vfprintf", "vsprintf", "vsnprintf",
+    "scanf", "fscanf", "sscanf", "vscanf", "vfscanf", "vsscanf",
+    "gets", "getchar", "putchar", "puts",
+    "memcpy", "memmove", "memset", "memccpy", "mempcpy",
+    "strcpy", "strncpy", "strcat", "strncat", "strlcpy", "strlcat",
+    "strtok", "strtok_r", "stpcpy", "stpncpy", "bcopy", "bzero",
+    "perror", "system", "abort"
+];
+
+private immutable bool[string] C_KEYWORD_SET = (() {
+    bool[string] map;
+    foreach (keyword; C_KEYS)
+        map[keyword] = true;
+    return map;
+})();
+
+private void enforceNoCKeys(Token[] tokens)
+{
+    import std.string : strip, toLower;
+
+    foreach (token; tokens)
+    {
+        if (token.type != TokenType.IDENTIFIER)
+            continue;
+
+        string ident = token.value.strip();
+        if (ident.length == 0)
+            continue;
+
+        while (ident.length > 0 && (ident[$ - 1] == '*' || ident[$ - 1] == '&'))
+            ident = ident[0 .. $ - 1];
+        while (ident.length > 0 && (ident[0] == '*' || ident[0] == '&'))
+            ident = ident[1 .. $];
+        ident = ident.strip();
+        if (ident.length == 0)
+            continue;
+
+        string lowerIdent = ident.toLower();
+        if (lowerIdent in C_KEYWORD_SET)
+            enforce(false, ident ~ " is undefined.");
     }
 }

@@ -106,7 +106,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
 
             string importSource = readText(modulePath);
             auto importTokens = lex(importSource);
-            auto importAst = parse(importTokens, true, false);
+            bool importIsAxec = modulePath.endsWith(".axec");
+            auto importAst = parse(importTokens, importIsAxec, false);
             auto importProgram = cast(ProgramNode) importAst;
             string sanitizedModuleName = useNode.moduleName.replace("/", "_");
 
@@ -260,7 +261,6 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     renameTypeReferences(method, modelTypeMap);
                 }
 
-                // Apply type renaming to the entire file (for all functions)
                 renameFunctionCalls(child, importedFunctions);
                 renameTypeReferences(child, modelTypeMap);
             }
