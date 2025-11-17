@@ -267,7 +267,7 @@ def atan2(y: f64, x: f64): f64 {
     } elif x == 0.0 and y < 0.0 {
         return -HALF_PI;
     } else {
-        return 0.0; // undefined, return 0
+        return 0.0;
     }
 }
 
