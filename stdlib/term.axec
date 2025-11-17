@@ -1,13 +1,13 @@
 use stdlib/os (
-    exec_raw
+    exec
 );
 
 def clear_screen() {
     platform windows {
-        exec_raw("cls");
+        exec("cls");
     } 
     platform posix {
-        exec_raw("clear");
+        exec("clear");
     }
 }
 
