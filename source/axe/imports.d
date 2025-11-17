@@ -740,6 +740,37 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
             }
         }
     }
+    else if (node.nodeType == "Assert")
+    {
+        auto assertNode = cast(AssertNode) node;
+        foreach (oldName, newName; nameMap)
+        {
+            string oldCall = oldName ~ "(";
+            if (assertNode.condition.canFind(oldCall))
+            {
+                assertNode.condition = assertNode.condition.replace(oldCall, newName ~ "(");
+            }
+
+            string oldCallDot = oldName.replace("_", ".") ~ "(";
+            if (assertNode.condition.canFind(oldCallDot))
+            {
+                assertNode.condition = assertNode.condition.replace(oldCallDot, newName ~ "(");
+            }
+
+            import std.regex : regex, replaceAll;
+
+            if (assertNode.condition.canFind(".") && oldName.canFind("_"))
+            {
+                string modelMethod = convertToModelMethodPattern(oldName);
+                auto dotPattern = regex("\\b" ~ modelMethod ~ "\\s*\\(");
+                string newCond = replaceAll(assertNode.condition, dotPattern, newName ~ "(");
+                if (newCond != assertNode.condition)
+                {
+                    assertNode.condition = newCond;
+                }
+            }
+        }
+    }
 
     foreach (child; node.children)
     {

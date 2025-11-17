@@ -1,12 +1,78 @@
 use stdlib/string (string);
-use stdlib/io     (println_str);
+use stdlib/errors (error, panic);
 
-def exec(cmd: string) {
+/// Execute a shell command. Returns exit status.
+def exec(cmd: string): i32 {
+    mut val result: i32 = 0;
     raw {
-        system(cmd.data);
+        result = system(cmd.data);
     }
+    return result;
+}
+
+/// Check if a file exists.
+def file_exists(path: string): bool {
+    mut val out: bool = false;
+    raw {
+        FILE *f = fopen(path.data, "r");
+        if (f != NULL) {
+            fclose(f);
+            out = true;
+        }
+    }
+    return out;
+}
+
+/// Read entire file into a newly allocated string.
+def read_file(path: string): string {
+    mut val out: string;
+
+    raw {
+        FILE *f = fopen(path.data, "rb");
+        if (!f) {
+            stdlib_errors_panic(stdlib_errors_error_create("Failed to open file"));
+        }
+
+        fseek(f, 0, SEEK_END);
+        long size = ftell(f);
+        fseek(f, 0, SEEK_SET);
+
+        char *buf = (char*)malloc(size + 1);
+        fread(buf, 1, size, f);
+        buf[size] = 0;
+        fclose(f);
+
+        out = stdlib_string_string_create(buf);
+    }
+
+    return out;
+}
+
+/// Write a string to a file, replacing its contents.
+/// Returns true on success.
+def write_file(path: string, contents: string): bool {
+    mut val ok: bool = false;
+
+    raw {
+        FILE *f = fopen(path.data, "wb");
+        if (!f) {
+            return false;
+        }
+        fwrite(contents.data, 1, contents.len, f);
+        fclose(f);
+        ok = true;
+    }
+
+    return ok;
 }
 
 test {
-    exec(string.create("dir"));
+    assert(exec(string.create("echo test")) == 0, "exec should run successfully");
+
+    assert(write_file(string.create("testfile.txt"),
+                      string.create("hello")), 
+           "write_file should succeed");
+
+    assert(file_exists(string.create("testfile.txt")), 
+           "file should exist after writing");
 }
