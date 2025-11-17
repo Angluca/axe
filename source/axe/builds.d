@@ -84,6 +84,7 @@ bool handleMachineArgs(string[] args)
 
         auto ast = parse(tokens, isAxec);
 
+        resetProcessedModules();
         ast = processImports(ast, dirName(name), isAxec, name);
 
         if (args.canFind("-ast"))
