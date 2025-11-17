@@ -3259,7 +3259,66 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                             fieldName ~= "[" ~ indexExpr ~ "]";
                         }
 
-                        if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
+                        if (pos < tokens.length && tokens[pos].type == TokenType.LPAREN)
+                        {
+                            // Method call like error.print_self(err)
+                            pos++;
+                            while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                                pos++;
+
+                            string functionArgs;
+                            int parenDepth = 0;
+                            while (pos < tokens.length && (tokens[pos].type != TokenType.RPAREN || parenDepth > 0))
+                            {
+                                if (tokens[pos].type == TokenType.LPAREN)
+                                {
+                                    parenDepth++;
+                                    functionArgs ~= tokens[pos].value;
+                                    pos++;
+                                }
+                                else if (tokens[pos].type == TokenType.RPAREN)
+                                {
+                                    parenDepth--;
+                                    functionArgs ~= tokens[pos].value;
+                                    pos++;
+                                }
+                                else if (tokens[pos].type == TokenType.WHITESPACE)
+                                {
+                                    pos++;
+                                }
+                                else if (tokens[pos].type == TokenType.COMMA)
+                                {
+                                    functionArgs ~= ", ";
+                                    pos++;
+                                }
+                                else if (tokens[pos].type == TokenType.STR)
+                                {
+                                    functionArgs ~= "\"" ~ tokens[pos].value ~ "\"";
+                                    pos++;
+                                }
+                                else
+                                {
+                                    functionArgs ~= tokens[pos].value;
+                                    pos++;
+                                }
+                            }
+
+                            enforce(pos < tokens.length && tokens[pos].type == TokenType.RPAREN,
+                                "Expected ')' after method arguments");
+                            pos++;
+
+                            while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                                pos++;
+
+                            enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
+                                "Expected ';' after method call");
+                            pos++;
+
+                            funcNode.children ~= new FunctionCallNode(
+                                leftSide ~ "." ~ fieldName, functionArgs);
+                        }
+                        else if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR
+                            && tokens[pos].value == "=")
                         {
                             // Check if the object is declared (could be a function parameter or local variable)
                             if (!funcScope.isDeclared(identName))
@@ -3293,7 +3352,7 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                         }
                         else
                         {
-                            enforce(false, "Expected '=' after member access here: " ~ tokens[pos - 5 .. pos + 5]
+                            enforce(false, "Expected '=' or '(' after member access here: " ~ tokens[pos - 5 .. pos + 5]
                                     .map!(t => t.value).join(""));
                         }
                     }
