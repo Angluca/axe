@@ -20,7 +20,7 @@ model error {
 }
 
 def panic(err: error) {
-    print "\nFatal: ";
+    print "\nRuntimeError: ";
     error.print_self(err);
     
     raw {
@@ -34,4 +34,5 @@ def __test_error(): error {
 
 test {
     println_str(__test_error().msg);
+    panic(error.create("Uh oh"));
 }
