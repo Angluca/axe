@@ -1,3 +1,8 @@
+use stdlib/errors (
+    error,
+    panic
+);
+
 /// Arena for memory allocation.
 model Arena {
     buffer: usize;
@@ -33,7 +38,7 @@ model Arena {
 
         raw {
             if (arena->offset + size > arena->capacity) {
-                printf("Arena out of memory!\n");
+                stdlib_errors_panic(stdlib_errors_error_create("Arena out of memory!\n"));
                 return nil;
             }
             result = (void *)(arena->buffer + arena->offset);
