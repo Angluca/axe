@@ -412,9 +412,14 @@ string generateC(ASTNode ast)
 
         version (Windows)
         {
-            cCode ~= "#include <windows.h>\n";
+            cCode ~= `#ifndef NOMINMAX
+                      #define NOMINMAX
+                      #endif
+                      #define NOGDI
+                      #define WIN32_LEAN_AND_MEAN`;
+            cCode ~= "\n#include <windows.h>\n";
         }
-
+        
         cCode ~= "\n";
 
         foreach (child; ast.children)

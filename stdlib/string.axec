@@ -1,3 +1,7 @@
+use stdlib/lists (
+    StringList
+);
+
 /// string model representing a dynamic string with length tracking.
 model string {
     data: char*;
@@ -198,6 +202,15 @@ def double_to_str(value: f64, buffer: char*): char* {
         sprintf(buffer, "%lf", value);
     }
     return buffer;
+}
+
+/// Formats a string using a format string and arguments.
+def fmt(format: string, args: StringList): string {
+    mut val result: string = string.create("");
+    raw {
+
+    }
+    return result;
 }
 
 test {    
