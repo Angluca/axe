@@ -21,6 +21,7 @@ enum TokenType
     LOOP,
     BREAK,
     STR,
+    CHAR,
     SEMICOLON,
     LBRACE,
     RBRACE,

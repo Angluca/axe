@@ -210,7 +210,8 @@ def double_to_str(value: f64, buffer: char*): char* {
 }
 
 /// Formats a string using a format string and arguments.
-def fmt(fmt_string: string, args: Any[]): string {
+/// Each `{}` placeholder in `fmt_string` is replaced by the next string in `args`.
+def fmt(fmt_string: string, args: string[]): string {
     mut val result: string = string.create("");
     mut val arg_index: i32 = 0;
     mut val i: i32 = 0;
@@ -220,34 +221,19 @@ def fmt(fmt_string: string, args: Any[]): string {
             break;
         }
         if fmt_string.data[i] == "{" and fmt_string.data[i+1] == "}" {
-            mut val a: Any = args[arg_index];
+            mut val s: string = args[arg_index];
             arg_index = arg_index + 1;
-            switch a.kind {
-                case AnyKind.INT_T {
-                    result = result + string.from_i32(a.value.i);
-                }
-                case AnyKind.FLOAT_T {
-                    result = result + string.from_f32(a.value.f);
-                }
-                case AnyKind.STRING_T {
-                    result = result + a.value.s;
-                }
-                case AnyKind.BOOL_T {
-                    mut val s: string = "";
-                    if a.value.b {
-                        s = "true";
-                    } else {
-                        s = "false";
-                    }
-                    result = result + s;
-                }
-                case AnyKind.PTR_T {
-                    result = result + string.from_ptr(a.value.ptr);
-                }
-            }
+            concat(result, s);
             i = i + 2;
         } else {
-            result = result + string.from_char(fmt_string[i]);
+            raw {
+                char tmp[2];
+                tmp[0] = fmt_string.data[i];
+                tmp[1] = '\0';
+                strcat((char*)result.data, tmp);
+                result.len = (uintptr_t)strlen((const char*)result.data);
+                result.cap = result.len;
+            }
             i = i + 1;
         }
     }

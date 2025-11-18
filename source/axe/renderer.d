@@ -1462,7 +1462,7 @@ string generateC(ASTNode ast)
         }
         else
         {
-            cCode ~= indent ~ "case " ~ caseNode.value ~ ":\n";
+            cCode ~= indent ~ "case " ~ processExpression(caseNode.value) ~ ":\n";
         }
 
         loopLevel++;
@@ -2009,10 +2009,9 @@ string processExpression(string expr, string context = "")
         }
     }
 
-    // Auto-dereference if this is a reference variable
     if (expr in g_refDepths && g_refDepths[expr] > 0)
     {
-        if (context == "println") // Remove "assignment" from here
+        if (context == "println")
         {
             string result = expr;
             for (int i = 0; i < g_refDepths[expr]; i++)
@@ -2022,6 +2021,15 @@ string processExpression(string expr, string context = "")
             return result;
         }
     }
+
+    // TODO: Remove and replace with something better.
+    //
+    // Hack: conditions that compare against bare { or } came from STR tokens in the parser
+    // without quotes. Emit them as C character literals so generated code is valid.
+    if (expr == "{")
+        return "'{'";
+    if (expr == "}")
+        return "'}'";
 
     return expr;
 }

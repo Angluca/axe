@@ -173,6 +173,14 @@ Token[] lex(string source)
             pos = ending + 1;
             break;
 
+        case '\'':
+            size_t cend = source.indexOf('\'', pos + 1);
+            enforce(cend != -1, "Unterminated character literal");
+            enforce(cend == pos + 2, "Character literals must contain exactly one character");
+            tokens ~= Token(TokenType.CHAR, source[pos + 1 .. cend]);
+            pos = cend + 1;
+            break;
+
         case '(', ')', ',':
             tokens ~= Token(
                 source[pos] == '(' ? TokenType.LPAREN : source[pos] == ')' ? TokenType.RPAREN

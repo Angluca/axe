@@ -235,6 +235,8 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                 {
                     if (tokens[pos].type == TokenType.STR)
                         expr ~= "\"" ~ tokens[pos].value ~ "\"";
+                    else if (tokens[pos].type == TokenType.CHAR)
+                        expr ~= "'" ~ tokens[pos].value ~ "'";
                     else if (tokens[pos].type == TokenType.DOT)
                         expr ~= ".";
                     else
@@ -1083,6 +1085,8 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                             {
                                 if (tokens[pos].type == TokenType.STR)
                                     value ~= "\"" ~ tokens[pos].value ~ "\"";
+                                else if (tokens[pos].type == TokenType.CHAR)
+                                    value ~= "'" ~ tokens[pos].value ~ "'";
                                 else
                                     value ~= tokens[pos].value;
                                 pos++;
