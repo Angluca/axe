@@ -208,21 +208,17 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
         string[] messages;
         bool[] isExpressions;
 
-        // Skip whitespace
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
             pos++;
 
-        // Parse comma-separated arguments until semicolon
         while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
         {
-            // Skip whitespace before argument
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
 
             if (pos >= tokens.length || tokens[pos].type == TokenType.SEMICOLON)
                 break;
 
-            // Check if it's a string literal
             if (tokens[pos].type == TokenType.STR)
             {
                 string msg = tokens[pos].value;
@@ -232,7 +228,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
             }
             else
             {
-                // Parse as expression until comma or semicolon
                 string expr = "";
                 while (pos < tokens.length &&
                     tokens[pos].type != TokenType.SEMICOLON &&
@@ -253,25 +248,19 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                 }
             }
 
-            // Skip whitespace after argument
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
 
-            // If comma, skip it and continue to next argument
             if (pos < tokens.length && tokens[pos].type == TokenType.COMMA)
             {
                 pos++;
-                // Skip whitespace after comma
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
             }
         }
 
-        // If no arguments were parsed, return empty
         if (messages.length == 0)
-        {
             return new PrintlnNode("", false);
-        }
 
         return new PrintlnNode(messages, isExpressions);
     }
@@ -289,21 +278,17 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
         string[] messages;
         bool[] isExpressions;
 
-        // Skip whitespace
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
             pos++;
 
-        // Parse comma-separated arguments until semicolon
         while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
         {
-            // Skip whitespace before argument
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
 
             if (pos >= tokens.length || tokens[pos].type == TokenType.SEMICOLON)
                 break;
 
-            // Check if it's a string literal
             if (tokens[pos].type == TokenType.STR)
             {
                 string msg = tokens[pos].value;
@@ -313,7 +298,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
             }
             else
             {
-                // Parse as expression until comma or semicolon
                 string expr = "";
                 while (pos < tokens.length &&
                     tokens[pos].type != TokenType.SEMICOLON &&
@@ -334,25 +318,19 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                 }
             }
 
-            // Skip whitespace after argument
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
 
-            // If comma, skip it and continue to next argument
             if (pos < tokens.length && tokens[pos].type == TokenType.COMMA)
             {
                 pos++;
-                // Skip whitespace after comma
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
             }
         }
 
-        // If no arguments were parsed, return empty
         if (messages.length == 0)
-        {
             return new PrintNode("", false);
-        }
 
         return new PrintNode(messages, isExpressions);
     }
@@ -414,7 +392,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                 else if (tokens[pos].type == TokenType.MUT || tokens[pos].type == TokenType
                     .IDENTIFIER)
                 {
-                    // Check for 'mut' keyword before parameter name (mut name: Type)
                     bool isMutable = false;
                     if (tokens[pos].type == TokenType.MUT)
                     {
@@ -432,7 +409,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                     {
                         pos++;
 
-                        // Check for mut keyword after colon (name: mut Type)
                         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                             pos++;
                         if (pos < tokens.length && tokens[pos].type == TokenType.MUT)
@@ -443,7 +419,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                                 pos++;
                         }
 
-                        // Check for ref keyword before type
                         string refPrefix = "";
                         if (pos < tokens.length && tokens[pos].type == TokenType.REF)
                         {
@@ -477,7 +452,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                             }
 
                             debug writeln("DEBUG parseArgs: fullType='", fullType, "' paramName='", paramName, "' isMutable=", isMutable);
-                            // Prefix with "mut " if parameter is mutable
                             string mutPrefix = isMutable ? "mut " : "";
                             string paramStr = mutPrefix ~ fullType ~ " " ~ paramName;
                             debug writeln("DEBUG parseArgs: storing param as '", paramStr, "'");
@@ -485,7 +459,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                         }
                         else
                         {
-                            // Prefix with "mut " if parameter is mutable
                             string mutPrefix = isMutable ? "mut " : "";
                             string paramStr = mutPrefix ~ refPrefix ~ baseType ~ " " ~ paramName;
                             debug writeln("DEBUG parseArgs: storing param as '", paramStr, "' (non-array, isMutable=", isMutable, ")");
@@ -662,7 +635,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
 
             while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
             {
-                // Skip whitespace/newlines
                 if (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType
                     .NEWLINE)
                 {
@@ -670,12 +642,10 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                     continue;
                 }
 
-                // Check if this is a method definition
                 if (tokens[pos].type == TokenType.DEF)
                 {
                     pos++; // Skip 'def'
 
-                    // Skip BOTH whitespace AND newlines
                     while (pos < tokens.length && (tokens[pos].type == TokenType.WHITESPACE ||
                             tokens[pos].type == TokenType.NEWLINE))
                         pos++;
@@ -687,11 +657,9 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                     string methodName = tokens[pos].value;
                     pos++;
 
-                    // Parse method parameters
                     string[] params = parseArgs();
                     string returnType = "void";
 
-                    // Check for return type annotation
                     if (pos < tokens.length && tokens[pos].type == TokenType.COLON)
                     {
                         pos++;
@@ -712,7 +680,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                             returnType = "ref " ~ returnType;
                     }
 
-                    // Create function with namespaced name: ModelName_methodName
                     string namespacedName = modelName ~ "_" ~ methodName;
                     auto funcNode = new FunctionNode(namespacedName, params, returnType);
 
@@ -725,18 +692,14 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
 
                     Scope methodScope = new Scope();
 
-                    // Register method parameters in the scope
                     foreach (param; params)
                     {
-                        // Extract parameter name from "type name" format
                         import std.string : split, strip;
 
                         auto parts = param.strip().split();
                         if (parts.length >= 2)
                         {
-                            string paramName = parts[$ - 1]; // Last part is the name
-                            // Parameters are immutable by default (unless mut or ref)
-                            // Check if param starts with "mut " or contains " ref " (with spaces to avoid false matches)
+                            string paramName = parts[$ - 1];
                             bool isMutable = param.startsWith("mut ") || param.canFind(" ref ") || param.startsWith(
                                 "ref ");
                             methodScope.addVariable(paramName, isMutable);
@@ -758,7 +721,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
 
                     modelMethods ~= funcNode;
                 }
-                // Otherwise it's a field
                 else if (tokens[pos].type == TokenType.IDENTIFIER)
                 {
                     string fieldName = tokens[pos].value;
@@ -768,11 +730,9 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                         "Expected ':' after field name");
                     pos++; // Skip ':'
 
-                    // Check if this is a union field: `name: union { ... }`
                     size_t savedPos = pos;
                     string baseType = parseType();
 
-                    // If the base type is "union" and the next token is '{', parse a union block
                     if (baseType == "union" && pos < tokens.length && tokens[pos].type == TokenType.LBRACE)
                     {
                         ModelNode.Field unionField;
@@ -780,11 +740,9 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                         unionField.type = "union";
                         unionField.isUnion = true;
 
-                        // Parse the union body
                         pos++; // Skip '{'
                         while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
                         {
-                            // Skip whitespace/newlines/semicolons
                             if (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType.NEWLINE
                                 || tokens[pos].type == TokenType.SEMICOLON)
                             {
@@ -801,14 +759,12 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                                 "Expected ':' after union field name");
                             pos++; // Skip ':'
 
-                            // Parse the inner field type (no nested unions for now)
                             size_t innerSavedPos = pos;
                             string innerBaseType = parseType();
                             string innerFieldType;
 
                             if (pos < tokens.length && tokens[pos].type == TokenType.LBRACKET)
                             {
-                                // It's an array type, parse it properly
                                 pos = innerSavedPos;
                                 auto innerArrayInfo = parseArrayType();
                                 innerFieldType = innerArrayInfo.elementType;
@@ -835,7 +791,6 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                             innerField.type = innerFieldType;
                             unionField.nestedFields ~= innerField;
 
-                            // Optional semicolon after each union field
                             if (pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON)
                                 pos++;
                         }
@@ -848,12 +803,10 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                     }
                     else
                     {
-                        // Not a union field, restore any lookahead side effects
                         string fieldType;
 
                         if (pos < tokens.length && tokens[pos].type == TokenType.LBRACKET)
                         {
-                            // It's an array type, parse it properly
                             pos = savedPos;
                             auto arrayInfo = parseArrayType();
                             fieldType = arrayInfo.elementType;
