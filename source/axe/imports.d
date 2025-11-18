@@ -123,7 +123,6 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
     }
 
     bool[string] isTransitiveDependency;
-    // Deduplication now uses global g_addedNodeNames
 
     foreach (child; programNode.children)
     {
@@ -359,8 +358,6 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         resolvedImports[modelNode.name] = true;
                     }
 
-                    // Always add models from imported modules (including transitive dependencies)
-                    // But only rename if explicitly imported
                     if (useNode.imports.canFind(modelNode.name))
                     {
                         string prefixedName = moduleModelMap[modelNode.name];
@@ -393,8 +390,6 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     }
                     else
                     {
-                        // Add transitive dependency models as-is (don't rename them)
-                        // But avoid duplicates by checking if already in newChildren
                         bool alreadyAdded = false;
                         foreach (existingChild; newChildren)
                         {
@@ -444,8 +439,6 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     }
                     else
                     {
-                        // Add transitive dependency macros as-is
-                        // But avoid duplicates by checking if already in newChildren
                         bool alreadyAdded = false;
                         foreach (existingChild; newChildren)
                         {
@@ -482,14 +475,12 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
         }
         else
         {
-            // This is user code - rename function calls and type references
             debug writeln("DEBUG imports: Renaming user code with ", importedFunctions.length, " imported functions");
             foreach (key, value; importedFunctions)
             {
                 debug writeln("  DEBUG: importedFunctions['", key, "'] = '", value, "'");
             }
 
-            // If this is a model with methods in a .axec file, rename the model and its methods
             if (child.nodeType == "Model" && currentModulePrefix.length > 0)
             {
                 auto modelNode = cast(ModelNode) child;
