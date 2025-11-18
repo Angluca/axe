@@ -3164,7 +3164,7 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
             size_t startPos = pos;
             while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
             {
-                writeln("Function body pos ", pos, ": ", tokens[pos].type, " ('", tokens[pos].value, "')");
+                debug writeln("Function body pos ", pos, ": ", tokens[pos].type, " ('", tokens[pos].value, "')");
 
                 switch (tokens[pos].type)
                 {
@@ -4028,7 +4028,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
     import std.array : join;
     import std.stdio : writeln;
 
-    writeln("[parseStatementHelper] pos=", pos, " token=", tokens[pos].type, " value='", tokens[pos].value, "'");
+    debug writeln("[parseStatementHelper] pos=", pos, " token=", tokens[pos].type, " value='", tokens[pos].value, "'");
 
     switch (tokens[pos].type)
     {
@@ -5304,7 +5304,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
 
     default:
         // Safeguard: if we don't recognize the token, we must advance to prevent infinite loops
-        writeln("[parseStatementHelper] WARNING: Unhandled token type ", tokens[pos].type, " at pos ", pos);
+        debug writeln("[parseStatementHelper] WARNING: Unhandled token type ", tokens[pos].type, " at pos ", pos);
         enforce(false, "Unexpected token in statement: " ~ tokens[pos].value ~ " (type: " ~ tokens[pos]
                 .type.to!string ~ ")\nFull context: " ~ tokens[pos - 5 .. pos + 5].map!(t => t.value)
                 .join(""));
