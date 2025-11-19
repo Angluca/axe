@@ -724,6 +724,26 @@ string generateC(ASTNode ast)
         {
             callName = g_functionPrefixes[callName];
         }
+        else
+        {
+            import std.string : indexOf;
+
+            auto underscorePos = callName.indexOf('_');
+            if (underscorePos > 0)
+            {
+                string modelName = callName[0 .. underscorePos];
+                string methodName = callName[underscorePos + 1 .. $];
+
+                if (modelName in g_modelNames && methodName.length > 0)
+                {
+                    string modelCName = canonicalModelCName(modelName);
+                    if (modelCName.length == 0)
+                        modelCName = modelName;
+
+                    callName = modelCName ~ "_" ~ methodName;
+                }
+            }
+        }
 
         if (callName in g_macros)
         {

@@ -719,6 +719,22 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
                 }
             }
         }
+
+        // Also apply renaming inside FunctionCall arguments. This is
+        // important for nested calls like `compare(upper, string.create("X"))`
+        // where `string.create` only appears as text in the args.
+        foreach (ref arg; callNode.args)
+        {
+            foreach (oldName, newName; nameMap)
+            {
+                arg = replaceStandaloneCall(arg, oldName, newName);
+                string oldCallDot = oldName.replace("_", ".") ~ "(";
+                if (arg.canFind(oldCallDot))
+                {
+                    arg = arg.replace(oldCallDot, newName ~ "(");
+                }
+            }
+        }
     }
     else if (node.nodeType == "Print")
     {
