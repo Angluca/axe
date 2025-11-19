@@ -681,9 +681,60 @@ string replaceStandaloneCall(string text, string oldName, string newName)
 {
     import std.regex : regex, replaceAll;
 
+    // Prevent double-prefixing: if newName contains oldName, don't replace if already in text
+    if (newName.canFind("_" ~ oldName) && text.canFind(newName ~ "("))
+    {
+        // Already fully prefixed, no need to replace
+        return text;
+    }
+
     auto escaped = escapeRegexLiteral(oldName);
     auto pattern = regex("(?<![A-Za-z0-9_])" ~ escaped ~ "(\\s*)\\(");
     return replaceAll(text, pattern, newName ~ "$1(");
+}
+
+/**
+ * Fix double-prefixed function names (e.g., stdlib_string_stdlib_string_concat -> stdlib_string_concat)
+ */
+string fixDoublePrefix(string expr)
+{
+    import std.regex : regex, replaceAll;
+    
+    string fixedExpr = expr;
+    size_t fixes = 0;
+    
+    static immutable double_prefixes = [
+        "stdlib_string_stdlib_string_": "stdlib_string_",
+        "stdlib_regex_stdlib_regex_": "stdlib_regex_",
+        "stdlib_os_stdlib_os_": "stdlib_os_",
+        "stdlib_io_stdlib_io_": "stdlib_io_",
+        "stdlib_arena_stdlib_arena_": "stdlib_arena_",
+        "stdlib_errors_stdlib_errors_": "stdlib_errors_",
+        "stdlib_lists_stdlib_lists_": "stdlib_lists_",
+        "stdlib_math_stdlib_math_": "stdlib_math_",
+        "stdlib_memory_stdlib_memory_": "stdlib_memory_",
+        "stdlib_random_stdlib_random_": "stdlib_random_",
+        "stdlib_term_stdlib_term_": "stdlib_term_",
+        "stdlib_time_stdlib_time_": "stdlib_time_",
+        "stdlib_typecons_stdlib_typecons_": "stdlib_typecons_",
+    ];
+    
+    foreach (doublePre, singlePre; double_prefixes)
+    {
+        while (fixedExpr.canFind(doublePre))
+        {
+            auto pattern = regex(doublePre);
+            fixedExpr = replaceAll(fixedExpr, pattern, singlePre);
+            fixes++;
+        }
+    }
+    
+    if (fixes > 0)
+    {
+        debug writeln("      DEBUG fixDoublePrefix: Fixed ", fixes, " double-prefix patterns");
+    }
+    
+    return fixedExpr;
 }
 
 /**
@@ -752,6 +803,8 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
                     string oldCallDot = oldName.replace("_", ".") ~ "(";
                     printNode.messages[i] = printNode.messages[i].replace(oldCallDot, newName ~ "(");
                 }
+                // FIX DOUBLE-PREFIXING in Print
+                printNode.messages[i] = fixDoublePrefix(printNode.messages[i]);
             }
         }
     }
@@ -768,20 +821,29 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
                     string oldCallDot = oldName.replace("_", ".") ~ "(";
                     printlnNode.messages[i] = printlnNode.messages[i].replace(oldCallDot, newName ~ "(");
                 }
+                // FIX DOUBLE-PREFIXING in Println
+                printlnNode.messages[i] = fixDoublePrefix(printlnNode.messages[i]);
             }
         }
     }
     else if (node.nodeType == "Return")
     {
         auto returnNode = cast(ReturnNode) node;
+        debug writeln("    DEBUG Return before processing: '", returnNode.expression, "'");
+        debug writeln("    DEBUG Return nameMap: ", nameMap);
         foreach (oldName, newName; nameMap)
         {
+            string before = returnNode.expression;
             returnNode.expression = replaceStandaloneCall(returnNode.expression, oldName, newName);
+            if (before != returnNode.expression)
+                debug writeln("      DEBUG Return replaced '", oldName, "' -> '", newName, "': '", returnNode.expression, "'");
 
             string oldCallDot = oldName.replace("_", ".") ~ "(";
             if (returnNode.expression.canFind(oldCallDot))
             {
+                before = returnNode.expression;
                 returnNode.expression = returnNode.expression.replace(oldCallDot, newName ~ "(");
+                debug writeln("      DEBUG Return replaced dot call '", oldCallDot, "' -> '", newName, "(': '", returnNode.expression, "'");
             }
 
             import std.regex : regex, replaceAll;
@@ -793,10 +855,16 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
                 string newExpr = replaceAll(returnNode.expression, dotPattern, newName ~ "(");
                 if (newExpr != returnNode.expression)
                 {
+                    debug writeln("      DEBUG Return regex replaced pattern: '", returnNode.expression, "' -> '", newExpr, "'");
                     returnNode.expression = newExpr;
                 }
             }
         }
+        
+        // FIX DOUBLE-PREFIXING: Apply post-processing fix
+        returnNode.expression = fixDoublePrefix(returnNode.expression);
+        
+        debug writeln("    DEBUG Return after processing: '", returnNode.expression, "'");
     }
     else if (node.nodeType == "Declaration")
     {
@@ -839,6 +907,8 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
                 }
             }
         }
+        // FIX DOUBLE-PREFIXING in Declaration
+        declNode.initializer = fixDoublePrefix(declNode.initializer);
     }
     else if (node.nodeType == "Assignment")
     {
@@ -866,6 +936,8 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
                 }
             }
         }
+        // FIX DOUBLE-PREFIXING in Assignment
+        assignNode.expression = fixDoublePrefix(assignNode.expression);
     }
     else if (node.nodeType == "Assert")
     {
@@ -893,6 +965,8 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
                 }
             }
         }
+        // FIX DOUBLE-PREFIXING in Assert
+        assertNode.condition = fixDoublePrefix(assertNode.condition);
     }
 
     foreach (child; node.children)

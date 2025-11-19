@@ -1638,23 +1638,46 @@ string processExpression(string expr, string context = "")
 
     import std.regex : regex, matchFirst;
     import std.array : replace;
-
-    // FIRST: Replace Axe operators with C equivalents before any other processing
     import std.regex : replaceAll;
     import std.string : replace;
 
-    // Use regex to replace operators that are not part of identifiers
-    // First handle the common case with spaces explicitly
     expr = expr.replace(" mod ", " % ");
-
-    // Then match 'mod' when preceded/followed by non-letter/underscore characters
     expr = expr.replaceAll(regex(r"([^a-zA-Z_])mod([^a-zA-Z_])"), "$1%$2");
     expr = expr.replaceAll(regex(r"^mod([^a-zA-Z_])"), "%$1");
     expr = expr.replaceAll(regex(r"([^a-zA-Z_])mod$"), "$1%");
-
     expr = expr.replace(" and ", " && ");
     expr = expr.replace(" or ", " || ");
     expr = expr.replace(" xor ", " ^ ");
+
+    // Handle typecasts: translate Axe types to C types
+    // E.g., (i32), (usize), (i64) -> (int32_t), (uintptr_t), (int64_t)
+    static immutable string[string] typeCastMap = [
+        "i8": "int8_t",
+        "u8": "uint8_t",
+        "i16": "int16_t",
+        "u16": "uint16_t",
+        "i32": "int32_t",
+        "u32": "uint32_t",
+        "i64": "int64_t",
+        "u64": "uint64_t",
+        "isize": "intptr_t",
+        "usize": "uintptr_t",
+        "f32": "float",
+        "f64": "double",
+        "bool": "bool",
+        "char": "char",
+        "byte": "uint8_t",
+        "size": "uintptr_t",
+        "ptrdiff": "intptr_t"
+    ];
+
+    // Replace typecasts like (i32) with (int32_t)
+    foreach (axeType, cType; typeCastMap)
+    {
+        // Match (type) with optional spaces inside
+        string pattern = r"\(\s*" ~ axeType ~ r"\s*\)";
+        expr = expr.replaceAll(regex(pattern), "(" ~ cType ~ ")");
+    }
 
     // Handle array literals: [type]{elem1, elem2, ...}
     if (expr.canFind("[") && expr.canFind("{"))
@@ -1723,15 +1746,84 @@ string processExpression(string expr, string context = "")
         }
     }
 
-    // Check for macro calls in expressions
+    // Prefix imported function names in expressions
+    // E.g., concat(...) -> stdlib_string_concat(...) if concat is from stdlib/string
+    foreach (funcName, prefixedName; g_functionPrefixes)
+    {
+        debug writeln("DEBUG processExpression: Looking for ", funcName, " -> ", prefixedName, " in expr: '", expr, "'");
+        import std.regex : regex, replaceAll;
+
+        string pattern = funcName ~ r"\s*\(";
+        auto funcRegex = regex(pattern);
+
+        if (expr.canFind(funcName ~ "(") || expr.canFind(funcName ~ " ("))
+        {
+            debug writeln("DEBUG processExpression: Found ", funcName, " in expr");
+            string result = "";
+            size_t pos = 0;
+
+            while (pos < expr.length)
+            {
+                auto match = matchFirst(expr[pos .. $], funcRegex);
+                if (!match)
+                {
+                    result ~= expr[pos .. $];
+                    break;
+                }
+
+                size_t matchStart = pos + match.pre.length;
+                size_t matchEnd = matchStart + funcName.length;
+
+                bool alreadyPrefixed = false;
+                if (matchStart > 0)
+                {
+                    char prevChar = expr[matchStart - 1];
+                    if ((prevChar >= 'a' && prevChar <= 'z') || (prevChar >= 'A' && prevChar <= 'Z') ||
+                        (prevChar >= '0' && prevChar <= '9') || prevChar == '_')
+                    {
+                        alreadyPrefixed = true;
+                    }
+                }
+
+                if (alreadyPrefixed)
+                {
+                    debug writeln("DEBUG processExpression: Skipping match (already prefixed)");
+                    result ~= expr[pos .. matchEnd];
+                    pos = matchEnd;
+                }
+                else
+                {
+                    size_t parenPos = matchEnd;
+                    while (parenPos < expr.length && (expr[parenPos] == ' ' || expr[parenPos] == '\t'))
+                        parenPos++;
+
+                    if (parenPos < expr.length && expr[parenPos] == '(')
+                    {
+                        debug writeln("DEBUG processExpression: Replacing ", funcName, " with ", prefixedName);
+                        result ~= expr[pos .. matchStart];
+                        result ~= prefixedName;
+                        pos = matchEnd;
+                    }
+                    else
+                    {
+                        result ~= expr[pos .. matchEnd];
+                        pos = matchEnd;
+                    }
+                }
+            }
+
+            expr = result;
+        }
+    }
+
     debug writeln("DEBUG processExpression: Checking for macros in expr: '", expr, "'");
     debug writeln("DEBUG processExpression: Available macros: ", g_macros.keys);
+
     foreach (macroName, macroNode; g_macros)
     {
         import std.string : indexOf, split, strip;
         import std.regex : regex, matchFirst;
 
-        // Match macro name followed by optional whitespace and opening paren
         auto macroPattern = regex(macroName ~ r"\s*\(");
         auto match = matchFirst(expr, macroPattern);
 
@@ -1743,13 +1835,11 @@ string processExpression(string expr, string context = "")
         while (match)
         {
             auto startIdx = match.pre.length;
-            // Find the opening paren (skip any whitespace after macro name)
             size_t parenStart = startIdx + macroName.length;
             while (parenStart < expr.length && (expr[parenStart] == ' ' || expr[parenStart] == '\t'))
                 parenStart++;
-            parenStart++; // Skip the '(' itself
+            parenStart++;
 
-            // Find matching closing paren
             int depth = 1;
             size_t parenEnd = parenStart;
             while (parenEnd < expr.length && depth > 0)
@@ -1762,11 +1852,8 @@ string processExpression(string expr, string context = "")
                     parenEnd++;
             }
 
-            // Extract arguments
             string argsStr = expr[parenStart .. parenEnd];
             string[] callArgs;
-
-            // Simple argument parsing (split by comma, but respect nested parens)
             int argDepth = 0;
             size_t argStart = 0;
             for (size_t i = 0; i < argsStr.length; i++)
@@ -1784,7 +1871,6 @@ string processExpression(string expr, string context = "")
             if (argStart < argsStr.length)
                 callArgs ~= argsStr[argStart .. $].strip();
 
-            // Build parameter substitution map
             string[string] paramMap;
             for (size_t i = 0; i < macroNode.params.length && i < callArgs.length;
                 i++)
@@ -1795,7 +1881,6 @@ string processExpression(string expr, string context = "")
                 paramMap[macroNode.params[i]] = callArgs[i].strip();
             }
 
-            // Expand macro body
             string expandedCode = "";
             foreach (child; macroNode.children)
             {
@@ -1804,7 +1889,6 @@ string processExpression(string expr, string context = "")
                     auto rawNode = cast(RawCNode) child;
                     expandedCode = rawNode.code;
 
-                    // Replace parameters in the raw code
                     foreach (paramName, paramValue; paramMap)
                     {
                         expandedCode = expandedCode.replace(paramName, paramValue);
@@ -1812,15 +1896,11 @@ string processExpression(string expr, string context = "")
                 }
             }
 
-            // Replace macro call with expanded code
             expr = expr[0 .. startIdx] ~ "(" ~ expandedCode ~ ")" ~ expr[parenEnd + 1 .. $];
 
-            // Search for next occurrence
             match = matchFirst(expr, macroPattern);
         }
     }
-
-    // No transformation needed for 2D arrays - they work naturally in C!
 
     // Handle ref_of() built-in function - replace all occurrences (with or without spaces)
     import std.regex : regex, replaceAll;
