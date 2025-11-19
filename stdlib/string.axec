@@ -129,7 +129,7 @@ def is_alnum(c: i32): i32 {
 }
 
 /// Converts character to uppercase.
-def to_upper(c: i32): i32 {
+def to_upper_chr(c: i32): i32 {
     mut val result: i32 = 0;
     raw {
         result = toupper(c);
@@ -138,7 +138,7 @@ def to_upper(c: i32): i32 {
 }
 
 /// Converts character to lowercase.
-def to_lower(c: i32): i32 {
+def to_lower_chr(c: i32): i32 {
     mut val result: i32 = 0;
     raw {
         result = tolower(c);
@@ -244,8 +244,8 @@ test {
     assert(is_alpha(65) != 0, "65 (A) should be alphabetic");
     assert(is_digit(48) != 0, "48 (0) should be a digit");
     assert(is_alnum(97) != 0, "97 (a) should be alphanumeric");
-    assert(to_upper(97) == 65, "to_upper('a') should return A");
-    assert(to_lower(65) == 97, "to_lower('A') should return a");
+    assert(to_upper_chr(97) == 65, "to_upper_chr('a') should return A");
+    assert(to_lower_chr(65) == 97, "to_lower_chr('A') should return a");
     assert(str_ncmp("hello", "help", 3) == 0, "first 3 chars of hello and help should match");
     
     mut val buffer: char[64];
