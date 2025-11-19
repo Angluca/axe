@@ -7,6 +7,7 @@ use stdlib/io(
     print_str
 );
 
+/// Represents some kind of error in the program.
 model error {
     msg: string;
 
@@ -19,6 +20,7 @@ model error {
     }
 }
 
+/// Stops the program with the given error message.
 def panic(err: error) {
     print "\nRuntimeError: ";
     error.print_self(err);
