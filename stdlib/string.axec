@@ -27,6 +27,37 @@ model string {
         }
         return result;
     }
+
+    /// Convert some string to titlecase.
+    def to_title_case(s: string): string {
+        mut val result: string = string.create("");
+        for mut val i = 0; i < s.len; i++ {
+            if i == 0 or is_alpha(s.data[i - 1]) == 0 {
+                result.data[i] = to_upper_chr(s.data[i]);
+            } else {
+                result.data[i] = to_lower_chr(s.data[i]);
+            }
+        }
+        return result;
+    }
+
+    /// Converts string to uppercase.
+    def to_upper(s: string): string {
+        mut val result: string = string.create("");
+        for mut val i = 0; i < s.len; i++ {
+            result.data[i] = to_upper_chr(s.data[i]);
+        }
+        return result;
+    }
+
+    /// Converts string to lowercase.
+    def to_lower(s: string): string {
+        mut val result: string = string.create("");
+        for mut val i = 0; i < s.len; i++ {
+            result.data[i] = to_lower_chr(s.data[i]);
+        }
+        return result;
+    }
 }
 
 /// Returns the length of a string.
@@ -124,37 +155,6 @@ def is_alnum(c: i32): i32 {
     mut val result: i32 = 0;
     raw {
         result = isalnum(c);
-    }
-    return result;
-}
-
-/// Convert some string to titlecase.
-def to_title_case(s: string): string {
-    mut val result: string = string.create("");
-    for mut val i = 0; i < s.len; i++ {
-        if (i == 0 || is_alpha(s.data[i - 1]) == 0) {
-            result.data[i] = to_upper_chr(s.data[i]);
-        } else {
-            result.data[i] = to_lower_chr(s.data[i]);
-        }
-    }
-    return result;
-}
-
-/// Converts string to uppercase.
-def to_upper(s: string): string {
-    mut val result: string = string.create("");
-    for mut val i = 0; i < s.len; i++ {
-        result.data[i] = to_upper_chr(s.data[i]);
-    }
-    return result;
-}
-
-/// Converts string to lowercase.
-def to_lower(s: string): string {
-    mut val result: string = string.create("");
-    for mut val i = 0; i < s.len; i++ {
-        result.data[i] = to_lower_chr(s.data[i]);
     }
     return result;
 }
