@@ -300,6 +300,90 @@ def rm_dir_recursive(path: string): bool {
     return ok;
 }
 
+/// Internal helper to collect files recursively into a StringList.
+def collect_files_recursive(path: string, result: ref StringList, arena: ref Arena) {
+    platform posix {
+        raw {
+            DIR *d = opendir(path.data);
+            if (!d) {
+                return;
+            }
+
+            struct dirent *p;
+            while ((p = readdir(d))) {
+                if (!strcmp(p->d_name, ".") || !strcmp(p->d_name, "..")) {
+                    continue;
+                }
+
+                size_t len = strlen(path.data) + strlen(p->d_name) + 2;
+                char *buf = (char*)malloc(len);
+                if (!buf) {
+                    continue;
+                }
+
+                snprintf(buf, len, "%s/%s", path.data, p->d_name);
+
+                struct stat statbuf;
+                if (!stat(buf, &statbuf)) {
+                    if (S_ISDIR(statbuf.st_mode)) {
+                        struct stdlib_string_string sub_path = stdlib_string_string_create(buf);
+                        collect_files_recursive(sub_path, result, arena);
+                    } else if (S_ISREG(statbuf.st_mode)) {
+                        struct stdlib_string_string file_path = stdlib_string_string_create(buf);
+                        stdlib_lists_StringList_push((struct stdlib_lists_StringList*)result, arena, file_path);
+                    }
+                }
+
+                free(buf);
+            }
+
+            closedir(d);
+        }
+    }
+
+    platform windows {
+        raw {
+            struct _finddata_t fileinfo;
+            char search_path[MAX_PATH];
+            intptr_t handle;
+
+            snprintf(search_path, MAX_PATH, "%s\\*", path.data);
+
+            handle = _findfirst(search_path, &fileinfo);
+            if (handle == -1) {
+                return;
+            }
+
+            do {
+                if (!strcmp(fileinfo.name, ".") || !strcmp(fileinfo.name, "..")) {
+                    continue;
+                }
+
+                char sub_path[MAX_PATH];
+                snprintf(sub_path, MAX_PATH, "%s\\%s", path.data, fileinfo.name);
+
+                if (fileinfo.attrib & _A_SUBDIR) {
+                    struct stdlib_string_string sub_path_str = stdlib_string_string_create(sub_path);
+                    collect_files_recursive(sub_path_str, result, arena);
+                } else {
+                    struct stdlib_string_string file_path = stdlib_string_string_create(sub_path);
+                    stdlib_lists_StringList_push((struct stdlib_lists_StringList*)result, arena, file_path);
+                }
+            } while (_findnext(handle, &fileinfo) == 0);
+
+            _findclose(handle);
+        }
+    }
+}
+
+/// List all regular files recursively under `path`.
+def list_files_recursive(path: string, arena: ref Arena): ref StringList {
+    mut val result: ref StringList;
+    result = StringList.create(arena, 16);
+    collect_files_recursive(path, result, arena);
+    return result;
+}
+
 /// Get commandline args
 def get_cmdline_args(arena: ref Arena): ref StringList {
     mut val result: ref StringList;

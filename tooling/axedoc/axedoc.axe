@@ -1,5 +1,5 @@
-use stdlib/string (string, concat, find_char_from, substr, trim_prefix, trim_suffix, strip, lstrip);
-use stdlib/os (read_file, write_file, is_file, get_cmdline_args);
+use stdlib/string (string, concat, find_char_from, substr, trim_prefix, trim_suffix, strip, lstrip, compare);
+use stdlib/os (read_file, write_file, is_file, get_cmdline_args, list_files_recursive);
 use stdlib/regex (match);
 use stdlib/io (println_str, print_str, println_i32);
 
@@ -31,6 +31,41 @@ def append_line(target: string, line: string): string {
     result = concat(result, line);
     result = concat(result, string.create("\n"));
     return result;
+}
+
+def has_suffix(value: string, suffix: string): bool {
+    if suffix.len == 0 or suffix.len > value.len {
+        return false;
+    }
+
+    mut i: usize = 0;
+    mut start: usize = value.len - suffix.len;
+    loop {
+        if i >= suffix.len {
+            break;
+        }
+        if value.data[start + i] != suffix.data[i] {
+            return false;
+        }
+        i = i + 1;
+    }
+
+    return true;
+}
+
+def is_source_file(path: string): bool {
+    val ext_axe: string = string.create(".axe");
+    val ext_axec: string = string.create(".axec");
+
+    if has_suffix(path, ext_axe) {
+        return true;
+    }
+
+    if has_suffix(path, ext_axec) {
+        return true;
+    }
+
+    return false;
 }
 
 def generate_docs_for_file(path: string): bool {
@@ -162,12 +197,37 @@ main {
     val arena: Arena = Arena.create(65536);
     val args: ref StringList = get_cmdline_args(ref arena);
     if args.len < 2 {
-        println_str(string.create("Usage: axedoc <file>"));
+        println_str(string.create("Usage: axedoc <file> | --all"));
+        Arena.destroy(ref_of(arena));
         return 1;
     }
-    val path: string = StringList.get(args, 1);
-    if !generate_docs_for_file(path) {
-        return 1;
+    val first_arg: string = StringList.get(args, 1);
+    val all_flag: string = string.create("--all");
+    if compare(first_arg, all_flag) == 0 {
+        val root: string = string.create(".");
+        val files: ref StringList = list_files_recursive(root, ref arena);
+        mut all_ok: bool = true;
+        for mut val i = 0; i < files.len; i = i + 1 {
+            val p: string = StringList.get(files, i);
+            if !is_source_file(p) {
+                continue;
+            }
+            if !generate_docs_for_file(p) {
+                all_ok = false;
+            }
+        }
+        Arena.destroy(ref_of(arena));
+        if !all_ok {
+            return 1;
+        }
+        return 0;
+    } else {
+        val path: string = first_arg;
+        if !generate_docs_for_file(path) {
+            Arena.destroy(ref_of(arena));
+            return 1;
+        }
+        Arena.destroy(ref_of(arena));
+        return 0;
     }
-    Arena.destroy(ref_of(arena));
 }
