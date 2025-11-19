@@ -73,7 +73,6 @@ def generate_docs_for_file(path: string): bool {
     }
 
     val source: string = read_file(path);
-
     val def_pattern: string = string.create("^\\s*def ");
     val model_pattern: string = string.create("^\\s*model ");
     val doc_pattern: string = string.create("^\\s*///");
