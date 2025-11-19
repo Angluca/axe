@@ -17,12 +17,16 @@ model string {
     def create(data: char*): string {
         mut val result: string;
         raw {
-            string* ptr = (string*)malloc(sizeof(string));
-            if (ptr != NULL) {
-                ptr->data = (char*)data;
-                ptr->len = (uintptr_t)strlen((const char*)data);
-                ptr->cap = ptr->len;
-                result = *ptr;
+            result.data = NULL;
+            result.len  = 0;
+            result.cap  = 0;
+            size_t len = strlen((const char*)data);
+            result.data = (char*)malloc(len + 1);
+
+            if (result.data != NULL) {
+                memcpy(result.data, data, len + 1);
+                result.len = len;
+                result.cap = len;
             }
         }
         return result;
@@ -36,12 +40,26 @@ def str_len(s: string): usize {
 
 /// Convert some string to titlecase.
 def to_title_case(s: string): string {
-    mut val result: string = string.create("");
-    for mut val i = 0; i < s.len; i++ {
-        if i == 0 or is_alpha(s.data[i - 1]) == 0 {
-            result.data[i] = to_upper_chr(s.data[i]);
-        } else {
-            result.data[i] = to_lower_chr(s.data[i]);
+    mut val result: string;
+    raw {
+        result.data = NULL;
+        result.len  = 0;
+        result.cap  = 0;
+
+        uintptr_t len = (uintptr_t)s.len;
+        result.data = (char*)malloc(len + 1);
+
+        if (result.data != NULL) {
+            for (uintptr_t i = 0; i < len; i++) {
+                if (i == 0 || isalpha((int)s.data[i - 1]) == 0) {
+                    result.data[i] = (char)toupper((int)s.data[i]);
+                } else {
+                    result.data[i] = (char)tolower((int)s.data[i]);
+                }
+            }
+            result.data[len] = '\0';
+            result.len = len;
+            result.cap = len;
         }
     }
     return result;
@@ -49,18 +67,46 @@ def to_title_case(s: string): string {
 
 /// Converts string to uppercase.
 def to_upper(s: string): string {
-    mut val result: string = string.create("");
-    for mut val i = 0; i < s.len; i++ {
-        result.data[i] = to_upper_chr(s.data[i]);
+    mut val result: string;
+    raw {
+        result.data = NULL;
+        result.len  = 0;
+        result.cap  = 0;
+
+        uintptr_t len = (uintptr_t)s.len;
+        result.data = (char*)malloc(len + 1);
+
+        if (result.data != NULL) {
+            for (uintptr_t i = 0; i < len; i++) {
+                result.data[i] = (char)toupper((int)s.data[i]);
+            }
+            result.data[len] = '\0';
+            result.len = len;
+            result.cap = len;
+        }
     }
     return result;
 }
 
 /// Converts string to lowercase.
 def to_lower(s: string): string {
-    mut val result: string = string.create("");
-    for mut val i = 0; i < s.len; i++ {
-        result.data[i] = to_lower_chr(s.data[i]);
+    mut val result: string;
+    raw {
+        result.data = NULL;
+        result.len  = 0;
+        result.cap  = 0;
+
+        uintptr_t len = (uintptr_t)s.len;
+        result.data = (char*)malloc(len + 1);
+
+        if (result.data != NULL) {
+            for (uintptr_t i = 0; i < len; i++) {
+                result.data[i] = (char)tolower((int)s.data[i]);
+            }
+            result.data[len] = '\0';
+            result.len = len;
+            result.cap = len;
+        }
     }
     return result;
 }
@@ -75,17 +121,21 @@ def str_copy(src: string, desta: mut string): void {
 /// Compares two strings. Returns 0 if equal.
 def compare(a: string, b: string): i32 {
     mut val len: usize = 0;
+
     if a.len < b.len {
         len = a.len;
     } else {
         len = b.len;
     }
+
     for mut val i = 0; i < len; i++ {
         if a.data[i] < b.data[i] { return -1; }
         if a.data[i] > b.data[i] { return 1; }
     }
+
     if a.len < b.len { return -1; }
     if a.len > b.len { return 1; }
+
     return 0;
 }
 
@@ -329,4 +379,6 @@ test {
     val lower_case_string: string = string.create("hello, world");
     val upper_case_string: string = to_upper(lower_case_string);
     assert(compare(upper_case_string, string.create("HELLO, WORLD")) == 0, "to_upper should convert to uppercase");
+    print_str(upper_case_string);
+    print_i32(compare(upper_case_string, stdlib_string_string.create("HELLO, WORLD")));
 }
