@@ -8,7 +8,8 @@ use stdlib/string (
 use stdlib/os (
     read_file,
     write_file,
-    is_file
+    is_file,
+    get_cmdline_args
 );
 
 use stdlib/regex (
@@ -187,7 +188,7 @@ def generate_docs_for_file(path: string): bool {
 }
 
 main {
-    val args: string[] = os.args;
+    val args: StringList = get_cmdline_args();
     if args.len < 2 {
         println_str(string.create("Usage: axedoc <file>"));
         return 1;

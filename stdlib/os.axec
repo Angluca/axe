@@ -1,5 +1,18 @@
-use stdlib/string (string);
-use stdlib/errors (error, panic);
+use stdlib/string (
+    string
+);
+use stdlib/io (
+    print_str
+);
+use stdlib/errors (
+    error, panic
+);
+use stdlib/lists (
+    StringList
+);
+use stdlib/arena (
+    Arena
+);
 
 /// Execute a shell command. Returns exit status.
 def exec_from_string(cmd: string): i32 {
@@ -287,6 +300,26 @@ def rm_dir_recursive(path: string): bool {
     return ok;
 }
 
+/// Get commandline args
+def get_cmdline_args(arena: ref Arena): ref StringList {
+    mut val result: ref StringList;
+    result = StringList.create(arena, 10);
+    
+    raw {
+        int argc = 0;
+        char **argv = (char**)__axe_argv;
+        while (argv[argc] != NULL) {
+            argc++;
+        }
+        for (int i = 0; i < argc; i++) {
+            struct stdlib_string_string str = stdlib_string_string_create(argv[i]);
+            stdlib_lists_StringList_push((struct stdlib_lists_StringList*)result, arena, str);
+        }
+    }
+    
+    return result;
+}
+
 test {
     assert(exec("echo test") == 0, "exec should run successfully");
     assert(write_file(string.create("testfile.txt"), string.create("hello")), "write_file should succeed");
@@ -296,4 +329,16 @@ test {
     assert(!is_symbolic_link(string.create("testfile.txt")), "testfile.txt should not be a symbolic link");
     assert(delete_file(string.create("testfile.txt")), "delete_file should succeed");
     assert(!file_exists(string.create("testfile.txt")), "file should not exist after deletion");
+
+    mut val arena: Arena = Arena.create(65536);
+    val args: ref StringList = get_cmdline_args(ref_of(arena));
+    assert(args.len >= 1, "there should be at least one commandline argument");
+
+    print "(And that commandline argument is: ";
+    for mut val i = 0; i < args.len; i = i + 1 {
+        val arg: string = StringList.get(args, i);
+        print_str(arg);
+    }
+
+    print ")\n";
 }
