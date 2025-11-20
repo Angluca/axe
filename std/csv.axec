@@ -1,0 +1,390 @@
+use std/string (
+    string
+);
+
+use std/lists (
+    StringList
+);
+
+/// CSV row model - represents a single row of CSV data
+model CsvRow {
+    fields: StringList;
+    field_count: usize;
+}
+
+/// CSV document model - represents an entire CSV file
+model CsvDocument {
+    rows: CsvRow*;
+    row_count: usize;
+    row_capacity: usize;
+}
+
+/// CSV parser options
+model CsvOptions {
+    delimiter: char;
+    quote_char: char;
+    has_header: bool;
+}
+
+/// Create default CSV options (comma delimiter, double quote, no header assumption)
+def default_options(): CsvOptions {
+    mut opts: CsvOptions;
+    raw {
+        opts.delimiter = ',';
+        opts.quote_char = '"';
+        opts.has_header = false;
+    }
+    return opts;
+}
+
+/// Create a new empty CSV document
+def create_document(): CsvDocument {
+    mut doc: CsvDocument;
+    raw {
+        doc.rows = NULL;
+        doc.row_count = 0;
+        doc.row_capacity = 0;
+    }
+    return doc;
+}
+
+/// Create a new empty CSV row
+def create_row(): CsvRow {
+    mut row: CsvRow;
+    raw {
+        row.fields.data = NULL;
+        row.fields.len = 0;
+        row.fields.cap = 0;
+        row.field_count = 0;
+    }
+    return row;
+}
+
+/// Add a field to a CSV row
+def add_field(row: CsvRow*, field: string) {
+    raw {
+        if (row == NULL) return;
+        
+        if (row->fields.len >= row->fields.cap) {
+            size_t new_cap = row->fields.cap == 0 ? 4 : row->fields.cap * 2;
+            string* new_data = (string*)realloc(row->fields.data, new_cap * sizeof(string));
+            if (new_data == NULL) return;
+            row->fields.data = new_data;
+            row->fields.cap = new_cap;
+        }
+        
+        row->fields.data[row->fields.len] = field;
+        row->fields.len++;
+        row->field_count++;
+    }
+}
+
+/// Add a row to a CSV document
+def add_row(doc: CsvDocument*, row: CsvRow) {
+    raw {
+        if (doc == NULL) return;
+        
+        if (doc->row_count >= doc->row_capacity) {
+            size_t new_cap = doc->row_capacity == 0 ? 8 : doc->row_capacity * 2;
+            CsvRow* new_rows = (CsvRow*)realloc(doc->rows, new_cap * sizeof(CsvRow));
+            if (new_rows == NULL) return;
+            doc->rows = new_rows;
+            doc->row_capacity = new_cap;
+        }
+        
+        doc->rows[doc->row_count] = row;
+        doc->row_count++;
+    }
+}
+
+/// Get a row from a CSV document by index
+def get_row(doc: CsvDocument*, index: usize): CsvRow* {
+    mut result: CsvRow* = nil;
+    raw {
+        if (doc != NULL && index < doc->row_count) {
+            result = &doc->rows[index];
+        }
+    }
+    return result;
+}
+
+/// Get a field from a CSV row by index
+def get_field(row: CsvRow*, index: usize): string {
+    mut result: string;
+    raw {
+        result.data = NULL;
+        result.len = 0;
+        result.cap = 0;
+        
+        if (row != NULL && index < row->field_count) {
+            result = row->fields.data[index];
+        }
+    }
+    return result;
+}
+
+/// Parse a CSV string into a document
+def parse(csv_data: string, options: CsvOptions): CsvDocument {
+    mut doc: CsvDocument = create_document();
+    mut current_row: CsvRow = create_row();
+    mut current_field: string;
+    
+    raw {
+        current_field.data = (char*)malloc(1024);
+        current_field.len = 0;
+        current_field.cap = 1024;
+        if (current_field.data == NULL) return doc;
+        current_field.data[0] = '\0';
+        
+        bool in_quotes = false;
+        size_t field_pos = 0;
+        
+        for (size_t i = 0; i < csv_data.len; i++) {
+            char c = csv_data.data[i];
+            
+            if (c == options.quote_char) {
+                if (in_quotes) {
+                    if (i + 1 < csv_data.len && csv_data.data[i + 1] == options.quote_char) {
+                        if (field_pos >= current_field.cap - 1) {
+                            size_t new_cap = current_field.cap * 2;
+                            char* new_data = (char*)realloc(current_field.data, new_cap);
+                            if (new_data == NULL) break;
+                            current_field.data = new_data;
+                            current_field.cap = new_cap;
+                        }
+                        current_field.data[field_pos++] = c;
+                        i++; // Skip next quote
+                    } else {
+                        // End of quoted field
+                        in_quotes = false;
+                    }
+                } else {
+                    // Start of quoted field
+                    in_quotes = true;
+                }
+                continue;
+            }
+            
+            if (c == options.delimiter && !in_quotes) {
+                current_field.data[field_pos] = '\0';
+                current_field.len = field_pos;
+                
+                string field_copy;
+                field_copy.data = (char*)malloc(field_pos + 1);
+                if (field_copy.data != NULL) {
+                    memcpy(field_copy.data, current_field.data, field_pos + 1);
+                    field_copy.len = field_pos;
+                    field_copy.cap = field_pos + 1;
+                    add_field(&current_row, field_copy);
+                }
+                
+                field_pos = 0;
+                continue;
+            }
+            
+            if ((c == '\n' || c == '\r') && !in_quotes) {
+                // Skip \r\n combination
+                if (c == '\r' && i + 1 < csv_data.len && csv_data.data[i + 1] == '\n') {
+                    i++;
+                }
+                
+                current_field.data[field_pos] = '\0';
+                current_field.len = field_pos;
+                
+                string field_copy;
+                field_copy.data = (char*)malloc(field_pos + 1);
+                if (field_copy.data != NULL) {
+                    memcpy(field_copy.data, current_field.data, field_pos + 1);
+                    field_copy.len = field_pos;
+                    field_copy.cap = field_pos + 1;
+                    add_field(&current_row, field_copy);
+                }
+                
+                if (current_row.field_count > 0) {
+                    add_row(&doc, current_row);
+                    current_row = create_row();
+                }
+                
+                field_pos = 0;
+                continue;
+            }
+            
+            if (field_pos >= current_field.cap - 1) {
+                size_t new_cap = current_field.cap * 2;
+                char* new_data = (char*)realloc(current_field.data, new_cap);
+                if (new_data == NULL) break;
+                current_field.data = new_data;
+                current_field.cap = new_cap;
+            }
+            current_field.data[field_pos++] = c;
+        }
+        
+        if (field_pos > 0 || current_row.field_count > 0) {
+            current_field.data[field_pos] = '\0';
+            current_field.len = field_pos;
+            
+            string field_copy;
+            field_copy.data = (char*)malloc(field_pos + 1);
+            if (field_copy.data != NULL) {
+                memcpy(field_copy.data, current_field.data, field_pos + 1);
+                field_copy.len = field_pos;
+                field_copy.cap = field_pos + 1;
+                add_field(&current_row, field_copy);
+            }
+            
+            if (current_row.field_count > 0) {
+                add_row(&doc, current_row);
+            }
+        }
+        
+        free(current_field.data);
+    }
+    
+    return doc;
+}
+
+/// Parse CSV with default options (comma delimiter)
+def parse_simple(csv_data: string): CsvDocument {
+    return parse(csv_data, default_options());
+}
+
+/// Convert a CSV document back to a string
+def to_string(doc: CsvDocument*, options: CsvOptions): string {
+    mut result: string;
+    
+    raw {
+        result.data = NULL;
+        result.len = 0;
+        result.cap = 0;
+        
+        if (doc == NULL || doc->row_count == 0) return result;
+        
+        size_t estimated_size = doc->row_count * 100;
+        result.data = (char*)malloc(estimated_size);
+        if (result.data == NULL) return result;
+        result.cap = estimated_size;
+        
+        size_t pos = 0;
+        
+        for (size_t i = 0; i < doc->row_count; i++) {
+            CsvRow* row = &doc->rows[i];
+            
+            for (size_t j = 0; j < row->field_count; j++) {
+                string field = row->fields.data[j];
+                
+                bool needs_quotes = false;
+                for (size_t k = 0; k < field.len; k++) {
+                    if (field.data[k] == options.delimiter || 
+                        field.data[k] == options.quote_char ||
+                        field.data[k] == '\n' || field.data[k] == '\r') {
+                        needs_quotes = true;
+                        break;
+                    }
+                }
+                
+                size_t needed = field.len + (needs_quotes ? field.len + 10 : 5);
+                while (pos + needed >= result.cap) {
+                    size_t new_cap = result.cap * 2;
+                    char* new_data = (char*)realloc(result.data, new_cap);
+                    if (new_data == NULL) return result;
+                    result.data = new_data;
+                    result.cap = new_cap;
+                }
+                
+                if (needs_quotes) {
+                    result.data[pos++] = options.quote_char;
+                    for (size_t k = 0; k < field.len; k++) {
+                        if (field.data[k] == options.quote_char) {
+                            result.data[pos++] = options.quote_char;
+                            result.data[pos++] = options.quote_char;
+                        } else {
+                            result.data[pos++] = field.data[k];
+                        }
+                    }
+                    result.data[pos++] = options.quote_char;
+                } else {
+                    memcpy(&result.data[pos], field.data, field.len);
+                    pos += field.len;
+                }
+                
+                if (j < row->field_count - 1) {
+                    result.data[pos++] = options.delimiter;
+                }
+            }
+            
+            result.data[pos++] = '\n';
+        }
+        
+        result.data[pos] = '\0';
+        result.len = pos;
+    }
+    
+    return result;
+}
+
+/// Free memory allocated for a CSV document
+def free_document(doc: CsvDocument*) {
+    raw {
+        if (doc == NULL) return;
+        
+        for (size_t i = 0; i < doc->row_count; i++) {
+            CsvRow* row = &doc->rows[i];
+            if (row->fields.data != NULL) {
+                for (size_t j = 0; j < row->field_count; j++) {
+                    if (row->fields.data[j].data != NULL) {
+                        free(row->fields.data[j].data);
+                    }
+                }
+                free(row->fields.data);
+            }
+        }
+        
+        if (doc->rows != NULL) {
+            free(doc->rows);
+        }
+        
+        doc->rows = NULL;
+        doc->row_count = 0;
+        doc->row_capacity = 0;
+    }
+}
+
+test {
+    mut csv_str: string = string.create("name,age,city\nJohn,30,NYC\nJane,25,LA\n");
+    mut doc: CsvDocument = parse_simple(csv_str);
+    
+    assert doc.row_count == 3, "Should parse 3 rows";
+    
+    mut row0: ref CsvRow = get_row(&doc, 0);
+    assert row0 != nil, "Should get first row";
+    assert row0.field_count == 3, "First row should have 3 fields";
+    
+    mut field0: string = get_field(row0, 0);
+    assert field0.len == 4, "First field should be 'name'";
+    
+    mut row1: ref CsvRow = get_row(&doc, 1);
+    assert row1 != nil, "Should get second row";
+    assert row1.field_count == 3, "Second row should have 3 fields";
+    
+    mut name: string = get_field(row1, 0);
+    assert name.len == 4, "Name should be 'John'";
+    
+    mut age: string = get_field(row1, 1);
+    assert age.len == 2, "Age should be '30'";
+    
+    mut quoted_csv: string = string.create("\"Smith, John\",30,\"New York, NY\"\n");
+    mut quoted_doc: CsvDocument = parse_simple(quoted_csv);
+    
+    assert quoted_doc.row_count == 1, "Should parse 1 row with quoted fields";
+    
+    mut quoted_row: ref CsvRow = get_row(&quoted_doc, 0);
+    assert quoted_row != nil, "Should get quoted row";
+    assert quoted_row.field_count == 3, "Should have 3 fields despite internal commas";
+    
+    mut opts: CsvOptions = default_options();
+    mut regenerated: string = to_string(&doc, opts);
+    assert regenerated.len > 0, "Should generate CSV string";
+    
+    free_document(&doc);
+    free_document(&quoted_doc);
+}
