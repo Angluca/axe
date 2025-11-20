@@ -97,9 +97,9 @@ main {
 
     println "Conway's Game of Life\n";
 
-    for mut gen = 0; gen < 20; gen++ {
+    for mut gen = 0; gen < 20000; gen++ {
+        wait(1);
         clear_screen();
-        wait(100);
         print "Generation ";
         println gen;
         println "";

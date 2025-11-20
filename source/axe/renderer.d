@@ -114,6 +114,58 @@ string formatModelFieldType(string fieldType)
     return qualifiers ~ trimmed ~ pointerSuffix;
 }
 
+void collectExternalImports(ASTNode node, ref string[] globalHeaders, ref string[][string] platformHeaders,
+    string currentPlatform = null)
+{
+    import std.algorithm : canFind;
+
+    if (node.nodeType == "ExternalImport")
+    {
+        auto ext = cast(ExternalImportNode) node;
+        if (ext is null)
+            return;
+
+        if (currentPlatform is null)
+        {
+            if (!globalHeaders.canFind(ext.headerFile))
+                globalHeaders ~= ext.headerFile;
+        }
+        else
+        {
+            auto p = currentPlatform in platformHeaders;
+            if (p is null)
+            {
+                platformHeaders[currentPlatform] = [ext.headerFile];
+            }
+            else
+            {
+                if (!(*p).canFind(ext.headerFile))
+                    (*p) ~= ext.headerFile;
+            }
+        }
+        return;
+    }
+
+    if (node.nodeType == "Platform")
+    {
+        auto platformNode = cast(PlatformNode) node;
+        if (platformNode is null)
+            return;
+
+        string platformName = platformNode.platform;
+        foreach (child; platformNode.children)
+        {
+            collectExternalImports(child, globalHeaders, platformHeaders, platformName);
+        }
+        return;
+    }
+
+    foreach (child; node.children)
+    {
+        collectExternalImports(child, globalHeaders, platformHeaders, currentPlatform);
+    }
+}
+
 struct ParamInfo
 {
     string type;
@@ -330,6 +382,10 @@ string generateC(ASTNode ast)
         g_generatedTypedefs.clear();
         g_generatedFunctions.clear();
 
+        string[] globalExternalHeaders;
+        string[][string] platformExternalHeaders;
+        collectExternalImports(ast, globalExternalHeaders, platformExternalHeaders);
+
         foreach (child; ast.children)
         {
             if (child.nodeType == "Macro")
@@ -406,14 +462,41 @@ string generateC(ASTNode ast)
             cCode ~= "\n#include <windows.h>\n";
         }
 
-        cCode ~= "\n";
+        cCode ~= "#ifndef _WIN32\n";
+        cCode ~= "#include <sys/stat.h>\n";
+        cCode ~= "#include <sys/types.h>\n";
+        cCode ~= "#include <dirent.h>\n";
+        cCode ~= "#include <sys/time.h>\n";
+        cCode ~= "#else\n";
+        cCode ~= "#include <sys/stat.h>\n";
+        cCode ~= "#include <sys/types.h>\n";
+        cCode ~= "#include <io.h>\n";
+        cCode ~= "#include <direct.h>\n";
+        cCode ~= "#endif\n";
 
-        foreach (child; ast.children)
+        foreach (header; globalExternalHeaders)
         {
-            if (child.nodeType == "ExternalImport")
-                cCode ~= generateC(child);
+            cCode ~= "#include <" ~ header ~ ">\n";
         }
 
+        foreach (platformName, headers; platformExternalHeaders)
+        {
+            if (platformName == "windows")
+                cCode ~= "#ifdef _WIN32\n";
+            else if (platformName == "posix")
+                cCode ~= "#ifndef _WIN32\n";
+            else
+                continue;
+
+            foreach (header; headers)
+            {
+                cCode ~= "#include <" ~ header ~ ">\n";
+            }
+
+            cCode ~= "#endif\n";
+        }
+
+        cCode ~= "\n";
         cCode ~= "int __axe_argc = 0;\n";
         cCode ~= "char** __axe_argv = NULL;\n\n\n";
 
@@ -543,6 +626,12 @@ string generateC(ASTNode ast)
             {
                 auto modelNode = modelMap[name];
                 cCode ~= generateC(modelNode) ~ "\n";
+            }
+
+            auto dtCName = canonicalModelCName("DateTime");
+            if (dtCName == "DateTime")
+            {
+                cCode ~= "typedef struct DateTime stdlib_time_DateTime;\n";
             }
         }
 
@@ -1187,6 +1276,8 @@ string generateC(ASTNode ast)
 
         foreach (child; ast.children)
         {
+            if (child.nodeType == "ExternalImport")
+                continue;
             cCode ~= generateC(child);
         }
 

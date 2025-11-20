@@ -682,10 +682,8 @@ string replaceStandaloneCall(string text, string oldName, string newName)
 {
     import std.regex : regex, replaceAll;
 
-    // Prevent double-prefixing: if newName contains oldName, don't replace if already in text
     if (newName.canFind("_" ~ oldName) && text.canFind(newName ~ "("))
     {
-        // Already fully prefixed, no need to replace
         return text;
     }
 
@@ -783,11 +781,6 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
             {
                 arg = replaceStandaloneCall(arg, oldName, newName);
 
-                // For model methods like Model_method, also support dot notation
-                // conversion (Model.method(...)). Restrict this to names that
-                // actually contain an underscore so we don't accidentally
-                // rewrite substrings in plain function names (e.g., 'strip'
-                // inside 'lstrip').
                 if (oldName.canFind("_"))
                 {
                     string oldCallDot = oldName.replace("_", ".") ~ "(";
@@ -804,7 +797,8 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
         auto printNode = cast(PrintNode) node;
         for (size_t i = 0; i < printNode.messages.length; i++)
         {
-            if (printNode.isExpressions[i])
+            if (i >= printNode.isExpressions.length || !printNode.isExpressions[i])
+                continue;
             {
                 foreach (oldName, newName; nameMap)
                 {

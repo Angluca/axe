@@ -40,6 +40,25 @@ bool hasParallelBlocks(ASTNode node)
     return false;
 }
 
+void collectExternalHeaders(ASTNode node, ref string[] headers)
+{
+    import std.algorithm : canFind;
+
+    if (node.nodeType == "ExternalImport")
+    {
+        auto ext = cast(ExternalImportNode) node;
+        if (ext !is null && !headers.canFind(ext.headerFile))
+        {
+            headers ~= ext.headerFile;
+        }
+    }
+
+    foreach (child; node.children)
+    {
+        collectExternalHeaders(child, headers);
+    }
+}
+
 /**
  * Detects whether the AST uses a specific external header (e.g., "pcre.h").
  */
@@ -206,6 +225,13 @@ bool handleMachineArgs(string[] args)
                     string pcreLib = buildPath(toolchainRoot, "external", "x64-macos", "libpcre.a");
                     clangCmd ~= ["-I" ~ pcreInclude, pcreLib];
                 }
+            }
+
+            string[] externalHeaders;
+            collectExternalHeaders(ast, externalHeaders);
+            foreach (header; externalHeaders)
+            {
+                clangCmd ~= ["-include", header];
             }
 
             if (makeDll)
