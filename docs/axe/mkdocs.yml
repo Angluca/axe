@@ -20,3 +20,6 @@ nav:
     - Regex: stdlib/regex.md
     - Typecons: stdlib/typecons.md
     - Lists: stdlib/lists.md
+    - JSON: stdlib/json.md
+    - Crypto: stdlib/crypto.md
+    - UUID: stdlib/uuid.md
