@@ -1828,6 +1828,17 @@ string generateC(ASTNode ast)
         cCode ~= "#include <" ~ extImportNode.headerFile ~ ">\n";
         break;
 
+    case "Assert":
+        auto assertNode = cast(AssertNode) ast;
+        string condition = processExpression(assertNode.condition);
+        cCode ~= "if (" ~ condition ~ ") {\n";
+        cCode ~= "    printf(\"\\033[32m✓ PASS:\\033[0m " ~ assertNode.message ~ "\\n\");\n";
+        cCode ~= "} else {\n";
+        cCode ~= "    printf(\"\\033[31m✗ FAIL:\\033[0m " ~ assertNode.message ~ "\\n\");\n";
+        cCode ~= "    exit(1);\n";
+        cCode ~= "}\n";
+        break;
+
     default:
         enforce(false, "Unsupported node type for C generation: " ~ ast.nodeType);
     }

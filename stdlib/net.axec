@@ -540,5 +540,43 @@ def free_response(response: HttpResponse) {
 }
 
 test {
+    curl_init();
     
+    assert is_success_status(200), "200 should be success status";
+    assert is_success_status(204), "204 should be success status";
+    assert !is_success_status(404), "404 should not be success status";
+    
+    assert is_redirect_status(301), "301 should be redirect status";
+    assert is_redirect_status(302), "302 should be redirect status";
+    assert !is_redirect_status(200), "200 should not be redirect status";
+    
+    assert is_client_error_status(404), "404 should be client error status";
+    assert is_client_error_status(403), "403 should be client error status";
+    assert !is_client_error_status(500), "500 should not be client error status";
+    
+    assert is_server_error_status(500), "500 should be server error status";
+    assert is_server_error_status(503), "503 should be server error status";
+    assert !is_server_error_status(404), "404 should not be server error status";
+    
+    mut test_string: string = string.create("hello world");
+    mut encoded: string = url_encode(test_string);
+    assert encoded.len > 0, "URL encoding should produce output";
+    
+    mut decoded: string = url_decode(encoded);
+    assert decoded.len > 0, "URL decoding should produce output";
+    
+    mut special: string = string.create("test@example.com");
+    mut encoded_special: string = url_encode(special);
+    assert encoded_special.len >= special.len, "Encoded special chars should be at least as long";
+    
+    mut response: HttpResponse = http_get(string.create("http://example.com"));
+    
+    if response.success {
+        assert response.status_code > 0, "Response should have status code";
+        assert response.body.len > 0, "Response body should have content";
+        println_str(string.create("HTTP GET test passed"));
+    }
+    
+    free_response(response);    
+    curl_cleanup();
 }
