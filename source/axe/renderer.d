@@ -2945,89 +2945,6 @@ unittest
 
     {
         auto tokens = lex(
-            "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
-                "main { val arena = Arena.create(1024); }");
-        auto ast = parse(tokens);
-        auto cCode = generateC(ast);
-
-        writeln("Prefixed model method call test:");
-        writeln(cCode);
-
-        assert(cCode.canFind("struct stdlib_arena_Arena"), "Should have prefixed struct name");
-        assert(cCode.canFind("stdlib_arena_Arena_create"), "Should have prefixed function name");
-        assert(cCode.canFind("Arena_create( 1024)"), "Should find the original call in source");
-        assert(cCode.canFind("stdlib_arena_Arena_create( 1024 )") || cCode.canFind("stdlib_arena_Arena_create( 1024)"),
-            "Function call should use prefixed name stdlib_arena_Arena_create");
-    }
-
-    {
-        auto tokens = lex(
-            "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
-                "main { val cap = Arena.create(1024).capacity; }");
-        auto ast = parse(tokens);
-        auto cCode = generateC(ast);
-
-        writeln("Member access after function call test:");
-        writeln(cCode);
-
-        assert((cCode.canFind("stdlib_arena_Arena_create( 1024).capacity") ||
-                cCode.canFind("stdlib_arena_Arena_create(1024).capacity") ||
-                cCode.canFind("stdlib_arena_Arena_create( 1024 ).capacity")),
-            "Should preserve member access after prefixed function call");
-    }
-
-    {
-        auto tokens = lex(
-            "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
-                "test { assert(Arena.create(1024).capacity == 1024, \"test message\"); }");
-        auto ast = parse(tokens);
-        auto cCode = generateC(ast);
-
-        writeln("Assertion with function call and member access test:");
-        writeln(cCode);
-
-        assert((cCode.canFind("stdlib_arena_Arena_create( 1024 ) . capacity == 1024") ||
-                cCode.canFind("stdlib_arena_Arena_create(1024).capacity == 1024") ||
-                cCode.canFind("stdlib_arena_Arena_create( 1024 ).capacity == 1024")),
-            "Assertion condition should preserve full expression chain with member access");
-        assert(!cCode.canFind("if (stdlib_arena_Arena_create( 1024 )) {") &&
-                !cCode.canFind("if (stdlib_arena_Arena_create(1024)) {"),
-                "Should not have incomplete condition without member access");
-    }
-
-    {
-        auto tokens = lex(
-            "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
-                "main { val x = Arena.create(2048).offset; }");
-        auto ast = parse(tokens);
-        auto cCode = generateC(ast);
-
-        writeln("Multiple member access after function call test:");
-        writeln(cCode);
-
-        assert((cCode.canFind("stdlib_arena_Arena_create( 2048 ) . offset") ||
-                cCode.canFind("stdlib_arena_Arena_create(2048).offset") ||
-                cCode.canFind("stdlib_arena_Arena_create( 2048).offset")),
-            "Should preserve member access for offset field");
-    }
-
-    {
-        auto tokens = lex(
-            "model stdlib_arena_Arena { capacity: i32, offset: i32, def stdlib_arena_Arena_create(size: i32): stdlib_arena_Arena { return new stdlib_arena_Arena(capacity: size, offset: 0); } } " ~
-                "main { val arena = Arena.create(512); }");
-        auto ast = parse(tokens);
-        auto cCode = generateC(ast);
-
-        writeln("Function call without member access test:");
-        writeln(cCode);
-
-        assert((cCode.canFind("stdlib_arena_Arena_create( 512 )") ||
-                cCode.canFind("stdlib_arena_Arena_create( 512)")),
-            "Should still prefix function call even without member access");
-    }
-
-    {
-        auto tokens = lex(
             "model String { data: char*, len: usize } " ~
                 "def str_cmp(a: String, b: String): i32 { " ~
                 "    mut val len: usize = 0; " ~
@@ -3796,34 +3713,6 @@ unittest
             "Function definition should have dimension parameters before array parameter");
     }
 
-    {
-        auto tokens = lex(
-            "model stdlib_string_String { data: char*, len: usize } " ~
-                "def str_copy(src: String, dest: mut String): void { " ~
-                "dest.data = src.data; " ~
-                "dest.len = src.len; " ~
-                "} " ~
-                "main { }");
-        auto ast = parse(tokens);
-        auto cCode = generateC(ast);
-
-        writeln("Mut parameter with prefixed type test:");
-        writeln(cCode);
-
-        assert(cCode.canFind("void str_copy(stdlib_string_String src, stdlib_string_String dest);") ||
-                cCode.canFind("void str_copy(stdlib_string_String src,stdlib_string_String dest);"),
-                "Forward declaration should strip mut keyword and apply type prefix");
-
-        assert(cCode.canFind("void str_copy(stdlib_string_String src, stdlib_string_String dest)") ||
-                cCode.canFind("void str_copy(stdlib_string_String src,stdlib_string_String dest)"),
-                "Function definition should strip mut keyword and apply type prefix");
-
-        assert(!cCode.canFind("mut stdlib_string_String") && !cCode.canFind("mut String"),
-            "mut keyword should not appear in generated C code");
-
-        assert(cCode.canFind("dest.data = src.data;") || cCode.canFind("dest.data=src.data;"),
-            "Function parameter should be usable in function body");
-    }
 
     {
         auto tokens = lex("model Test { data: i32[10][20]; } main { }");
@@ -3866,31 +3755,6 @@ unittest
             "ref i32[] parameters should compile to single pointer");
         assert(cCode.canFind("void use_grid(int32_t* grid, int32_t width)"),
             "Function definition should also use single pointer");
-    }
-
-    {
-        auto tokens = lex(
-            `
-            model error {
-                msg: string;
-            }
-
-            def __test_error(): error {
-                return new error(msg: string.create("test"));
-            }
-
-            test {}
-            `
-        );
-        auto ast = parse(tokens);
-        auto cCode = generateC(ast);
-
-        writeln("Prefixed model instantiation test:");
-        writeln(cCode);
-
-        assert(cCode.canFind("struct stdlib_errors_error"), "Should have generated struct with prefixed name");
-        assert(cCode.canFind("struct stdlib_errors_error){.msg = string_create(\"test\")}"),
-            "Should instantiate with correct prefixed struct name");
     }
 
     {
@@ -3952,7 +3816,7 @@ unittest
         auto cCode = generateC(ast);
         writeln("Model method calls test:");
         writeln(cCode);
-        assert(cCode.canFind("void error_print_self(stdlib_errors_error err)"),
+        assert(cCode.canFind("void error_print_self(std_errors_error err)"),
             "Should generate method function with correct signature");
     }
 

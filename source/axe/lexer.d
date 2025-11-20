@@ -280,6 +280,30 @@ Token[] lex(string source)
             }
             break;
 
+        case 'd':
+            if (pos + 6 < source.length && source[pos .. pos + 7] == "default" &&
+                (pos + 7 >= source.length || !(source[pos + 7].isAlphaNum || source[pos + 7] == '_')))
+            {
+                tokens ~= Token(TokenType.DEFAULT, "default");
+                pos += 7;
+            }
+            else if (pos + 2 < source.length && source[pos .. pos + 3] == "def" &&
+                (pos + 3 >= source.length || !(source[pos + 3].isAlphaNum || source[pos + 3] == '_')))
+            {
+                tokens ~= Token(TokenType.DEF, "def");
+                pos += 3;
+            }
+            else
+            {
+                size_t start = pos;
+                while (pos < source.length && (source[pos].isAlphaNum || source[pos] == '_'))
+                {
+                    pos++;
+                }
+                tokens ~= Token(TokenType.IDENTIFIER, source[start .. pos]);
+            }
+            break;
+
         case ']':
             tokens ~= Token(TokenType.RBRACKET, "]");
             pos++;
@@ -440,17 +464,6 @@ Token[] lex(string source)
                 (pos + 3 >= source.length || !(source[pos + 3].isAlphaNum || source[pos + 3] == '_')))
             {
                 tokens ~= Token(TokenType.NEW, "new");
-                pos += 3;
-            }
-            else if (pos + 7 <= source.length && source[pos .. pos + 7] == "default")
-            {
-                tokens ~= Token(TokenType.DEFAULT, "default");
-                pos += 7;
-            }
-            else if (pos + 3 <= source.length && source[pos .. pos + 3] == "def" &&
-                (pos + 3 >= source.length || !(source[pos + 3].isAlphaNum || source[pos + 3] == '_')))
-            {
-                tokens ~= Token(TokenType.DEF, "def");
                 pos += 3;
             }
             else if (pos + 4 <= source.length && source[pos .. pos + 4] == "elif")
