@@ -4823,7 +4823,6 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 isToSyntax = true;
                 pos++; // Skip 'to'
 
-                // Parse end value until '{'
                 while (pos < tokens.length && tokens[pos].type != TokenType.LBRACE)
                 {
                     if (tokens[pos].type != TokenType.WHITESPACE)
@@ -4831,7 +4830,6 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                     pos++;
                 }
 
-                // Generate condition and increment
                 condition = varName ~ "<" ~ toEndValue;
                 increment = varName ~ "++";
             }
@@ -4841,7 +4839,6 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                     "Expected ';' after for init");
                 pos++;
 
-                // Parse condition (until semicolon)
                 while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
                 {
                     if (tokens[pos].type != TokenType.WHITESPACE)
@@ -4852,7 +4849,6 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                     "Expected ';' after for condition");
                 pos++;
 
-                // Parse increment (until '{')
                 while (pos < tokens.length && tokens[pos].type != TokenType.LBRACE)
                 {
                     if (tokens[pos].type != TokenType.WHITESPACE)
@@ -4865,11 +4861,9 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 "Expected '{' after for loop header");
             pos++;
 
-            // Build initialization string
             string initStr = "";
             if (varName.length > 0)
             {
-                // Default to int if no type specified
                 if (varType.length == 0)
                     varType = "int";
 
@@ -5996,7 +5990,6 @@ private ParallelForNode parseParallelForHelper(ref size_t pos, Token[] tokens, r
 {
     import std.stdio : writeln;
 
-    // pos should be at 'for' token
     enforce(pos < tokens.length && tokens[pos].type == TokenType.FOR,
         "Expected 'for' in parallel for");
     pos++; // Skip 'for'
@@ -6004,7 +5997,6 @@ private ParallelForNode parseParallelForHelper(ref size_t pos, Token[] tokens, r
     while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
         pos++;
 
-    // Parse the for loop parts (init; condition; increment)
     string init = "";
     string condition = "";
     string increment = "";
@@ -6012,7 +6004,6 @@ private ParallelForNode parseParallelForHelper(ref size_t pos, Token[] tokens, r
     string varType = "";
     bool isMutable = false;
 
-    // Parse init - handle variable declaration
     if (pos < tokens.length && tokens[pos].type == TokenType.MUT)
     {
         isMutable = true;
@@ -6020,13 +6011,15 @@ private ParallelForNode parseParallelForHelper(ref size_t pos, Token[] tokens, r
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
             pos++;
     }
-
-    if (pos < tokens.length && tokens[pos].type == TokenType.VAL)
+    else if (pos < tokens.length && tokens[pos].type == TokenType.VAL)
     {
         pos++;
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
             pos++;
+    }
 
+    if (isMutable || (pos > 0 && tokens[pos - 1].type == TokenType.WHITESPACE))
+    {
         enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
             "Expected variable name in parallel for init");
         varName = tokens[pos].value;
@@ -6051,7 +6044,8 @@ private ParallelForNode parseParallelForHelper(ref size_t pos, Token[] tokens, r
         if (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "=")
         {
             pos++;
-            while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
+            while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON &&
+                tokens[pos].type != TokenType.TO && tokens[pos].type != TokenType.REDUCE)
             {
                 if (tokens[pos].type != TokenType.WHITESPACE)
                     init ~= tokens[pos].value;
@@ -6062,31 +6056,95 @@ private ParallelForNode parseParallelForHelper(ref size_t pos, Token[] tokens, r
         currentScope.addVariable(varName, isMutable);
     }
 
-    enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
-        "Expected ';' after parallel for init");
-    pos++;
+    // Check for 'to' syntax
+    bool isToSyntax = false;
+    string toEndValue = "";
+    string[] reductionClauses = [];
 
-    // Parse condition (until semicolon)
-    while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
+    if (pos < tokens.length && tokens[pos].type == TokenType.TO)
     {
-        if (tokens[pos].type != TokenType.WHITESPACE)
-            condition ~= tokens[pos].value;
-        pos++;
+        isToSyntax = true;
+        pos++; // Skip 'to'
+
+        // Parse end value until 'reduce' or '{'
+        while (pos < tokens.length && tokens[pos].type != TokenType.LBRACE &&
+            tokens[pos].type != TokenType.REDUCE)
+        {
+            if (tokens[pos].type != TokenType.WHITESPACE)
+                toEndValue ~= tokens[pos].value;
+            pos++;
+        }
+
+        // Check for reduction clauses
+        if (pos < tokens.length && tokens[pos].type == TokenType.REDUCE)
+        {
+            pos++; // Skip 'reduce'
+
+            // Parse reduction clause(s): reduce(+:sum) or reduce(+:sum, *:product)
+            enforce(pos < tokens.length && tokens[pos].type == TokenType.LPAREN,
+                "Expected '(' after 'reduce'");
+            pos++; // Skip '('
+
+            while (pos < tokens.length && tokens[pos].type != TokenType.RPAREN)
+            {
+                string reductionClause = "";
+                while (pos < tokens.length && tokens[pos].type != TokenType.COMMA &&
+                    tokens[pos].type != TokenType.RPAREN)
+                {
+                    if (tokens[pos].type != TokenType.WHITESPACE)
+                        reductionClause ~= tokens[pos].value;
+                    pos++;
+                }
+
+                if (reductionClause.length > 0)
+                    reductionClauses ~= reductionClause;
+
+                if (pos < tokens.length && tokens[pos].type == TokenType.COMMA)
+                    pos++; // Skip comma
+            }
+
+            enforce(pos < tokens.length && tokens[pos].type == TokenType.RPAREN,
+                "Expected ')' after reduction clauses");
+            pos++; // Skip ')'
+        }
+
+        // Skip whitespace before '{'
+        while (pos < tokens.length && (tokens[pos].type == TokenType.WHITESPACE ||
+                tokens[pos].type == TokenType.NEWLINE))
+            pos++;
+
+        // Generate condition and increment
+        condition = varName ~ "<" ~ toEndValue;
+        increment = varName ~ "++";
     }
-    enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
-        "Expected ';' after parallel for condition");
-    pos++;
-
-    // Parse increment (until '{')
-    while (pos < tokens.length && tokens[pos].type != TokenType.LBRACE)
+    else
     {
-        if (tokens[pos].type != TokenType.WHITESPACE)
-            increment ~= tokens[pos].value;
+        enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
+            "Expected ';' after parallel for init");
         pos++;
+
+        // Parse condition (until semicolon)
+        while (pos < tokens.length && tokens[pos].type != TokenType.SEMICOLON)
+        {
+            if (tokens[pos].type != TokenType.WHITESPACE)
+                condition ~= tokens[pos].value;
+            pos++;
+        }
+        enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
+            "Expected ';' after parallel for condition");
+        pos++;
+
+        // Parse increment (until '{')
+        while (pos < tokens.length && tokens[pos].type != TokenType.LBRACE)
+        {
+            if (tokens[pos].type != TokenType.WHITESPACE)
+                increment ~= tokens[pos].value;
+            pos++;
+        }
     }
 
     enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
-        "Expected '{' after parallel for increment");
+        "Expected '{' after parallel for header");
     pos++;
 
     // Build initialization string
@@ -6107,6 +6165,7 @@ private ParallelForNode parseParallelForHelper(ref size_t pos, Token[] tokens, r
     }
 
     auto parallelForNode = new ParallelForNode(initStr, condition.strip(), increment.strip());
+    parallelForNode.reductionClauses = reductionClauses;
     auto prevScope = currentScopeNode;
     currentScopeNode = parallelForNode;
 

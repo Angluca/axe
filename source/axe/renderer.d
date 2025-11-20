@@ -1326,7 +1326,21 @@ string generateC(ASTNode ast)
         auto parallelForNode = cast(ParallelForNode) ast;
 
         string indent = loopLevel > 0 ? "    ".replicate(loopLevel) : "";
-        cCode ~= indent ~ "#pragma omp parallel for\n";
+        string ompPragma = "#pragma omp parallel for";
+        
+        if (parallelForNode.reductionClauses.length > 0)
+        {
+            ompPragma ~= " reduction(";
+            foreach (i, clause; parallelForNode.reductionClauses)
+            {
+                if (i > 0)
+                    ompPragma ~= ", ";
+                ompPragma ~= clause;
+            }
+            ompPragma ~= ")";
+        }
+        
+        cCode ~= indent ~ ompPragma ~ "\n";
         cCode ~= indent ~ "for (" ~ parallelForNode.initialization ~ "; "
             ~ processCondition(
                 parallelForNode.condition) ~ "; "
@@ -1358,12 +1372,10 @@ string generateC(ASTNode ast)
         string forCond = processCondition(forNode.condition);
         string forIncr = forNode.increment;
         
-        // Add OpenMP pragma if this is a parallel for loop
         if (forNode.isParallel)
         {
             string ompPragma = "#pragma omp parallel for";
             
-            // Add reduction clauses if present
             if (forNode.reductionClauses.length > 0)
             {
                 ompPragma ~= " reduction(";

@@ -719,6 +719,7 @@ class ParallelForNode : ASTNode
     string initialization;
     string condition;
     string increment;
+    string[] reductionClauses;
     
     this(string init, string cond, string incr)
     {
@@ -726,5 +727,6 @@ class ParallelForNode : ASTNode
         this.initialization = init;
         this.condition = cond;
         this.increment = incr;
+        this.reductionClauses = [];
     }
 }
