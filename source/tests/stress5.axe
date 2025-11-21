@@ -1,0 +1,9 @@
+use std.io;
+
+def      f      (     )     {
+println    "looks spaced normally      right";
+}
+
+main {
+    f();
+}
