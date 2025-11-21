@@ -3,8 +3,6 @@ use std.string (
 );
 
 use std.io(
-    println_str,
-    print_str,
     print
 );
 
@@ -17,7 +15,7 @@ model error {
     }
 
     def print_self(err: error) {
-        print_str(err.msg);
+        print(err.msg);
     }
 }
 
@@ -31,11 +29,19 @@ def panic(err: error) {
     }
 }
 
+/// Enforces a condition, panics if the condition is false.
+def enforce(condition: bool, err: error) {
+    if !condition {
+        panic(err);
+    }
+}
+
 def __test_error(): error {
     return new error(msg: string.create("Some bad thing happened"));
 }
 
 test {
-    println_str(__test_error().msg);
-    panic(error.create("Uh oh"));
+    print(__test_error().msg);
+    enforce(true, error.create("Should be fine"));
+    panic(error.create("Should NOT be fine"));
 }
