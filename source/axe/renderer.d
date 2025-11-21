@@ -1979,6 +1979,16 @@ string generateC(ASTNode ast)
         */
         break;
 
+    case "Unsafe":
+        auto unsafeNode = cast(UnsafeNode) ast;
+        // Simply render the body of the unsafe block
+        // The *. syntax has already been converted to -> in processExpression
+        foreach (child; unsafeNode.body)
+        {
+            cCode ~= generateC(child);
+        }
+        break;
+
     case "Assert":
         auto assertNode = cast(AssertNode) ast;
         string condition = processExpression(assertNode.condition);
@@ -2689,6 +2699,13 @@ string processExpression(string expr, string context = "")
             string processedRest = rest.length > 0 ? processExpression(rest) : "";
             return processedBase ~ "[" ~ processedIndex ~ "]" ~ processedRest;
         }
+    }
+
+    // Handle unsafe pointer member access (*.)
+    if (expr.canFind("*."))
+    {
+        // Replace all *. with -> since it's explicit pointer dereference
+        expr = expr.replace("*.", "->");
     }
 
     // Handle member access with auto-detection of pointer types.
@@ -4593,4 +4610,33 @@ unittest
         assert(!cCode.canFind("extern int32_t my_func"),
             "Should NOT generate extern declaration (assumes it exists in C headers)");
     }
+
+    {
+        auto tokens = lex(
+            "opaque { SomeStruct }; " ~
+            "extern def get_value(ptr: usize): i32; " ~
+            "main { " ~
+            "    mut ptr: usize = 0; " ~
+            "    unsafe { " ~
+            "        mut x: i32 = ptr*.value; " ~
+            "        ptr*.count = 42; " ~
+            "    } " ~
+            "}");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Unsafe block with *. pointer member access test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("typedef struct SomeStruct SomeStruct;"),
+            "Should generate typedef for opaque SomeStruct");
+        assert(cCode.canFind("(ptr-> value)") || cCode.canFind("->value"),
+            "Should convert *. to -> for pointer member access");
+        assert(cCode.canFind("(ptr->count) = 42") || cCode.canFind("->count = 42"),
+            "Should convert *. to -> for pointer member assignment");
+        assert(!cCode.canFind("*."),
+            "*. syntax should be converted to -> in generated C code");
+    }
+
+    writeln("\n\033[32m✓ All tests passed!\033[0m");
 }

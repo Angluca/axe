@@ -29,7 +29,13 @@ Token[] lex(string source)
         switch (source[pos])
         {
         case '*':
-            if (tokens.length > 0 && tokens[$ - 1].type == TokenType.IDENTIFIER)
+            // Check for *. (pointer member access)
+            if (pos + 1 < source.length && source[pos + 1] == '.')
+            {
+                tokens ~= Token(TokenType.STAR_DOT, "*.");
+                pos += 2;
+            }
+            else if (tokens.length > 0 && tokens[$ - 1].type == TokenType.IDENTIFIER)
             {
                 tokens[$ - 1].value ~= "*";
                 pos++;
@@ -484,6 +490,12 @@ Token[] lex(string source)
                 (pos + 6 >= source.length || !(source[pos + 6].isAlphaNum || source[pos + 6] == '_')))
             {
                 tokens ~= Token(TokenType.EXTERN, "extern");
+                pos += 6;
+            }
+            else if (pos + 6 <= source.length && source[pos .. pos + 6] == "unsafe" &&
+                (pos + 6 >= source.length || !(source[pos + 6].isAlphaNum || source[pos + 6] == '_')))
+            {
+                tokens ~= Token(TokenType.UNSAFE, "unsafe");
                 pos += 6;
             }
             else if (pos + 8 <= source.length && source[pos .. pos + 8] == "parallel" &&

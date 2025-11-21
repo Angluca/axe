@@ -1225,6 +1225,49 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
             ast.children ~= new ExternNode(externFuncName, externParams, externReturnType);
             continue;
 
+        case TokenType.UNSAFE:
+            pos++; // Skip 'unsafe'
+
+            // Skip whitespace
+            while (pos < tokens.length && (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType.NEWLINE))
+                pos++;
+
+            enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
+                "Expected '{' after 'unsafe'");
+            pos++; // Skip '{'
+
+            // Parse the body of the unsafe block
+            ASTNode[] unsafeBody;
+            int braceDepth = 1;
+            size_t blockStart = pos;
+
+            // Find the matching closing brace
+            while (pos < tokens.length && braceDepth > 0)
+            {
+                if (tokens[pos].type == TokenType.LBRACE)
+                    braceDepth++;
+                else if (tokens[pos].type == TokenType.RBRACE)
+                    braceDepth--;
+                
+                if (braceDepth > 0)
+                    pos++;
+            }
+
+            enforce(braceDepth == 0, "Unclosed unsafe block");
+            
+            size_t blockEnd = pos;
+            pos++; // Skip closing '}'
+
+            // Parse the body tokens
+            if (blockEnd > blockStart)
+            {
+                Token[] bodyTokens = tokens[blockStart .. blockEnd];
+                unsafeBody = parse(bodyTokens).children;
+            }
+
+            ast.children ~= new UnsafeNode(unsafeBody);
+            continue;
+
         case TokenType.MAIN:
             // Fall through to IDENTIFIER case which handles main
             goto case TokenType.IDENTIFIER;
@@ -2950,6 +2993,31 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
 
         return singleNode;
 
+    case TokenType.UNSAFE:
+        pos++; // Skip 'unsafe'
+
+        while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+            pos++;
+
+        enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
+            "Expected '{' after 'unsafe'");
+        pos++; // Skip '{'
+
+        auto unsafeNode = new UnsafeNode([]);
+
+        while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
+        {
+            auto stmt = parseStatementHelper(pos, tokens, currentScope, currentScopeNode, isAxec);
+            if (stmt !is null)
+                unsafeNode.body ~= stmt;
+        }
+
+        enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
+            "Expected '}' after unsafe block");
+        pos++; // Skip '}'
+
+        return unsafeNode;
+
     case TokenType.LOOP:
         return parseLoopHelper(pos, tokens, currentScope, currentScopeNode, isAxec);
 
@@ -3521,12 +3589,13 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
             pos++;
 
-        if (pos < tokens.length && tokens[pos].type == TokenType.DOT)
+        if (pos < tokens.length && (tokens[pos].type == TokenType.DOT || tokens[pos].type == TokenType.STAR_DOT))
         {
-            // Could be: obj.field = value, obj.field[index] = value, OR Model.method(...)
-            pos++; // Skip '.'
+            // Could be: obj.field = value, obj.field[index] = value, OR Model.method(...) or ptr*.field = value
+            bool isUnsafeDeref = tokens[pos].type == TokenType.STAR_DOT;
+            pos++; // Skip '.' or '*.'
             enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
-                "Expected field name or method name after '.'");
+                "Expected field name or method name after '.' or '*.'");
             string memberName = tokens[pos].value;
             pos++;
 
@@ -3615,17 +3684,18 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             }
 
             // Allow chained member access: obj.field, obj.field.sub, obj.field.sub.more, etc.
-            string fullLeftSide = identName ~ "." ~ memberName;
+            string fullLeftSide = identName ~ (isUnsafeDeref ? "*." : ".") ~ memberName;
 
-            // Consume additional ".identifier" segments, updating memberName to the last segment
-            while (pos < tokens.length && tokens[pos].type == TokenType.DOT)
+            // Consume additional ".identifier" or "*.identifier" segments, updating memberName to the last segment
+            while (pos < tokens.length && (tokens[pos].type == TokenType.DOT || tokens[pos].type == TokenType.STAR_DOT))
             {
-                pos++; // Skip '.'
+                string dotOp = tokens[pos].type == TokenType.STAR_DOT ? "*." : ".";
+                pos++; // Skip '.' or '*.'
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
-                    "Expected field name after '.'");
+                    "Expected field name after '.' or '*.'");
                 string nextMember = tokens[pos].value;
                 pos++;
-                fullLeftSide ~= "." ~ nextMember;
+                fullLeftSide ~= dotOp ~ nextMember;
                 memberName = nextMember;
             }
 

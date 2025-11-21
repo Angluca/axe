@@ -86,6 +86,8 @@ enum TokenType
     INTERPOLATED_STR,
     OPAQUE,
     EXTERN,
+    UNSAFE,
+    STAR_DOT,
 }
 
 /** 
@@ -678,6 +680,17 @@ class ExternNode : ASTNode
         this.functionName = functionName;
         this.params = params;
         this.returnType = returnType;
+    }
+}
+
+class UnsafeNode : ASTNode
+{
+    ASTNode[] body;
+
+    this(ASTNode[] body)
+    {
+        super("Unsafe");
+        this.body = body;
     }
 }
 
