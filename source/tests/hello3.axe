@@ -1,0 +1,7 @@
+def sup(x: i32, y: i32, z: i32) {
+    println "it works";
+}
+
+main {
+    sup 1, 2, 3;
+}
