@@ -78,9 +78,7 @@ This will create the `axe` executable.
 ### Hello World
 
 ```
-use stdlib/string (
-    string
-);
+use std/string;
 
 def greet(name: string): void {
     println "Hello, ", name.data, ".";
