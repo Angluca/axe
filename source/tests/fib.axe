@@ -3,16 +3,16 @@ def fib(n: i32): i32 {
         return n;
     }
 
-    mut val a: i32 = 0;
-    mut val b: i32 = 1;
-    mut val i: i32 = 2;
+    mut a: i32 = 0;
+    mut b: i32 = 1;
+    mut i: i32 = 2;
 
     loop {
         if i > n {
             break;
         }
 
-        mut val temp: i32 = a + b;
+        mut temp: i32 = a + b;
         a = b;
         b = temp;
 
@@ -23,7 +23,7 @@ def fib(n: i32): i32 {
 }
 
 main {
-    mut val i: i32 = 0;
+    mut i: i32 = 0;
     loop {
         if i > 20 {
             break;

@@ -197,28 +197,64 @@ Token[] lex(string source)
             break;
 
         case '"':
-            size_t ending = pos + 1;
-            while (ending < source.length)
+            if (pos > 0 && source[pos - 1] == '$')
             {
-                if (source[ending] == '"')
+                import std.conv : to;
+
+                tokens ~= Token(TokenType.IDENTIFIER, "__axe_interp");
+                tokens ~= Token(TokenType.LPAREN, "(");
+
+                size_t strStart = pos;
+                size_t ending = strStart + 1;
+                while (ending < source.length)
                 {
-                    break;
+                    if (source[ending] == '"')
+                    {
+                        break;
+                    }
+                    else if (source[ending] == '\\' && ending + 1 < source.length)
+                    {
+                        ending += 2;
+                    }
+                    else
+                    {
+                        ending++;
+                    }
                 }
-                else if (source[ending] == '\\' && ending + 1 < source.length)
-                {
-                    ending += 2;
-                }
-                else
-                {
-                    ending++;
-                }
+
+                enforce(ending < source.length,
+                    "Unterminated interpolated string at position " ~ pos.to!string);
+
+                tokens ~= Token(TokenType.STR, source[strStart + 1 .. ending]);
+                tokens ~= Token(TokenType.RPAREN, ")");
+
+                pos = ending + 1;
             }
+            else
+            {
+                size_t ending = pos + 1;
+                while (ending < source.length)
+                {
+                    if (source[ending] == '"')
+                    {
+                        break;
+                    }
+                    else if (source[ending] == '\\' && ending + 1 < source.length)
+                    {
+                        ending += 2;
+                    }
+                    else
+                    {
+                        ending++;
+                    }
+                }
 
-            import std.conv;
+                import std.conv;
 
-            enforce(ending < source.length, "Unterminated string at position " ~ pos.to!string);
-            tokens ~= Token(TokenType.STR, source[pos + 1 .. ending]);
-            pos = ending + 1;
+                enforce(ending < source.length, "Unterminated string at position " ~ pos.to!string);
+                tokens ~= Token(TokenType.STR, source[pos + 1 .. ending]);
+                pos = ending + 1;
+            }
             break;
 
         case '\'':
@@ -242,6 +278,16 @@ Token[] lex(string source)
 
         case '[':
             tokens ~= Token(TokenType.LBRACKET, "[");
+            pos++;
+            break;
+
+        case ']':
+            tokens ~= Token(TokenType.RBRACKET, "]");
+            pos++;
+            break;
+
+        case '.':
+            tokens ~= Token(TokenType.DOT, ".");
             pos++;
             break;
 
@@ -308,16 +354,6 @@ Token[] lex(string source)
                 }
                 tokens ~= Token(TokenType.IDENTIFIER, source[start .. pos]);
             }
-            break;
-
-        case ']':
-            tokens ~= Token(TokenType.RBRACKET, "]");
-            pos++;
-            break;
-
-        case '.':
-            tokens ~= Token(TokenType.DOT, ".");
-            pos++;
             break;
 
         case 't':
