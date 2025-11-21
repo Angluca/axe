@@ -29,7 +29,6 @@ Token[] lex(string source)
         switch (source[pos])
         {
         case '*':
-            // Check for *. (pointer member access)
             if (pos + 1 < source.length && source[pos + 1] == '.')
             {
                 tokens ~= Token(TokenType.STAR_DOT, "*.");
