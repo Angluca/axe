@@ -4496,4 +4496,18 @@ unittest
         assert(cCode.canFind("some_other_task()"),
             "Should include some_other_task function call");
     }
+
+    {
+        auto tokens = lex("main { println (\"Hello, world\"); }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("String literal in parentheses format specifier test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("printf(\"%s\\n\", (\"Hello, world\"));"),
+            "Should use %s format specifier for string literals even in parentheses, not %d");
+        assert(!cCode.canFind("printf(\"%d\\n\", (\"Hello, world\"));"),
+            "Should NOT use %d format specifier for string literals in parentheses");
+    }
 }
