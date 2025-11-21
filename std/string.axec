@@ -690,5 +690,11 @@ test {
     assert(!has_prefix(base, string.create("foobarbaz")), "longer prefix should not match");
     assert(!has_suffix(base, string.create("foobarbaz")), "longer suffix should not match");
 
-    // assert fmt(str("Hello, {}! Today is {}."), [string]{str("Alice"), str("Monday")}) == str("Hello, Alice! Today is Monday."), "fmt should format strings correctly";
+    assert compare(
+            fmt(str("Hello, {}! Today is {}."), [string]{str("Alice"), str("Monday")}), 
+            str("Hello, Alice! Today is Monday.")
+        ) == 0, 
+        "fmt should format strings correctly";
+    
+    print_str(fmt(str("Hello, {}! Today is {}."), [string]{str("Alice"), str("Monday")}));
 }

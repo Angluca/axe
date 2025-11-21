@@ -2037,26 +2037,7 @@ string processExpression(string expr, string context = "")
                         {
                             string arrayContent = expr[braceStart + 1 .. braceEnd];
 
-                            static immutable string[string] baseTypeMap = [
-                                "i8": "int8_t",
-                                "u8": "uint8_t",
-                                "i16": "int16_t",
-                                "u16": "uint16_t",
-                                "i32": "int32_t",
-                                "u32": "uint32_t",
-                                "i64": "int64_t",
-                                "u64": "uint64_t",
-                                "isize": "intptr_t",
-                                "usize": "uintptr_t",
-                                "f32": "float",
-                                "f64": "double",
-                                "bool": "bool",
-                                "char": "char",
-                                "byte": "uint8_t"
-                            ];
-
-                            string cType = (elementType in baseTypeMap) ?
-                                baseTypeMap[elementType] : elementType;
+                            string cType = mapAxeTypeToC(elementType);
                             string result = expr[0 .. bracketStart] ~ "(" ~ cType ~
                                 "[]){" ~ arrayContent ~ "}";
 
