@@ -136,7 +136,6 @@ bool handleMachineArgs(string[] args)
         if (args.canFind("-tokens"))
             writeln(tokens);
 
-        // Derive module name from file path (e.g., std/string.axec -> std.string)
         string moduleName = "";
         if (name.canFind("std/") || name.canFind("std\\"))
         {
