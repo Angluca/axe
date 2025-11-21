@@ -174,6 +174,7 @@ struct ParamInfo
     string name;
     bool isArray;
     int dimensions;
+    bool isDimension;
     string[] dimNames;
 }
 
@@ -216,6 +217,10 @@ string[] computeReorderedCParams(FunctionNode funcNode, out int[] reorderMap, ou
             info.type = paramType;
             info.name = paramName;
             info.isArray = paramType.canFind('[');
+            info.dimensions = 0;
+            info.isDimension = false;
+            info.dimNames = [];
+
             if (info.isArray)
             {
                 info.dimensions = cast(int) paramType.count('[');
@@ -516,6 +521,16 @@ string generateC(ASTNode ast)
         cCode ~= "int __axe_argc = 0;\n";
         cCode ~= "char** __axe_argv = NULL;\n\n\n";
 
+        // Hoist overload macro definitions as early as possible so all
+        // subsequent code (including imported std modules) can use them.
+        foreach (child; ast.children)
+        {
+            if (child.nodeType == "Overload")
+            {
+                cCode ~= generateC(child) ~ "\n";
+            }
+        }
+
         foreach (child; ast.children)
         {
             if (child.nodeType == "Enum")
@@ -718,7 +733,7 @@ string generateC(ASTNode ast)
         foreach (child; ast.children)
         {
             if (child.nodeType != "Model" && child.nodeType != "ExternalImport" && child.nodeType != "Enum" && child
-                .nodeType != "Use" && child.nodeType != "Macro")
+                .nodeType != "Use" && child.nodeType != "Macro" && child.nodeType != "Overload")
             {
                 debugWriteln("DEBUG: Processing top-level node of type '", child.nodeType, "'");
                 cCode ~= generateC(child) ~ "\n";
@@ -1681,11 +1696,91 @@ string generateC(ASTNode ast)
             string paramName = overloadNode.paramName.length ? overloadNode.paramName : "x";
             string callExpr = overloadNode.callExpr.length ? overloadNode.callExpr : paramName;
 
-            cCode ~= "#define " ~ overloadNode.name ~ "(" ~ paramName ~ ") _Generic((" ~ callExpr ~ "), \\\n";
+            // Use a prefixed macro name if this overload was imported via a
+            // module (e.g. use std.io(println) -> std_io_println).
+            string macroName = overloadNode.name;
+            if (overloadNode.name in g_functionPrefixes)
+            {
+                macroName = g_functionPrefixes[overloadNode.name];
+            }
+
+            cCode ~= "#define " ~ macroName ~ "(" ~ paramName ~ ") _Generic((" ~ callExpr ~ "), \\\n";
+
+            // If any target function in this overload resolves to a prefixed
+            // name (e.g. std_io_print_str for print_str), reuse that prefix
+            // for other targets that don't otherwise resolve. This keeps all
+            // dispatched functions consistently in the same C namespace.
+            string overloadPrefix;
 
             foreach (i, typeName; overloadNode.typeNames)
             {
-                cCode ~= "    " ~ typeName ~ ": " ~ overloadNode.targetFunctions[i];
+                string mappedType = mapAxeTypeToC(typeName);
+                string baseName = overloadNode.targetFunctions[i];
+                string cTargetName = baseName;
+
+                // Apply the same name resolution rules as for normal function calls
+                import std.string : split, strip, indexOf, replace, endsWith;
+
+                if (cTargetName.canFind("."))
+                {
+                    auto parts = cTargetName.split(".");
+                    string modelName = parts[0].strip();
+                    string methodName = parts[1].strip();
+
+                    if (modelName in g_modelNames)
+                    {
+                        string modelCName = canonicalModelCName(modelName);
+                        if (modelCName.length == 0)
+                            modelCName = modelName;
+                        cTargetName = modelCName ~ "_" ~ methodName;
+                    }
+                    else
+                    {
+                        cTargetName = cTargetName.replace(".", "_");
+                    }
+                }
+                else if (cTargetName in g_functionPrefixes)
+                {
+                    cTargetName = g_functionPrefixes[cTargetName];
+                }
+                else
+                {
+                    auto underscorePos = cTargetName.indexOf('_');
+                    if (underscorePos > 0)
+                    {
+                        string modelName = cTargetName[0 .. underscorePos];
+                        string methodName = cTargetName[underscorePos + 1 .. $];
+
+                        if (modelName in g_modelNames && methodName.length > 0)
+                        {
+                            string modelCName = canonicalModelCName(modelName);
+                            if (modelCName.length == 0)
+                                modelCName = modelName;
+                            cTargetName = modelCName ~ "_" ~ methodName;
+                        }
+                    }
+                }
+
+                // If we haven't discovered a prefix yet and this resolution
+                // changed the name by adding a leading prefix (and kept the
+                // original suffix), infer it now. Example:
+                //   baseName = "print_str"
+                //   cTargetName = "std_io_print_str"  -> overloadPrefix = "std_io_".
+                if (overloadPrefix.length == 0 && cTargetName != baseName && cTargetName.endsWith(baseName))
+                {
+                    overloadPrefix = cTargetName[0 .. $ - baseName.length];
+                }
+
+                // If we have an inferred prefix but this particular target
+                // didn't resolve (e.g. println_chrptr), apply the same prefix
+                // so it dispatches to the correctly-prefixed function in
+                // the same module (std_io_println_chrptr).
+                if (overloadPrefix.length > 0 && cTargetName == baseName)
+                {
+                    cTargetName = overloadPrefix ~ baseName;
+                }
+
+                cCode ~= "    " ~ mappedType ~ ": " ~ cTargetName;
                 if (i + 1 < overloadNode.typeNames.length)
                     cCode ~= ", \\\n";
                 else

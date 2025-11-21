@@ -96,6 +96,11 @@ Token[] lex(string source)
                 tokens ~= Token(TokenType.OPERATOR, "==");
                 pos += 2;
             }
+            else if (pos + 1 < source.length && source[pos + 1] == '>')
+            {
+                tokens ~= Token(TokenType.OPERATOR, "=>");
+                pos += 2;
+            }
             else
             {
                 tokens ~= Token(TokenType.OPERATOR, "=");

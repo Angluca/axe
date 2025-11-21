@@ -5,7 +5,8 @@ use std.arena (
 use std.io (
     print_i32,
     print_str,
-    print_char
+    print_char,
+    println
 );
 
 use std.string (

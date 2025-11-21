@@ -331,6 +331,14 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         moduleMacroMap[macroNode.name] = macroNode.name;
                     }
                 }
+                else if (importChild.nodeType == "Overload")
+                {
+                    auto overloadNode = cast(OverloadNode) importChild;
+                    if (useNode.importAll || useNode.imports.canFind(overloadNode.name))
+                    {
+                        moduleMacroMap[overloadNode.name] = overloadNode.name;
+                    }
+                }
             }
 
             bool[string] resolvedImports;
@@ -526,6 +534,40 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         if (!alreadyAdded)
                         {
                             newChildren ~= macroNode;
+                        }
+                    }
+                }
+                else if (importChild.nodeType == "Overload")
+                {
+                    auto overloadNode = cast(OverloadNode) importChild;
+                    if (useNode.importAll || useNode.imports.canFind(overloadNode.name))
+                    {
+                        resolvedImports[overloadNode.name] = true;
+                        if (overloadNode.name !in g_addedNodeNames)
+                        {
+                            g_addedNodeNames[overloadNode.name] = true;
+                            newChildren ~= overloadNode;
+                        }
+                    }
+                    else
+                    {
+                        bool alreadyAdded = false;
+                        foreach (existingChild; newChildren)
+                        {
+                            if (existingChild.nodeType == "Overload")
+                            {
+                                auto existingOverload = cast(OverloadNode) existingChild;
+                                if (existingOverload.name == overloadNode.name)
+                                {
+                                    alreadyAdded = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!alreadyAdded)
+                        {
+                            newChildren ~= overloadNode;
                         }
                     }
                 }

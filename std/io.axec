@@ -123,23 +123,21 @@ def println_bool(value: bool) {
     }
 }
 
+
 test {
     val x: f32 = 3.14159;
     val y: f32 = 2.71828;
 
-    print "Testing print_float: ";
     print_f32(x);
     println "";
     println "Testing println_float:";
     println_f32(y);
 
-    print "Testing print_int: ";
     print_i32(42);
     println "";
     println "Testing println_int:";
     println_i32(42);
 
-    print "Testing print_bool: ";
     print_bool(true);
     println "";
     println "Testing println_bool:";
