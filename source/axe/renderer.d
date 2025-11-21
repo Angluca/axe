@@ -3619,6 +3619,28 @@ unittest
 
     {
         auto tokens = lex(
+            "overload println(x: generic) { i32 => println_i32; }(x) " ~
+            "def println_i32(x: i32) { put \"int\"; } " ~
+            "main { println(42); }");
+
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Overload macro hoist test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("#define println("), "Overload should generate println macro");
+        assert(cCode.canFind("int32_t: println_i32"),
+            "Overload should map i32 to println_i32 in _Generic");
+
+        auto macroPos = cCode.indexOf("#define println(");
+        auto callPos = cCode.indexOf("println(42);");
+        assert(macroPos != -1 && callPos != -1 && macroPos < callPos,
+            "Overload macro should be hoisted before call site");
+    }
+
+    {
+        auto tokens = lex(
             "model Cat { health: i32 } main { mut val cat = new Cat(health: 100); cat.health = 90; }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
