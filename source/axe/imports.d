@@ -145,9 +145,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             auto useNode = cast(UseNode) child;
             string modulePath;
 
-            if (useNode.moduleName.startsWith("std/"))
+            if (useNode.moduleName.startsWith("std."))
             {
-                string moduleName = useNode.moduleName[4 .. $];
+                string moduleName = useNode.moduleName[4 .. $].replace(".", dirSeparator);
 
                 if (baseDir.endsWith("std") || baseDir.endsWith("std/"))
                 {
@@ -179,7 +179,16 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             }
             else
             {
-                modulePath = buildPath(baseDir, useNode.moduleName ~ ".axe");
+                string processedModuleName = useNode.moduleName;
+                // Handle relative paths (../ and ./) and dot-separated module paths
+                // Replace dots with directory separators, but keep ../ and ./
+                // This preserves relative path prefixes while converting module.submodule to module/submodule
+                if (!processedModuleName.startsWith("../") && !processedModuleName.startsWith("./"))
+                {
+                    processedModuleName = processedModuleName.replace(".", dirSeparator);
+                }
+                
+                modulePath = buildPath(baseDir, processedModuleName ~ ".axe");
 
                 if (!exists(modulePath))
                 {
@@ -213,7 +222,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 }
             }
 
-            string sanitizedModuleName = useNode.moduleName.replace("/", "_");
+            string sanitizedModuleName = useNode.moduleName.replace(".", "_");
             string[string] moduleFunctionMap;
             string[string] moduleModelMap;
             string[string] moduleMacroMap;

@@ -1,8 +1,8 @@
-use std/string (
+use std.string (
     string
 );
 
-use std/io(
+use std.io(
     println_str,
     print_str
 );

@@ -1,12 +1,12 @@
-use std/string (
+use std.string (
     string
 );
 
-use std/arena (
+use std.arena (
     Arena
 );
 
-use std/errors (
+use std.errors (
     error,
     panic
 );

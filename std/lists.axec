@@ -1,18 +1,18 @@
-use std/arena (
+use std.arena (
     Arena
 );
 
-use std/io (
+use std.io (
     print_i32,
     print_str,
     print_char
 );
 
-use std/string (
+use std.string (
     string
 );
 
-use std/errors (
+use std.errors (
     panic,
     error
 );

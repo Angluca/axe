@@ -1,13 +1,13 @@
-use std/lists (
+use std.lists (
     StringList
 );
 
-use std/typecons (
+use std.typecons (
     Any,
     AnyKind
 );
 
-use std/io;
+use std.io;
 
 /// string model representing a dynamic string with length tracking.
 model string {

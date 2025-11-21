@@ -1,6 +1,6 @@
-use std/lists;
-use std/arena;
-use std/string;
+use std.lists;
+use std.arena;
+use std.string;
 
 macro create_map(keytype_elem: untyped, valtype_elem: untyped, mapname: untyped, keytype: untyped, valtype: untyped) {
     model mapname {

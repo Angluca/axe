@@ -938,19 +938,52 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                 continue;
             }
 
+            string moduleName = "";
+            
+            while (pos < tokens.length && tokens[pos].type == TokenType.DOT)
+            {
+                size_t lookAhead = pos + 1;
+                
+                if (lookAhead < tokens.length && tokens[lookAhead].type == TokenType.DOT)
+                {
+                    lookAhead++;
+                    if (lookAhead < tokens.length && tokens[lookAhead].type == TokenType.SLASH)
+                    {
+                        moduleName ~= "../";
+                        pos = lookAhead + 1;
+                        continue;
+                    }
+                }
+                else if (lookAhead < tokens.length && tokens[lookAhead].type == TokenType.SLASH)
+                {
+                    moduleName ~= "./";
+                    pos = lookAhead + 1;
+                    continue;
+                }
+                
+                break;
+            }
+            
             enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
                 "Expected module name after 'use'");
-            string moduleName = tokens[pos].value;
+            moduleName ~= tokens[pos].value;
             pos++;
 
-            // Handle module paths like "stdlib/arena" (tokenized as stdlib, /, arena)
-            while (pos < tokens.length && tokens[pos].type == TokenType.SLASH)
+            // Handle module paths like "std.io" or "std/io" (dots or slashes)
+            while (pos < tokens.length && (tokens[pos].type == TokenType.DOT || tokens[pos].type == TokenType.SLASH))
             {
-                moduleName ~= "/";
+                if (tokens[pos].type == TokenType.DOT)
+                {
+                    moduleName ~= ".";
+                }
+                else
+                {
+                    moduleName ~= "/";
+                }
                 pos++;
 
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
-                    "Expected identifier after '/' in module path");
+                    "Expected identifier after '.' or '/' in module path");
                 moduleName ~= tokens[pos].value;
                 pos++;
             }
@@ -1008,7 +1041,7 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                 "Expected ';' after use statement");
             pos++; // Skip ';'
 
-            string modulePrefix = moduleName.replace("/", "_"); // "stdlib_arena"
+            string modulePrefix = moduleName.replace(".", "_"); // "stdlib_arena"
 
             // For each imported identifier, create a type alias
             foreach (importName; imports)
@@ -4700,20 +4733,51 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             return new ExternalImportNode(headerFile);
         }
 
-        // Regular module use in statement context: use some/module (A, B);
+        string moduleName = "";
+        
+        while (pos < tokens.length && tokens[pos].type == TokenType.DOT)
+        {
+            size_t lookAhead = pos + 1;
+            
+            if (lookAhead < tokens.length && tokens[lookAhead].type == TokenType.DOT)
+            {
+                lookAhead++;
+                if (lookAhead < tokens.length && tokens[lookAhead].type == TokenType.SLASH)
+                {
+                    moduleName ~= "../";
+                    pos = lookAhead + 1;
+                    continue;
+                }
+            }
+            else if (lookAhead < tokens.length && tokens[lookAhead].type == TokenType.SLASH)
+            {
+                moduleName ~= "./";
+                pos = lookAhead + 1;
+                continue;
+            }
+            
+            break;
+        }
+        
         enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
             "Expected module name after 'use'");
-        string moduleName = tokens[pos].value;
+        moduleName ~= tokens[pos].value;
         pos++;
 
-        // Handle module paths like "stdlib/arena" (tokenized as stdlib, /, arena)
-        while (pos < tokens.length && tokens[pos].type == TokenType.SLASH)
+        while (pos < tokens.length && (tokens[pos].type == TokenType.DOT || tokens[pos].type == TokenType.SLASH))
         {
-            moduleName ~= "/";
+            if (tokens[pos].type == TokenType.DOT)
+            {
+                moduleName ~= ".";
+            }
+            else
+            {
+                moduleName ~= "/";
+            }
             pos++;
 
             enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
-                "Expected identifier after '/' in module path");
+                "Expected identifier after '.' or '/' in module path");
             moduleName ~= tokens[pos].value;
             pos++;
         }

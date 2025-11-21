@@ -1,16 +1,16 @@
-use std/string (
+use std.string (
     string
 );
-use std/io (
+use std.io (
     print_str
 );
-use std/errors (
+use std.errors (
     error, panic
 );
-use std/lists (
+use std.lists (
     StringList
 );
-use std/arena (
+use std.arena (
     Arena
 );
 

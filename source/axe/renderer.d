@@ -398,7 +398,7 @@ string generateC(ASTNode ast)
             if (child.nodeType == "Use")
             {
                 auto useNode = cast(UseNode) child;
-                string modulePrefix = useNode.moduleName.replace("/", "_");
+                string modulePrefix = useNode.moduleName.replace(".", "_");
                 foreach (importName; useNode.imports)
                 {
                     if (importName.length > 0 && !(importName[0] >= 'A' && importName[0] <= 'Z'))
