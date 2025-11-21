@@ -1,9 +1,66 @@
 use std/lists;
+use std/arena;
+use std/string;
 
-macro create_map(type1: untyped, type2: untyped, mapname: untyped, keytype: untyped, valtype: untyped) {
+macro create_map(keytype_elem: untyped, valtype_elem: untyped, mapname: untyped, keytype: untyped, valtype: untyped) {
     model mapname {
         keys: keytype;
         values: valtype;
+        
+        def create(arena: ref Arena, capacity: i32): ref mapname {
+            mut map: ref mapname;
+            raw {
+                map = ({{mapname}}*)std_arena_Arena_alloc(arena, sizeof({{mapname}}));
+            }
+            map.keys = keytype.create(ref_of(arena), capacity);
+            map.values = valtype.create(ref_of(arena), capacity);
+            return map;
+        }
+        
+        def put(map: ref mapname, arena: ref Arena, key: keytype_elem, value: valtype_elem) {
+            keytype.push(map.keys, ref_of(arena), key);
+            valtype.push(map.values, ref_of(arena), value);
+        }
+        
+        def get(map: ref mapname, key: keytype_elem): valtype_elem {
+            mut i: i32 = 0;
+            loop {
+                if i >= map.keys.len {
+                    break;
+                }
+                raw {
+                    if (memcmp(&map->keys->data[i], &key, sizeof({{keytype_elem}})) == 0) {
+                        return map->values->data[i];
+                    }
+                }
+                i = i + 1;
+            }
+            mut default_val: valtype_elem;
+            raw {
+                memset(&default_val, 0, sizeof({{valtype_elem}}));
+            }
+            return default_val;
+        }
+        
+        def contains(map: ref mapname, key: keytype_elem): bool {
+            mut i: i32 = 0;
+            loop {
+                if i >= map.keys.len {
+                    break;
+                }
+                raw {
+                    if (memcmp(&map->keys->data[i], &key, sizeof({{keytype_elem}})) == 0) {
+                        return true;
+                    }
+                }
+                i = i + 1;
+            }
+            return false;
+        }
+        
+        def size(map: ref mapname): i32 {
+            return map.keys.len;
+        }
     }
 }
 
@@ -11,15 +68,57 @@ create_map(string, string, StringStringMap, StringList, StringList);
 create_map(string, i32, StringIntMap, StringList, IntList);
 create_map(i32, string, IntStringMap, IntList, StringList);
 create_map(i32, i32, IntIntMap, IntList, IntList);
-create_map(string, float, StringFloatMap, StringList, FloatList);
-create_map(float, string, FloatStringMap, FloatList, StringList);
-create_map(i32, float, IntFloatMap, IntList, FloatList);
-create_map(float, i32, FloatIntMap, FloatList, IntList);
+create_map(string, f32, StringFloatMap, StringList, FloatList);
+create_map(f32, string, FloatStringMap, FloatList, StringList);
+create_map(i32, f32, IntFloatMap, IntList, FloatList);
+create_map(f32, i32, FloatIntMap, FloatList, IntList);
 create_map(string, bool, StringBoolMap, StringList, BoolList);
 create_map(bool, string, BoolStringMap, BoolList, StringList);
 create_map(i32, bool, IntBoolMap, IntList, BoolList);
 create_map(bool, i32, BoolIntMap, BoolList, IntList);
-create_map(float, bool, FloatBoolMap, FloatList, BoolList);
-create_map(bool, float, BoolFloatMap, BoolList, FloatList);
+create_map(f32, bool, FloatBoolMap, FloatList, BoolList);
+create_map(bool, f32, BoolFloatMap, BoolList, FloatList);
 
-test {}
+test {
+    
+    mut arena: Arena;
+    arena.init(1024);
+    
+    val int_map: ref IntIntMap = IntIntMap.create(ref_of(arena), 10);
+    
+    IntIntMap.put(int_map, ref_of(arena), 1, 100);
+    IntIntMap.put(int_map, ref_of(arena), 2, 200);
+    IntIntMap.put(int_map, ref_of(arena), 3, 300);
+    
+    assert(IntIntMap.get(int_map, 1) == 100, "IntIntMap should return 100 for key 1");
+    assert(IntIntMap.get(int_map, 2) == 200, "IntIntMap should return 200 for key 2");
+    assert(IntIntMap.get(int_map, 3) == 300, "IntIntMap should return 300 for key 3");
+    assert(IntIntMap.contains(int_map, 1), "IntIntMap should contain key 1");
+    assert(IntIntMap.contains(int_map, 2), "IntIntMap should contain key 2");
+    assert(!IntIntMap.contains(int_map, 999), "IntIntMap should not contain key 999");
+    assert(IntIntMap.size(int_map) == 3, "IntIntMap size should be 3");
+    
+    val str_int_map: ref StringIntMap = StringIntMap.create(ref_of(arena), 10);
+    
+    StringIntMap.put(str_int_map, ref_of(arena), string.create("foo"), 42);
+    StringIntMap.put(str_int_map, ref_of(arena), string.create("bar"), 99);
+    StringIntMap.put(str_int_map, ref_of(arena), string.create("baz"), 77);
+    
+    assert(StringIntMap.get(str_int_map, string.create("foo")) == 42, "StringIntMap should return 42 for key 'foo'");
+    assert(StringIntMap.get(str_int_map, string.create("bar")) == 99, "StringIntMap should return 99 for key 'bar'");
+    assert(StringIntMap.get(str_int_map, string.create("baz")) == 77, "StringIntMap should return 77 for key 'baz'");
+    assert(StringIntMap.contains(str_int_map, string.create("foo")), "StringIntMap should contain key 'foo'");
+    assert(!StringIntMap.contains(str_int_map, string.create("missing")), "StringIntMap should not contain key 'missing'");
+    assert(StringIntMap.size(str_int_map) == 3, "StringIntMap size should be 3");
+    
+    val float_map: ref FloatIntMap = FloatIntMap.create(ref_of(arena), 10);
+    
+    FloatIntMap.put(float_map, ref_of(arena), 3.14, 314);
+    FloatIntMap.put(float_map, ref_of(arena), 2.71, 271);
+    
+    assert(FloatIntMap.get(float_map, 3.14) == 314, "FloatIntMap should return 314 for key 3.14");
+    assert(FloatIntMap.get(float_map, 2.71) == 271, "FloatIntMap should return 271 for key 2.71");
+    assert(FloatIntMap.contains(float_map, 3.14), "FloatIntMap should contain key 3.14");
+    assert(!FloatIntMap.contains(float_map, 1.23), "FloatIntMap should not contain key 1.23");
+    assert(FloatIntMap.size(float_map) == 2, "FloatIntMap size should be 2");
+}
