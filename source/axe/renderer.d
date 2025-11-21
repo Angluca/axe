@@ -4136,4 +4136,43 @@ unittest
         assert(cCode.canFind("for (int32_t _i_item = 0;"),
             "Should generate index variable for for-in loop");
     }
+
+    {
+        auto tokens = lex(
+            "def task_a() { println \"A\"; } def task_b() { println \"B\"; } " ~
+            "main { parallel { task_a(); task_b(); } }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Parallel block test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("#pragma omp parallel"),
+            "Should generate OpenMP parallel pragma");
+        assert(cCode.canFind("task_a()"),
+            "Should include task_a function call");
+        assert(cCode.canFind("task_b()"),
+            "Should include task_b function call");
+    }
+
+    {
+        auto tokens = lex(
+            "def some_task() { println \"hello\"; } " ~
+            "def some_other_task() { println \"world\"; } " ~
+            "main { parallel { single { some_task(); some_other_task(); } } }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Parallel with single block test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("#pragma omp parallel"),
+            "Should generate OpenMP parallel pragma");
+        assert(cCode.canFind("#pragma omp single"),
+            "Should generate OpenMP single pragma");
+        assert(cCode.canFind("some_task()"),
+            "Should include some_task function call");
+        assert(cCode.canFind("some_other_task()"),
+            "Should include some_other_task function call");
+    }
 }
