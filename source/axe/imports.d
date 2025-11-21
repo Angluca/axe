@@ -503,25 +503,29 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     if (useNode.importAll || useNode.imports.canFind(enumNode.name))
                     {
                         resolvedImports[enumNode.name] = true;
+                        enumNode.name = moduleModelMap[enumNode.name]; // Prefix the name
+                        newChildren ~= enumNode;
                     }
-
-                    bool alreadyAdded = false;
-                    foreach (existingChild; newChildren)
+                    else
                     {
-                        if (existingChild.nodeType == "Enum")
+                        bool alreadyAdded = false;
+                        foreach (existingChild; newChildren)
                         {
-                            auto existingEnum = cast(EnumNode) existingChild;
-                            if (existingEnum.name == enumNode.name)
+                            if (existingChild.nodeType == "Enum")
                             {
-                                alreadyAdded = true;
-                                break;
+                                auto existingEnum = cast(EnumNode) existingChild;
+                                if (existingEnum.name == enumNode.name)
+                                {
+                                    alreadyAdded = true;
+                                    break;
+                                }
                             }
                         }
-                    }
 
-                    if (!alreadyAdded)
-                    {
-                        newChildren ~= enumNode;
+                        if (!alreadyAdded)
+                        {
+                            newChildren ~= enumNode;
+                        }
                     }
                 }
                 else if (importChild.nodeType == "Macro")
@@ -530,11 +534,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     if (useNode.importAll || useNode.imports.canFind(macroNode.name))
                     {
                         resolvedImports[macroNode.name] = true;
-                        if (macroNode.name !in g_addedNodeNames)
-                        {
-                            g_addedNodeNames[macroNode.name] = true;
-                            newChildren ~= macroNode;
-                        }
+                        macroNode.name = moduleMacroMap[macroNode.name];
+                        newChildren ~= macroNode;
                     }
                     else
                     {
@@ -564,11 +565,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     if (useNode.importAll || useNode.imports.canFind(overloadNode.name))
                     {
                         resolvedImports[overloadNode.name] = true;
-                        if (overloadNode.name !in g_addedNodeNames)
-                        {
-                            g_addedNodeNames[overloadNode.name] = true;
-                            newChildren ~= overloadNode;
-                        }
+                        overloadNode.name = moduleMacroMap[overloadNode.name];
+                        newChildren ~= overloadNode;
                     }
                     else
                     {
@@ -797,13 +795,6 @@ string fixDoublePrefix(string expr)
  */
 void renameFunctionCalls(ASTNode node, string[string] nameMap)
 {
-    if (node.nodeType == "Function")
-    {
-        auto funcNode = cast(FunctionNode) node;
-        if (funcNode.name in nameMap)
-            funcNode.name = nameMap[funcNode.name];
-    }
-
     if (node.nodeType == "FunctionCall")
     {
         auto callNode = cast(FunctionCallNode) node;
