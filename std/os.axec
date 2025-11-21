@@ -193,7 +193,6 @@ platform posix {
     use external("dirent.h");
 }
 
-// Declare opaque types for directory operations
 platform posix {
     opaque { DIR, dirent, stat };
     
@@ -201,8 +200,20 @@ platform posix {
     extern def readdir(dirp: usize): usize;
     extern def closedir(dirp: usize): i32;
     extern def stat(pathname: char*, statbuf: usize): i32;
-    extern def dirent_d_name(entry: usize): char*;
-    extern def stat_is_dir(st: usize): i32;
+
+    def dirent_d_name(entry: usize): char* {
+        unsafe {
+            val d: dirent* = entry;
+            return d*.d_name;
+        }
+    }
+
+    def stat_is_dir(st: usize): i32 {
+        unsafe {
+            val s: stat* = st;
+            return S_ISDIR(s*.st_mode);
+        }
+    }
 }
 
 platform windows {
@@ -211,11 +222,22 @@ platform windows {
     extern def _findfirst(filespec: char*, fileinfo: usize): isize;
     extern def _findnext(handle: isize, fileinfo: usize): i32;
     extern def _findclose(handle: isize): i32;
-    extern def finddata_name(data: usize): char*;
-    extern def finddata_is_dir(data: usize): i32;
+
+    def finddata_name(data: usize): char* {
+        unsafe {
+            val info: _finddata_t* = data;
+            return info*.name;
+        }
+    }
+
+    def finddata_is_dir(data: usize): i32 {
+        unsafe {
+            val info: _finddata_t* = data;
+            return (info*.attrib & _A_SUBDIR) != 0;
+        }
+    }
 }
 
-// Common C functions
 extern def malloc(size: usize): usize;
 extern def free(ptr: usize);
 extern def strlen(s: char*): usize;
@@ -296,7 +318,6 @@ def rm_dir_recursive(path: string): bool {
     }
 
     platform windows {
-        // Windows implementation - similar pattern but with _findfirst/_findnext
         mut val r: i32 = 0;
         val search_buf: usize = malloc(260);
         snprintf(search_buf, 260, "%s\\*", path.data);
@@ -356,9 +377,13 @@ def rm_dir_recursive(path: string): bool {
     return ok;
 }
 
-// Additional helper for stat (POSIX only)
 platform posix {
-    extern def stat_is_reg(st: usize): i32;
+    def stat_is_reg(st: usize): i32 {
+        unsafe {
+            val s: stat* = st;
+            return S_ISREG(s*.st_mode);
+        }
+    }
 }
 
 /// Internal helper to collect files recursively into a StringList.
