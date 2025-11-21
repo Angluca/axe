@@ -2174,7 +2174,17 @@ string processExpression(string expr, string context = "")
         }
 
         string varName = expr[parenStart .. parenEnd].strip();
-        expr = expr[0 .. startIdx] ~ "&" ~ varName ~ expr[parenEnd + 1 .. $];
+        debugWriteln("DEBUG ref_of: varName = '", varName, "', parenEnd = ", parenEnd, ", expr.length = ", expr.length);
+        debugWriteln("DEBUG ref_of: suffix = '", expr[parenEnd + 1 .. $], "'");
+        if (varName.canFind("[") || varName.canFind("."))
+        {
+            expr = expr[0 .. startIdx] ~ "&(" ~ varName ~ ")" ~ expr[parenEnd + 1 .. $];
+            debugWriteln("DEBUG ref_of: wrapped expression = '", expr, "'");
+        }
+        else
+        {
+            expr = expr[0 .. startIdx] ~ "&" ~ varName ~ expr[parenEnd + 1 .. $];
+        }
     }
 
     while (expr.canFind("addr_of"))
@@ -2250,6 +2260,7 @@ string processExpression(string expr, string context = "")
     if (expr.canFind("["))
     {
         bool inString = false;
+        int parenDepth = 0;
         size_t bracketPos = expr.length;
         for (size_t i = 0; i < expr.length; i++)
         {
@@ -2257,7 +2268,15 @@ string processExpression(string expr, string context = "")
             {
                 inString = !inString;
             }
-            else if (!inString && expr[i] == '[')
+            else if (!inString && expr[i] == '(')
+            {
+                parenDepth++;
+            }
+            else if (!inString && expr[i] == ')')
+            {
+                parenDepth--;
+            }
+            else if (!inString && parenDepth == 0 && expr[i] == '[')
             {
                 bracketPos = i;
                 break;
@@ -2608,10 +2627,8 @@ string processExpression(string expr, string context = "")
                 c == '!' || c == '~' || c == '^');
         bool isUnderscore = (c == '_');
 
-        // If it's not a letter, digit, operator, or underscore, wrap it as a char literal
         if (!isLetter && !isDigit && !isOperator && !isUnderscore && c >= 32 && c < 127)
         {
-            // Special handling for characters that need escaping in C
             if (c == '\'')
                 return "'\\\''"; // Single quote needs escaping
             else if (c == '\\')
@@ -2623,13 +2640,12 @@ string processExpression(string expr, string context = "")
         }
     }
 
-    // Handle common escape sequences that come through as 2 chars (backslash + letter)
     if (expr.length == 2 && expr[0] == '\\')
     {
-        // These are already properly formatted as escape sequences
         return "'" ~ expr ~ "'";
     }
 
+    debugWriteln("DEBUG processExpression FINAL: returning '", expr, "'");
     return expr;
 }
 
