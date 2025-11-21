@@ -4886,5 +4886,47 @@ unittest
             "*. syntax should be converted to -> in generated C code");
     }
 
+    {
+        auto tokens = lex("main { val x: f64 = 2 . 0* 3 . 0; }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Float literal spacing normalization (simple expression) test:");
+        writeln(cCode);
+
+        assert(!cCode.canFind("2 . 0"), "Float literal should not contain spaces around decimal point (2 . 0)");
+        assert(!cCode.canFind("3 . 0"), "Float literal should not contain spaces around decimal point (3 . 0)");
+        assert(cCode.canFind("2.0"), "Float literal 2.0 should be rendered without spaces around decimal point");
+        assert(cCode.canFind("3.0"), "Float literal 3.0 should be rendered without spaces around decimal point");
+    }
+
+    {
+        auto tokens = lex("main { mut val n: f64 = 1 . 0; mut val term: f64 = 1 . 0; term = ((term*(( 2 . 0* n + 1 . 0) *( 2 . 0* n + 1 . 0)))); }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Float literal spacing normalization (complex expression) test:");
+        writeln(cCode);
+
+        assert(!cCode.canFind("2 . 0"), "Complex expression should not contain spaced float literal 2 . 0");
+        assert(!cCode.canFind("1 . 0"), "Complex expression should not contain spaced float literal 1 . 0");
+        assert(cCode.canFind("2.0"), "Complex expression should contain normalized 2.0");
+        assert(cCode.canFind("1.0"), "Complex expression should contain normalized 1.0");
+    }
+
+    {
+        auto tokens = lex("main { put \"value is 2 . 0\"; }");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+
+        writeln("Float-like text inside string literal should be preserved test:");
+        writeln(cCode);
+
+        assert(cCode.canFind("value is 2 . 0"),
+            "String literal contents 'value is 2 . 0' should be preserved without normalization");
+        assert(!cCode.canFind("value is 2.0"),
+            "Float normalization should not alter contents of string literals");
+    }
+
     writeln("\n\033[32m✓ All tests passed!\033[0m");
 }
