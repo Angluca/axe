@@ -4,8 +4,8 @@ use std/string;
 
 macro create_map(keytype_elem: untyped, valtype_elem: untyped, mapname: untyped, keytype: untyped, valtype: untyped) {
     model mapname {
-        keys: keytype;
-        values: valtype;
+        keys: ref keytype;
+        values: ref valtype;
         
         def create(arena: ref Arena, capacity: i32): ref mapname {
             mut map: ref mapname;
@@ -24,32 +24,35 @@ macro create_map(keytype_elem: untyped, valtype_elem: untyped, mapname: untyped,
         
         def get(map: ref mapname, key: keytype_elem): valtype_elem {
             mut i: i32 = 0;
+            val keys: ref keytype = map.keys;
+            val values: ref valtype = map.values;
             loop {
-                if i >= map.keys.len {
+                if i >= keys.len {
                     break;
                 }
                 raw {
-                    if (memcmp(&map->keys->data[i], &key, sizeof({{keytype_elem}})) == 0) {
-                        return map->values->data[i];
+                    if (memcmp(&keys->data[i], &key, sizeof(key)) == 0) {
+                        return values->data[i];
                     }
                 }
                 i = i + 1;
             }
             mut default_val: valtype_elem;
             raw {
-                memset(&default_val, 0, sizeof({{valtype_elem}}));
+                memset(&default_val, 0, sizeof(default_val));
             }
             return default_val;
         }
         
         def contains(map: ref mapname, key: keytype_elem): bool {
             mut i: i32 = 0;
+            val keys: ref keytype = map.keys;
             loop {
-                if i >= map.keys.len {
+                if i >= keys.len {
                     break;
                 }
                 raw {
-                    if (memcmp(&map->keys->data[i], &key, sizeof({{keytype_elem}})) == 0) {
+                    if (memcmp(&keys->data[i], &key, sizeof(key)) == 0) {
                         return true;
                     }
                 }
@@ -59,7 +62,8 @@ macro create_map(keytype_elem: untyped, valtype_elem: untyped, mapname: untyped,
         }
         
         def size(map: ref mapname): i32 {
-            return map.keys.len;
+            val keys: ref keytype = map.keys;
+            return keys.len;
         }
     }
 }
@@ -81,8 +85,7 @@ create_map(bool, f32, BoolFloatMap, BoolList, FloatList);
 
 test {
     
-    mut arena: Arena;
-    arena.init(1024);
+    mut arena: Arena = Arena.create(1024);
     
     val int_map: ref IntIntMap = IntIntMap.create(ref_of(arena), 10);
     
