@@ -80,6 +80,7 @@ enum TokenType
     ASSERT,
     PLATFORM,
     PARALLEL,
+    SINGLE,
     WINDOWS,
     POSIX,
     TO,
@@ -477,6 +478,14 @@ class ParallelNode : ASTNode
     this()
     {
         super("Parallel");
+    }
+}
+
+class SingleNode : ASTNode
+{
+    this()
+    {
+        super("Single");
     }
 }
 

@@ -1,0 +1,17 @@
+
+def some_task() {
+    println "hello";
+}
+
+def some_other_task() {
+    println "world";
+}
+
+main {
+    parallel {
+        single {
+            some_task();
+            some_other_task();
+        }
+    }
+}

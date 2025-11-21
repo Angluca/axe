@@ -1372,7 +1372,95 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true)
                                 pos++;
                                 continue;
                             }
-                            enforce(false, "Parallel block body parsing not yet fully implemented");
+
+                            // Parse statements inside parallel block
+                            switch (tokens[pos].type)
+                            {
+                            case TokenType.IDENTIFIER:
+                                // Function call
+                                string identName = tokens[pos].value;
+                                pos++;
+
+                                while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                                    pos++;
+
+                                enforce(pos < tokens.length && tokens[pos].type == TokenType.LPAREN,
+                                    "Expected '(' after function name in parallel block");
+                                pos++;
+
+                                string args = "";
+                                int parenDepth = 0;
+                                bool lastWasRef = false;
+                                while (pos < tokens.length && (tokens[pos].type != TokenType.RPAREN || parenDepth > 0))
+                                {
+                                    if (tokens[pos].type == TokenType.LPAREN)
+                                    {
+                                        parenDepth++;
+                                        args ~= tokens[pos].value;
+                                        lastWasRef = false;
+                                        pos++;
+                                    }
+                                    else if (tokens[pos].type == TokenType.RPAREN)
+                                    {
+                                        parenDepth--;
+                                        args ~= tokens[pos].value;
+                                        lastWasRef = false;
+                                        pos++;
+                                    }
+                                    else if (tokens[pos].type == TokenType.WHITESPACE)
+                                    {
+                                        if (lastWasRef)
+                                        {
+                                            args ~= " ";
+                                            lastWasRef = false;
+                                        }
+                                        pos++;
+                                    }
+                                    else if (tokens[pos].type == TokenType.COMMA)
+                                    {
+                                        args ~= ", ";
+                                        lastWasRef = false;
+                                        pos++;
+                                    }
+                                    else if (tokens[pos].type == TokenType.STR)
+                                    {
+                                        args ~= "\"" ~ tokens[pos].value ~ "\"";
+                                        lastWasRef = false;
+                                        pos++;
+                                    }
+                                    else
+                                    {
+                                        if (tokens[pos].value == "ref")
+                                        {
+                                            lastWasRef = true;
+                                        }
+                                        else
+                                        {
+                                            lastWasRef = false;
+                                        }
+                                        args ~= tokens[pos].value;
+                                        pos++;
+                                    }
+                                }
+
+                                enforce(pos < tokens.length && tokens[pos].type == TokenType.RPAREN,
+                                    "Expected ')' after function arguments in parallel block");
+                                pos++;
+
+                                while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+                                    pos++;
+
+                                enforce(pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON,
+                                    "Expected ';' after function call in parallel block");
+                                pos++;
+
+                                parallelNode.children ~= new FunctionCallNode(identName, args);
+                                break;
+
+                            default:
+                                enforce(false, "Unsupported statement in parallel block: " ~ 
+                                    tokens[pos].type.to!string);
+                            }
                         }
 
                         enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
@@ -4717,10 +4805,56 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
         while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
             pos++;
 
-        enforce(pos < tokens.length && tokens[pos].type == TokenType.FOR,
-            "Expected 'for' after 'parallel'");
-        // Now parse as a FOR loop, but return a ParallelForNode instead
-        return parseParallelForHelper(pos, tokens, currentScope, currentScopeNode, isAxec);
+        if (pos < tokens.length && tokens[pos].type == TokenType.FOR)
+        {
+            return parseParallelForHelper(pos, tokens, currentScope, currentScopeNode, isAxec);
+        }
+        else
+        {
+            enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
+                "Expected '{' after 'parallel'");
+            pos++; // Skip '{'
+
+            auto parallelNode = new ParallelNode();
+
+            while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
+            {
+                auto stmt = parseStatementHelper(pos, tokens, currentScope, currentScopeNode, isAxec);
+                if (stmt !is null)
+                    parallelNode.children ~= stmt;
+            }
+
+            enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
+                "Expected '}' after parallel block");
+            pos++; // Skip '}'
+
+            return parallelNode;
+        }
+
+    case TokenType.SINGLE:
+        pos++; // Skip 'single'
+
+        while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
+            pos++;
+
+        enforce(pos < tokens.length && tokens[pos].type == TokenType.LBRACE,
+            "Expected '{' after 'single'");
+        pos++; // Skip '{'
+
+        auto singleNode = new SingleNode();
+
+        while (pos < tokens.length && tokens[pos].type != TokenType.RBRACE)
+        {
+            auto stmt = parseStatementHelper(pos, tokens, currentScope, currentScopeNode, isAxec);
+            if (stmt !is null)
+                singleNode.children ~= stmt;
+        }
+
+        enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
+            "Expected '}' after single block");
+        pos++; // Skip '}'
+
+        return singleNode;
 
     case TokenType.LOOP:
         return parseLoopHelper(pos, tokens, currentScope, currentScopeNode, isAxec);

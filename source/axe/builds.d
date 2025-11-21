@@ -28,7 +28,7 @@ import std.path : dirName, buildPath;
  */
 bool hasParallelBlocks(ASTNode node)
 {
-    if (node.nodeType == "ParallelFor")
+    if (node.nodeType == "ParallelFor" || node.nodeType == "Parallel")
         return true;
 
     foreach (child; node.children)

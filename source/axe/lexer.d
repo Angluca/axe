@@ -434,6 +434,12 @@ Token[] lex(string source)
                 tokens ~= Token(TokenType.PARALLEL, "parallel");
                 pos += 8;
             }
+            else if (pos + 6 <= source.length && source[pos .. pos + 6] == "single" &&
+                (pos + 6 >= source.length || !(source[pos + 6].isAlphaNum || source[pos + 6] == '_')))
+            {
+                tokens ~= Token(TokenType.SINGLE, "single");
+                pos += 6;
+            }
             else if (pos + 5 <= source.length && source[pos .. pos + 5] == "posix" &&
                 (pos + 5 >= source.length || !(source[pos + 5].isAlphaNum || source[pos + 5] == '_')))
             {

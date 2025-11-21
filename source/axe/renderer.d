@@ -1427,6 +1427,19 @@ string generateC(ASTNode ast)
         cCode ~= "}\n";
         break;
 
+    case "Single":
+        cCode ~= "#pragma omp single\n{\n";
+        loopLevel++;
+
+        foreach (child; ast.children)
+        {
+            cCode ~= generateC(child);
+        }
+
+        loopLevel--;
+        cCode ~= "}\n";
+        break;
+
     case "ForIn":
         auto forInNode = cast(ForInNode) ast;
 
