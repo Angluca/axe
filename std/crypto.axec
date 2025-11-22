@@ -525,7 +525,6 @@ def base64_decode(data: char*, len: i32, arena: ref Arena): string {
     return out;
 }
 
-
 test {
     println "Running crypto module tests...";
     
