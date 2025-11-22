@@ -10,36 +10,36 @@ use lexer;
 main {
     val args: StringList = get_cmdline_args()
     
-    if args.length < 2 {
+    if StringList.length(args) < 2 {
         println("Usage: axe <input.axe|axec> [options]");
-        println("Options:")
-        println("  -asm          emit assembly and assemble/link/run it (requires nasm)")
-        println("  -e            keep the emitted file")
-        println("  -r            run the built executable after compilation")
-        println("  -tokens       print lexer tokens and exit")
-        println("  -ast          print the parsed AST and exit")
-        println("  -dll          build shared instead of standalone executable")
-        println("  --release     build in release mode")
-        println("  -q, --quiet   suppress debug output")
-        println("  -I<path>      pass a C include directory")
-        println("  --version, -v show axe version and exit")
+        println("Options:");
+        println("  -asm          emit assembly and assemble/link/run it (requires nasm)");
+        println("  -e            keep the emitted file");
+        println("  -r            run the built executable after compilation");
+        println("  -tokens       print lexer tokens and exit");
+        println("  -ast          print the parsed AST and exit");
+        println("  -dll          build shared instead of standalone executable");
+        println("  --release     build in release mode");
+        println("  -q, --quiet   suppress debug output");
+        println("  -I<path>      pass a C include directory");
+        println("  --version, -v show axe version and exit");
         quit(1);
     }
     
-    val source_file: string = args[1]
+    val source_file: string = StringList.get(args, 1);
     
-    if !file_exists(source_file) {
-        println($"Error: File '{source_file}' not found")
-        quit(1)
+    if not is_file(source_file) {
+        println($"Error: File '{source_file}' not found");
+        quit(1);
     }
     
-    val source_code: string = read_file(source_file)
+    val source_code: string = read_file(source_file);
     
-    print("1 | Lex... ")
-    let tokens = lexer.lex(source_code)
-    println("Done")
+    print("1 | Lex... ");
+    let tokens = lexer.lex(source_code);
+    println("Done");
     
-    println($"Tokenized {tokens.length} tokens")
+    println($"Tokenized {tokens.length} tokens");
     
-    quit(0)
+    quit(0);
 }
