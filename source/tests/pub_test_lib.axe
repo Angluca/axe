@@ -1,0 +1,21 @@
+pub def public_func() {
+    put "public_func called\n";
+}
+
+def private_func() {
+    put "private_func called\n";
+}
+
+pub model PublicModel {
+    pub def public_method() {
+        put "public_method called\n";
+    }
+    
+    def private_method() {
+        put "private_method called\n";
+    }
+}
+
+model PrivateModel {
+    def method() {}
+}

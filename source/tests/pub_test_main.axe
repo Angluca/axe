@@ -1,0 +1,8 @@
+use pub_test_lib;
+
+main {
+    pub_test_lib.public_func();
+    
+    mut val m = new PublicModel();
+    PublicModel.public_method();
+}
