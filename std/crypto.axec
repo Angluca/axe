@@ -1,15 +1,6 @@
-use std.string (
-    string
-);
-
-use std.arena (
-    Arena
-);
-
-use std.errors (
-    error,
-    panic
-);
+use std.string;
+use std.arena;
+use std.errors;
 
 /// SHA256 digest size in bytes
 val SHA256_DIGEST_SIZE: i32 = 32;
@@ -370,6 +361,60 @@ def sha256_validate(digest: SHA256Digest): bool {
         if digest.bytes[i] > 255 { return false; }
     }
     return digest.is_valid;
+}
+
+/// Base64 encoding table
+val BASE64_ENC_TABLE: char* = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/// Base64-encode a block of bytes.
+///
+/// Input: raw bytes (char*) and length.
+/// Output: newly allocated string in arena.
+def base64_encode(data: char*, len: i32, arena: ref Arena): string {
+    if len < 0 {
+        panic(error.create("base64_encode: length cannot be negative"));
+    }
+
+    val out_len: i32 = ((len + 2) / 3) * 4;
+
+    mut out: string = string.create_with_capacity(arena, out_len);
+
+    mut i: i32 = 0;
+    mut o: i32 = 0;
+
+    loop {
+        if i >= len { break; }
+        
+        val b0: i32 = data[i] & 0xff;
+        mut b1: i32 = 0;
+        mut b2: i32 = 0;
+        
+        if i + 1 < len { b1 = data[i + 1] & 0xff; }
+        if i + 2 < len { b2 = data[i + 2] & 0xff; }
+
+        val triple: i32 = (b0 << 16) | (b1 << 8) | b2;
+
+        out.data[o]     = BASE64_ENC_TABLE[(triple >> 18) & 0x3f];
+        out.data[o + 1] = BASE64_ENC_TABLE[(triple >> 12) & 0x3f];
+        out.data[o + 2] = BASE64_ENC_TABLE[(triple >> 6)  & 0x3f];
+        out.data[o + 3] = BASE64_ENC_TABLE[triple & 0x3f];
+
+        i = i + 3;
+        o = o + 4;
+    }
+
+    val remaining: i32 = len mod 3;
+    if remaining == 1 {
+        out.data[o - 2] = '=';
+        out.data[o - 1] = '=';
+    } elif remaining == 2 {
+        out.data[o - 1] = '=';
+    }
+
+    out.len = out_len;
+    out.data[out_len] = '\0';
+
+    return out;
 }
 
 test {

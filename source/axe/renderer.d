@@ -55,6 +55,7 @@ private string[string] g_functionPrefixes;
 private string[string] g_modelNames;
 private bool[string] g_generatedTypedefs;
 private bool[string] g_generatedFunctions;
+private bool g_inTopLevel = false;
 
 string canonicalModelCName(string name)
 {
@@ -782,19 +783,25 @@ string generateC(ASTNode ast)
             }
         }
 
+        g_inTopLevel = true;
         foreach (child; ast.children)
         {
             if (child.nodeType != "Model" && child.nodeType != "ExternalImport" && child.nodeType != "Enum" && child
                 .nodeType != "Use" && child.nodeType != "Macro" && child.nodeType != "Overload")
             {
                 debugWriteln("DEBUG: Processing top-level node of type '", child.nodeType, "'");
+                bool prevTop = g_inTopLevel;
+                g_inTopLevel = true;
                 cCode ~= generateC(child) ~ "\n";
+                g_inTopLevel = prevTop;
             }
         }
         break;
 
     case "Main":
         loopLevel++;
+        bool savedTopMain = g_inTopLevel;
+        g_inTopLevel = false;
 
         foreach (child; ast.children)
         {
@@ -803,6 +810,7 @@ string generateC(ASTNode ast)
 
         cCode ~= "    return 0;\n";
         loopLevel--;
+        g_inTopLevel = savedTopMain;
         cCode ~= "}\n";
         break;
 
@@ -812,6 +820,8 @@ string generateC(ASTNode ast)
         string[] params = funcNode.params;
         string prevFunction = currentFunction;
         currentFunction = funcName;
+        bool savedTopFunc = g_inTopLevel;
+        g_inTopLevel = false;
         functionParams = params;
 
         debugWriteln("DEBUG: Processing function '", funcName, "' with ", params.length, " parameters");
@@ -881,6 +891,7 @@ string generateC(ASTNode ast)
             cCode ~= "return 0;\n";
 
         currentFunction = prevFunction;
+        g_inTopLevel = savedTopFunc;
         cCode ~= "}\n";
         break;
 
@@ -1246,7 +1257,11 @@ string generateC(ASTNode ast)
                 }
             }
 
-            if (baseType == "char*" && processedExpr.length > 0 && processedExpr[0] == '"')
+            // For non-top-level declarations of char* with string literal initializers,
+            // emit a buffer plus strcpy. At true top-level (global scope), we instead
+            // want a direct literal initializer, so we only take this path when
+            // g_inTopLevel is false.
+            if (baseType == "char*" && processedExpr.length > 0 && processedExpr[0] == '"' && !g_inTopLevel)
             {
                 import std.string : replace;
 
