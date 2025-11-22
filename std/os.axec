@@ -504,6 +504,28 @@ def get_cmdline_args(arena: ref Arena): ref StringList {
     return result;
 }
 
+def get_cwd(): string {
+    mut out: string;
+    mut buffer: char[2048];
+
+    platform posix {
+        if getcwd(buffer, sizeof(buffer)) != nil {
+            out = str(buffer);            
+        } else {
+            panic(error.create("Failed to get current working directory"));
+        }
+    }
+    platform windows {
+        if _getcwd(buffer, sizeof(buffer)) != nil {
+            out = str(buffer);            
+        } else {
+            panic(error.create("Failed to get current working directory"));
+        }
+    }
+
+    return out;
+}
+
 test {
     assert(exec("echo test") == 0, "exec should run successfully");
     assert(write_file(string.create("testfile.txt"), string.create("hello")), "write_file should succeed");
@@ -525,4 +547,6 @@ test {
     }
 
     print ")\n";
+
+    println get_cwd();
 }
