@@ -1,6 +1,7 @@
 use std.string;
 use std.typecons;
 
+/// Print out some value with a newline
 overload println(x: generic) {
     string => print_str;
     char*  => println_chrptr;
@@ -8,6 +9,7 @@ overload println(x: generic) {
     char   => println_char;
 }(x)
 
+/// Print out some value with no newline
 overload print(x: generic) {
     string => print_str;
     char*  => print_chrptr;
