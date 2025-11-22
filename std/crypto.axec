@@ -553,5 +553,9 @@ test {
     mut arena: Arena = Arena.create(90000);
     mut encoded: string = base64_encode("abc", 3, ref_of(arena));
     assert compare(encoded, str("YWJj")) == 0, "Base64 encoding should be consistent";
+    
+    mut decoded: string = base64_decode(encoded.data, encoded.len, ref_of(arena));
+    assert compare(decoded, str("abc")) == 0, "Base64 decoding should be consistent";
+    
     Arena.destroy(ref_of(arena));
 }
