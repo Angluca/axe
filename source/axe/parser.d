@@ -5442,8 +5442,7 @@ private immutable string[] C_KEYS = [
     "vsnprintf", "scanf", "fscanf", "sscanf", "vscanf", "vfscanf", "vsscanf",
     "memcpy", "memmove", "memset", "memccpy", "mempcpy",
     "strcpy", "strncpy", "strcat", "strncat", "strlcpy", "strlcat",
-    "strtok", "strtok_r", "stpcpy", "stpncpy", "bcopy", "bzero",
-    "perror", "system", "abort"
+    "strtok", "strtok_r", "stpcpy", "stpncpy"
 ];
 
 private immutable bool[string] C_KEYWORD_SET = (() {
