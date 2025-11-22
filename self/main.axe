@@ -11,7 +11,7 @@ model TokenList {
     val length: i32;
 
     def get(index: i32): TokenType {
-        return TokenType[index];
+        return nil;
     }
 }
 
