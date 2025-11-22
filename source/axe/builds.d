@@ -105,6 +105,7 @@ void collectDeclaredFunctions(ASTNode node, ref bool[string] declared)
         if (modelNode !is null)
         {
             import std.stdio : writeln;
+
             foreach (method; modelNode.methods)
             {
                 auto methodFunc = cast(FunctionNode) method;
@@ -246,6 +247,7 @@ void validateFunctionCalls(ASTNode node, bool[string] declared, string[string] m
             if (!isCEscape && !isDeclared)
             {
                 import std.stdio : writeln;
+
                 writeln("Failed validation for: ", name);
                 writeln("Module prefix: ", modulePrefix);
                 writeln("Declared keys: ", declared.keys);
@@ -350,7 +352,10 @@ bool handleMachineArgs(string[] args)
         if (!name.endsWith(".axe") && !isAxec)
             name ~= ".axe";
 
+        writeln("1 | IO");
         string source = readText(name);
+
+        writeln("2 | Lex");
         auto tokens = lex(source);
 
         if (args.canFind("-tokens"))
@@ -367,15 +372,21 @@ bool handleMachineArgs(string[] args)
             moduleName = "std." ~ moduleBase;
         }
 
+        writeln("3 | Parse");
         auto ast = parse(tokens, isAxec, true, moduleName);
 
+        writeln("4 | Parse");
         resetProcessedModules();
-        ast = processImports(ast, dirName(name), isAxec, name);
+
+        writeln("5 | Imports");
+        ast = processImports(ast, dirName(name), isAxec, name); // SLOW.
 
         bool[string] declaredFunctions;
+        writeln("6 | Collect Decls");
         collectDeclaredFunctions(ast, declaredFunctions);
 
         string[string] modelNames;
+        writeln("7 | Collect Models");
         collectModelNames(ast, modelNames);
 
         string modulePrefix = "";
@@ -386,6 +397,7 @@ bool handleMachineArgs(string[] args)
             modulePrefix = moduleName.replace(".", "_");
         }
 
+        writeln("8 | Validate Calls");
         validateFunctionCalls(ast, declaredFunctions, modelNames, modulePrefix);
 
         if (args.canFind("-ast"))
@@ -582,6 +594,7 @@ bool handleMachineArgs(string[] args)
                 clangCmd ~= ["-o", replace(name, ext, ".exe")];
             }
 
+            writeln("9 | Lowering to LLVM/ASM");
             auto e = execute(clangCmd);
             if (e[0] != 0)
             {

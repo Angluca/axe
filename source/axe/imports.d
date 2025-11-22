@@ -92,12 +92,12 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
     string[string] importedModels;
 
     string currentModulePrefix = "";
+    bool isStdModule = currentFilePath.canFind("std");
     if (isTopLevel && currentFilePath.length > 0 && isAxec)
     {
         import std.path : baseName, stripExtension;
-        import std.algorithm : canFind;
 
-        if (currentFilePath.canFind("std"))
+        if (isStdModule)
         {
             auto fileName = baseName(currentFilePath).stripExtension();
             currentModulePrefix = "std_" ~ fileName;
@@ -106,6 +106,11 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
 
     string[string] localModels;
     string[string] localFunctions;
+    bool[string] addedFunctionNames;
+    bool[string] addedModelNames;
+    bool[string] addedEnumNames;
+    bool[string] addedMacroNames;
+    bool[string] addedOverloadNames;
     if (currentModulePrefix.length > 0)
     {
         foreach (child; programNode.children)
@@ -486,22 +491,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                             }
                             else
                             {
-                                bool alreadyAdded = false;
-                                foreach (existingChild; newPlatform.children)
+                                if (funcNode.name !in addedFunctionNames)
                                 {
-                                    if (existingChild.nodeType == "Function")
-                                    {
-                                        auto existingFunc = cast(FunctionNode) existingChild;
-                                        if (existingFunc.name == funcNode.name)
-                                        {
-                                            alreadyAdded = true;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                if (!alreadyAdded)
-                                {
+                                    addedFunctionNames[funcNode.name] = true;
                                     renameFunctionCalls(funcNode, moduleFunctionMap);
                                     renameTypeReferences(funcNode, moduleModelMap);
                                     foreach (childNode; funcNode.children)
@@ -567,22 +559,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                             }
                             else
                             {
-                                bool alreadyAdded = false;
-                                foreach (existingChild; newPlatform.children)
+                                if (modelNode.name !in addedModelNames)
                                 {
-                                    if (existingChild.nodeType == "Model")
-                                    {
-                                        auto existingModel = cast(ModelNode) existingChild;
-                                        if (existingModel.name == modelNode.name)
-                                        {
-                                            alreadyAdded = true;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                if (!alreadyAdded)
-                                {
+                                    addedModelNames[modelNode.name] = true;
                                     isTransitiveDependency[modelNode.name] = true;
 
                                     foreach (method; modelNode.methods)
@@ -610,22 +589,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                             }
                             else
                             {
-                                bool alreadyAdded = false;
-                                foreach (existingChild; newPlatform.children)
+                                if (enumNode.name !in addedEnumNames)
                                 {
-                                    if (existingChild.nodeType == "Enum")
-                                    {
-                                        auto existingEnum = cast(EnumNode) existingChild;
-                                        if (existingEnum.name == enumNode.name)
-                                        {
-                                            alreadyAdded = true;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                if (!alreadyAdded)
-                                {
+                                    addedEnumNames[enumNode.name] = true;
                                     newPlatform.children ~= enumNode;
                                 }
                             }
@@ -664,22 +630,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                             }
                             else
                             {
-                                bool alreadyAdded = false;
-                                foreach (existingChild; newPlatform.children)
+                                if (macroNode.name !in addedMacroNames)
                                 {
-                                    if (existingChild.nodeType == "Macro")
-                                    {
-                                        auto existingMacro = cast(MacroNode) existingChild;
-                                        if (existingMacro.name == macroNode.name)
-                                        {
-                                            alreadyAdded = true;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                if (!alreadyAdded)
-                                {
+                                    addedMacroNames[macroNode.name] = true;
                                     newPlatform.children ~= macroNode;
                                 }
                             }
@@ -695,22 +648,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                             }
                             else
                             {
-                                bool alreadyAdded = false;
-                                foreach (existingChild; newPlatform.children)
+                                if (overloadNode.name !in addedOverloadNames)
                                 {
-                                    if (existingChild.nodeType == "Overload")
-                                    {
-                                        auto existingOverload = cast(OverloadNode) existingChild;
-                                        if (existingOverload.name == overloadNode.name)
-                                        {
-                                            alreadyAdded = true;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                if (!alreadyAdded)
-                                {
+                                    addedOverloadNames[overloadNode.name] = true;
                                     newPlatform.children ~= overloadNode;
                                 }
                             }
@@ -763,24 +703,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     {
                         // Add transitive dependency functions as-is (don't rename them)
                         // But avoid duplicates by checking if already in newChildren
-                        bool alreadyAdded = false;
-                        foreach (existingChild; newChildren)
+                        if (funcNode.name !in addedFunctionNames)
                         {
-                            if (existingChild.nodeType == "Function")
-                            {
-                                auto existingFunc = cast(FunctionNode) existingChild;
-                                if (existingFunc.name == funcNode.name)
-                                {
-                                    alreadyAdded = true;
-                                    debugWriteln("DEBUG: Skipping duplicate transitive function: ", funcNode
-                                            .name);
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (!alreadyAdded)
-                        {
+                            addedFunctionNames[funcNode.name] = true;
                             debugWriteln("DEBUG: Adding transitive function: ", funcNode.name);
 
                             renameFunctionCalls(funcNode, moduleFunctionMap);
@@ -791,6 +716,10 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                                 renameTypeReferences(childNode, moduleModelMap);
                             }
                             newChildren ~= funcNode;
+                        }
+                        else
+                        {
+                            debugWriteln("DEBUG: Skipping duplicate transitive function: ", funcNode.name);
                         }
                     }
                 }
@@ -864,22 +793,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     }
                     else
                     {
-                        bool alreadyAdded = false;
-                        foreach (existingChild; newChildren)
+                        if (modelNode.name !in addedModelNames)
                         {
-                            if (existingChild.nodeType == "Model")
-                            {
-                                auto existingModel = cast(ModelNode) existingChild;
-                                if (existingModel.name == modelNode.name)
-                                {
-                                    alreadyAdded = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (!alreadyAdded)
-                        {
+                            addedModelNames[modelNode.name] = true;
                             isTransitiveDependency[modelNode.name] = true;
 
                             // For transitive dependencies, just pass through the model as-is.
@@ -910,22 +826,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     }
                     else
                     {
-                        bool alreadyAdded = false;
-                        foreach (existingChild; newChildren)
+                        if (enumNode.name !in addedEnumNames)
                         {
-                            if (existingChild.nodeType == "Enum")
-                            {
-                                auto existingEnum = cast(EnumNode) existingChild;
-                                if (existingEnum.name == enumNode.name)
-                                {
-                                    alreadyAdded = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (!alreadyAdded)
-                        {
+                            addedEnumNames[enumNode.name] = true;
                             newChildren ~= enumNode;
                         }
                     }
@@ -941,22 +844,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     }
                     else
                     {
-                        bool alreadyAdded = false;
-                        foreach (existingChild; newChildren)
+                        if (macroNode.name !in addedMacroNames)
                         {
-                            if (existingChild.nodeType == "Macro")
-                            {
-                                auto existingMacro = cast(MacroNode) existingChild;
-                                if (existingMacro.name == macroNode.name)
-                                {
-                                    alreadyAdded = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (!alreadyAdded)
-                        {
+                            addedMacroNames[macroNode.name] = true;
                             newChildren ~= macroNode;
                         }
                     }
@@ -972,22 +862,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     }
                     else
                     {
-                        bool alreadyAdded = false;
-                        foreach (existingChild; newChildren)
+                        if (overloadNode.name !in addedOverloadNames)
                         {
-                            if (existingChild.nodeType == "Overload")
-                            {
-                                auto existingOverload = cast(OverloadNode) existingChild;
-                                if (existingOverload.name == overloadNode.name)
-                                {
-                                    alreadyAdded = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (!alreadyAdded)
-                        {
+                            addedOverloadNames[overloadNode.name] = true;
                             newChildren ~= overloadNode;
                         }
                     }
@@ -1165,17 +1042,25 @@ string escapeRegexLiteral(string value)
     return buffer.data;
 }
 
+private static string[string] g_regexPatternCache;
+
 string replaceStandaloneCall(string text, string oldName, string newName)
 {
-    import std.regex : regex, replaceAll;
+    import std.regex : regex, replaceAll, Regex;
 
     if (newName.canFind("_" ~ oldName) && text.canFind(newName ~ "("))
     {
         return text;
     }
 
-    auto escaped = escapeRegexLiteral(oldName);
-    auto pattern = regex("(?<![A-Za-z0-9_])" ~ escaped ~ "(\\s*)\\(");
+    string cacheKey = "standalone_" ~ oldName;
+    if (cacheKey !in g_regexPatternCache)
+    {
+        auto escaped = escapeRegexLiteral(oldName);
+        g_regexPatternCache[cacheKey] = "(?<![A-Za-z0-9_])" ~ escaped ~ "(\\s*)\\(";
+    }
+    
+    auto pattern = regex(g_regexPatternCache[cacheKey]);
     return replaceAll(text, pattern, newName ~ "$1(");
 }
 
@@ -1197,6 +1082,9 @@ string fixDoublePrefix(string expr)
  */
 void renameFunctionCalls(ASTNode node, string[string] nameMap)
 {
+    if (nameMap.length == 0)
+        return;
+        
     if (node.nodeType == "FunctionCall")
     {
         auto callNode = cast(FunctionCallNode) node;
@@ -1590,6 +1478,9 @@ string replaceTypeOutsideStrings(string code, string oldType, string newType)
  */
 void renameTypeReferences(ASTNode node, string[string] typeMap)
 {
+    if (typeMap.length == 0)
+        return;
+        
     import std.algorithm : startsWith;
     import std.array : split, join;
 
