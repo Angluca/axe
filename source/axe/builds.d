@@ -40,6 +40,73 @@ bool hasParallelBlocks(ASTNode node)
     return false;
 }
 
+void collectDeclaredFunctions(ASTNode node, ref bool[string] declared)
+{
+    if (node.nodeType == "Function")
+    {
+        auto funcNode = cast(FunctionNode) node;
+        if (funcNode !is null)
+            declared[funcNode.name] = true;
+    }
+    else if (node.nodeType == "Model")
+    {
+        auto modelNode = cast(ModelNode) node;
+        if (modelNode !is null)
+        {
+            foreach (method; modelNode.methods)
+            {
+                auto methodFunc = cast(FunctionNode) method;
+                if (methodFunc !is null)
+                    declared[methodFunc.name] = true;
+            }
+        }
+    }
+    else if (node.nodeType == "Extern")
+    {
+        auto externNode = cast(ExternNode) node;
+        if (externNode !is null)
+            declared[externNode.functionName] = true;
+    }
+    else if (node.nodeType == "Macro")
+    {
+        auto macroNode = cast(MacroNode) node;
+        if (macroNode !is null)
+            declared[macroNode.name] = true;
+    }
+    else if (node.nodeType == "Overload")
+    {
+        auto overloadNode = cast(OverloadNode) node;
+        if (overloadNode !is null)
+            declared[overloadNode.name] = true;
+    }
+
+    foreach (child; node.children)
+    {
+        collectDeclaredFunctions(child, declared);
+    }
+}
+
+void validateFunctionCalls(ASTNode node, bool[string] declared)
+{
+    if (node.nodeType == "FunctionCall")
+    {
+        auto callNode = cast(FunctionCallNode) node;
+        if (callNode !is null)
+        {
+            string name = callNode.functionName;
+            if (!(name in declared))
+            {
+                throw new Exception("Undefined function: " ~ name);
+            }
+        }
+    }
+
+    foreach (child; node.children)
+    {
+        validateFunctionCalls(child, declared);
+    }
+}
+
 void collectExternalHeaders(ASTNode node, ref string[] headers, string currentPlatform = null)
 {
     import std.algorithm : canFind;
@@ -150,6 +217,10 @@ bool handleMachineArgs(string[] args)
 
         resetProcessedModules();
         ast = processImports(ast, dirName(name), isAxec, name);
+
+        bool[string] declaredFunctions;
+        collectDeclaredFunctions(ast, declaredFunctions);
+        validateFunctionCalls(ast, declaredFunctions);
 
         if (args.canFind("-ast"))
             writeln(ast);
