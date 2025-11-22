@@ -15,7 +15,7 @@ use std.arena (
 );
 
 /// Execute a shell command. Returns exit status.
-def exec_from_string(cmd: string): i32 {
+pub def exec_from_string(cmd: string): i32 {
     mut val result: i32 = 0;
     raw {
         result = system(cmd.data);
@@ -25,7 +25,7 @@ def exec_from_string(cmd: string): i32 {
 
 /// Execute a shell command with raw C string.
 /// Returns exit status.
-def exec(cmd: char*): i32 {
+pub def exec(cmd: char*): i32 {
     mut val result: i32 = 0;
     raw {
         result = system(cmd);
@@ -34,7 +34,7 @@ def exec(cmd: char*): i32 {
 }
 
 /// Check if a file exists.
-def file_exists(path: string): bool {
+pub def file_exists(path: string): bool {
     mut val out: bool = false;
     raw {
         FILE *f = fopen(path.data, "r");
@@ -47,7 +47,7 @@ def file_exists(path: string): bool {
 }
 
 /// Read entire file into a newly allocated string.
-def read_file(path: string): string {
+pub def read_file(path: string): string {
     mut val out: string;
 
     raw {
@@ -73,7 +73,7 @@ def read_file(path: string): string {
 
 /// Write a string to a file, replacing its contents.
 /// Returns true on success.
-def write_file(path: string, contents: string): bool {
+pub def write_file(path: string, contents: string): bool {
     mut val ok: bool = false;
 
     raw {
@@ -93,7 +93,7 @@ use external("sys/stat.h");
 use external("sys/types.h");
 
 /// Determine if a path is a directory.
-def is_directory(path: string): bool {
+pub def is_directory(path: string): bool {
     mut val out: bool = false;
 
     platform posix {
@@ -118,7 +118,7 @@ def is_directory(path: string): bool {
 }
 
 /// Determine if a path is a regular file.
-def is_file(path: string): bool {
+pub def is_file(path: string): bool {
     mut val out: bool = false;
 
     platform posix {
@@ -144,7 +144,7 @@ def is_file(path: string): bool {
 
 /// Determine if a path is a symbolic link.
 /// This always returns false on Windows.
-def is_symbolic_link(path: string): bool {
+pub def is_symbolic_link(path: string): bool {
     mut val out: bool = false;
 
     platform posix {
@@ -163,7 +163,7 @@ def is_symbolic_link(path: string): bool {
 }
 
 /// Delete a file.
-def delete_file(path: string): bool {
+pub def delete_file(path: string): bool {
     mut val ok: bool = false;
     raw {
         if (remove(path.data) == 0) {
@@ -174,7 +174,7 @@ def delete_file(path: string): bool {
 }
 
 /// Delete some directory. It must be empty.
-def rm_dir(path: string): bool {
+pub def rm_dir(path: string): bool {
     mut val ok: bool = false;
     raw {
         if (rmdir(path.data) == 0) {
@@ -248,7 +248,7 @@ extern def rmdir(path: char*): i32;
 
 /// Delete some directory, it does NOT have to be empty.
 /// Use with caution.
-def rm_dir_recursive(path: string): bool {
+pub def rm_dir_recursive(path: string): bool {
     mut val ok: bool = true;
 
     platform posix {
@@ -387,7 +387,7 @@ platform posix {
 }
 
 /// Internal helper to collect files recursively into a StringList.
-def collect_files_recursive(path: string, result: ref StringList, arena: ref Arena) {
+pub def collect_files_recursive(path: string, result: ref StringList, arena: ref Arena) {
     platform posix {
         val d: usize = opendir(path.data);
         if d == 0 {
@@ -477,7 +477,7 @@ def collect_files_recursive(path: string, result: ref StringList, arena: ref Are
 }
 
 /// List all regular files recursively under `path`.
-def list_files_recursive(path: string, arena: ref Arena): ref StringList {
+pub def list_files_recursive(path: string, arena: ref Arena): ref StringList {
     mut val result: ref StringList;
     result = StringList.create(arena, 16);
     collect_files_recursive(path, result, arena);
@@ -485,7 +485,7 @@ def list_files_recursive(path: string, arena: ref Arena): ref StringList {
 }
 
 /// Get commandline args
-def get_cmdline_args(arena: ref Arena): ref StringList {
+pub def get_cmdline_args(arena: ref Arena): ref StringList {
     mut val result: ref StringList;
     result = StringList.create(arena, 10);
     
@@ -504,7 +504,7 @@ def get_cmdline_args(arena: ref Arena): ref StringList {
     return result;
 }
 
-def get_cwd(): string {
+pub def get_cwd(): string {
     mut out: string;
     mut buffer: char[2048];
 

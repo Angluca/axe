@@ -180,11 +180,27 @@ void validateFunctionCalls(ASTNode node, bool[string] declared, string[string] m
                 isDeclared = *p;
             }
 
+            // For simple function names without dots, check if there's ANY prefixed version
+            // from imported modules (e.g., "panic" might be "std_errors_panic")
+            if (!isDeclared && !name.canFind("."))
+            {
+                foreach (declaredName; declared.keys)
+                {
+                    if (declaredName.canFind("_" ~ name))
+                    {
+                        if (declaredName.endsWith("_" ~ name))
+                        {
+                            isDeclared = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
             if (!isDeclared && name.canFind("."))
             {
                 import std.string : replace, split, strip;
 
-                // Handle model.method calls like error.print_self
                 auto parts = name.split(".");
                 if (parts.length == 2)
                 {

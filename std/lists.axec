@@ -30,7 +30,7 @@ macro make_list(
         len: i32;
         cap: i32;
 
-        def create(arena: ref Arena, capacity: i32): ref name {
+        pub def create(arena: ref Arena, capacity: i32): ref name {
             mut lst: ref name;
             raw {
                 lst = std_arena_Arena_alloc(arena, sizeof(*lst));
@@ -41,7 +41,7 @@ macro make_list(
             return lst;
         }
 
-        def push(lst: ref name, arena: ref Arena, value: type) {
+        pub def push(lst: ref name, arena: ref Arena, value: type) {
             if lst.len >= lst.cap {
                 val new_cap: i32 = lst.cap * 2;
                 mut new_data: ref type;
@@ -58,7 +58,7 @@ macro make_list(
             lst.len = lst.len + 1;
         }
 
-        def get(lst: ref name, index: i32): type {
+        pub def get(lst: ref name, index: i32): type {
             if index < 0 or index >= lst.len {
                 panic(error.create("Index out of bounds for list."));
                 return nullval;
@@ -66,7 +66,7 @@ macro make_list(
             return lst.data[index];
         }
 
-        def print_all(lst: ref name) {
+        pub def print_all(lst: ref name) {
             for mut i = 0; i < lst.len; i++ {
                 printer(lst.data[i]);
                 print " ";
