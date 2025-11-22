@@ -17,7 +17,7 @@ macro create_map(keytype_elem: untyped, valtype_elem: untyped, mapname: untyped,
             return map;
         }
         
-        def put(map: ref mapname, arena: ref Arena, key: keytype_elem, value: valtype_elem) {
+        def add(map: ref mapname, arena: ref Arena, key: keytype_elem, value: valtype_elem) {
             keytype.push(map.keys, ref_of(arena), key);
             valtype.push(map.values, ref_of(arena), value);
         }
@@ -88,9 +88,9 @@ test {
     
     val int_map: ref IntIntMap = IntIntMap.create(ref_of(arena), 10);
     
-    IntIntMap.put(int_map, ref_of(arena), 1, 100);
-    IntIntMap.put(int_map, ref_of(arena), 2, 200);
-    IntIntMap.put(int_map, ref_of(arena), 3, 300);
+    IntIntMap.add(int_map, ref_of(arena), 1, 100);
+    IntIntMap.add(int_map, ref_of(arena), 2, 200);
+    IntIntMap.add(int_map, ref_of(arena), 3, 300);
     
     assert(IntIntMap.get(int_map, 1) == 100, "IntIntMap should return 100 for key 1");
     assert(IntIntMap.get(int_map, 2) == 200, "IntIntMap should return 200 for key 2");
@@ -102,9 +102,9 @@ test {
     
     val str_int_map: ref StringIntMap = StringIntMap.create(ref_of(arena), 10);
     
-    StringIntMap.put(str_int_map, ref_of(arena), string.create("foo"), 42);
-    StringIntMap.put(str_int_map, ref_of(arena), string.create("bar"), 99);
-    StringIntMap.put(str_int_map, ref_of(arena), string.create("baz"), 77);
+    StringIntMap.add(str_int_map, ref_of(arena), string.create("foo"), 42);
+    StringIntMap.add(str_int_map, ref_of(arena), string.create("bar"), 99);
+    StringIntMap.add(str_int_map, ref_of(arena), string.create("baz"), 77);
     
     assert(StringIntMap.get(str_int_map, string.create("foo")) == 42, "StringIntMap should return 42 for key 'foo'");
     assert(StringIntMap.get(str_int_map, string.create("bar")) == 99, "StringIntMap should return 99 for key 'bar'");
@@ -115,8 +115,8 @@ test {
     
     val float_map: ref FloatIntMap = FloatIntMap.create(ref_of(arena), 10);
     
-    FloatIntMap.put(float_map, ref_of(arena), 3.14, 314);
-    FloatIntMap.put(float_map, ref_of(arena), 2.71, 271);
+    FloatIntMap.add(float_map, ref_of(arena), 3.14, 314);
+    FloatIntMap.add(float_map, ref_of(arena), 2.71, 271);
     
     assert(FloatIntMap.get(float_map, 3.14) == 314, "FloatIntMap should return 314 for key 3.14");
     assert(FloatIntMap.get(float_map, 2.71) == 271, "FloatIntMap should return 271 for key 2.71");
