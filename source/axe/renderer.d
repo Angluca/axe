@@ -903,7 +903,11 @@ string generateC(ASTNode ast)
 
         if (callName.startsWith("C."))
         {
-            callName = "C__" ~ callName[2 .. $];
+            callName = callName[2 .. $];
+        }
+        else if (callName.startsWith("C_"))
+        {
+            callName = callName[2 .. $];
         }
 
         if (callName.canFind("."))
@@ -2576,6 +2580,21 @@ string processExpression(string expr, string context = "")
     if (funcNameEnd > 0)
     {
         string funcName = expr[0 .. funcNameEnd].strip();
+        
+        import std.string : startsWith, strip;
+        if (funcName.startsWith("C.") || funcName.startsWith("C .") || funcName.startsWith("C  ."))
+        {
+            auto dotPos = funcName.indexOf('.');
+            if (dotPos != -1)
+            {
+                funcName = funcName[dotPos + 1 .. $].strip();
+            }
+        }
+        else if (funcName.startsWith("C_"))
+        {
+            funcName = funcName[2 .. $];
+        }
+        
         ptrdiff_t argEnd = funcNameEnd + 1;
         int depth = 1;
         bool inQuote = false;

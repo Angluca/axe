@@ -113,6 +113,13 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             if (child.nodeType == "Model")
             {
                 auto modelNode = cast(ModelNode) child;
+                
+                if (modelNode.name == "C")
+                {
+                    debugWriteln("DEBUG: Skipping special 'C' model (used for direct C calls)");
+                    continue;
+                }
+                
                 localModels[modelNode.name] = currentModulePrefix ~ "_" ~ modelNode.name;
                 debugWriteln("DEBUG: Added local model '", modelNode.name, "' -> '", currentModulePrefix ~ "_" ~
                         modelNode.name, "'");
@@ -522,6 +529,11 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
 
                             if (useNode.importAll || useNode.imports.canFind(modelNode.name))
                             {
+                                if (modelNode.name == "C")
+                                {
+                                    continue;
+                                }
+                                
                                 string prefixedName = moduleModelMap[modelNode.name];
                                 importedModels[modelNode.name] = prefixedName;
                                 auto newModel = new ModelNode(prefixedName, null);
@@ -813,6 +825,11 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
 
                     if (isExplicitlyImported)
                     {
+                        if (baseName == "C" || modelNode.name == "C")
+                        {
+                            continue;
+                        }
+                        
                         string prefixedName = moduleModelMap.get(modelNode.name, modelNode.name);
                         importedModels[baseName] = prefixedName;
                         auto newModel = new ModelNode(prefixedName, null);
@@ -1182,7 +1199,12 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
     if (node.nodeType == "FunctionCall")
     {
         auto callNode = cast(FunctionCallNode) node;
-        if (callNode.functionName in nameMap)
+        
+        if (callNode.functionName.startsWith("C_"))
+        {
+            // Who cares.
+        }
+        else if (callNode.functionName in nameMap)
             callNode.functionName = nameMap[callNode.functionName];
         else
         {
@@ -1317,8 +1339,15 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
     {
         auto declNode = cast(DeclarationNode) node;
         debugWriteln("    DEBUG renameFunctionCalls Declaration: initializer='", declNode.initializer, "'");
+        
+        // Skip processing if the initializer contains C_ function calls
+        bool hasDirectCCall = declNode.initializer.canFind("C_");
+        
         foreach (oldName, newName; nameMap)
         {
+            if (hasDirectCCall)
+                continue;
+                
             auto newInit = replaceStandaloneCall(declNode.initializer, oldName, newName);
             if (newInit != declNode.initializer)
             {

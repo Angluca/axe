@@ -22,15 +22,15 @@ pub model string {
     /// Creates a new string from a char pointer.
     pub def create(data: char*): string {
         mut result: string;
-        raw {
-            result.data = NULL;
+        unsafe {
+            result.data = nil;
             result.len  = 0;
             result.cap  = 0;
-            size_t len = strlen((const char*)data);
-            result.data = (char*)malloc(len + 1);
+            val len: usize = C.strlen(data);
+            result.data = C.malloc(len + 1);
 
-            if (result.data != NULL) {
-                memcpy(result.data, data, len + 1);
+            if result.data != nil {
+                C.memcpy(result.data, data, len + 1);
                 result.len = len;
                 result.cap = len + 1;
             }
@@ -56,6 +56,15 @@ pub model string {
             }
         }
         return result;
+    }
+
+    pub def destroy(s: ref string) {
+        unsafe {
+            C.free((void*)s*.data);
+            s*.data = nil;
+            s*.len = 0;
+            s*.cap = 0;
+        }
     }
 }
 
