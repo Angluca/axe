@@ -787,6 +787,34 @@ string generateC(ASTNode ast)
             }
         }
 
+        string[string] functionModulePrefixes;
+        
+        foreach (child; ast.children)
+        {
+            if (child.nodeType == "Function")
+            {
+                auto funcNode = cast(FunctionNode) child;
+                if (funcNode.name.canFind("_"))
+                {
+                    auto lastUnderscore = funcNode.name.lastIndexOf('_');
+                    if (lastUnderscore > 0)
+                    {
+                        string potentialPrefix = funcNode.name[0 .. lastUnderscore];
+                        string baseName = funcNode.name[lastUnderscore + 1 .. $];
+                        functionModulePrefixes[baseName] = potentialPrefix;
+                        
+                        foreach (enumName; g_enumNames.byKey())
+                        {
+                            if (enumName.startsWith(potentialPrefix ~ "_"))
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         foreach (child; ast.children)
         {
             if (child.nodeType == "Function")
@@ -794,15 +822,31 @@ string generateC(ASTNode ast)
                 auto funcNode = cast(FunctionNode) child;
                 if (funcNode.name != "main")
                 {
+                    string prefixedFuncName = funcNode.name;
+                    
+                    if (funcNode.name.canFind("_"))
+                    {
+                        auto lastUnderscore = funcNode.name.lastIndexOf('_');
+                        if (lastUnderscore >= 0)
+                        {
+                            string baseName = funcNode.name[lastUnderscore + 1 .. $];
+                            if (funcNode.name.startsWith("std_") || funcNode.name.startsWith("lexer_"))
+                            {
+                                g_functionPrefixes[baseName] = funcNode.name;
+                            }
+                        }
+                        prefixedFuncName = funcNode.name;
+                    }
+                    
                     string processedReturnType = mapAxeTypeToCForReturnOrParam(funcNode.returnType);
-                    cCode ~= processedReturnType ~ " " ~ funcNode.name ~ "(";
+                    cCode ~= processedReturnType ~ " " ~ prefixedFuncName ~ "(";
                     if (funcNode.params.length > 0)
                     {
                         int[] reorderMap;
                         ParamInfo[] paramInfos;
                         string[] processedParams = computeReorderedCParams(funcNode, reorderMap, paramInfos);
                         cCode ~= processedParams.join(", ");
-                        g_functionParamReordering[funcNode.name] = reorderMap;
+                        g_functionParamReordering[prefixedFuncName] = reorderMap;
 
                         foreach (info; paramInfos)
                         {
@@ -885,6 +929,12 @@ string generateC(ASTNode ast)
     case "Function":
         auto funcNode = cast(FunctionNode) ast;
         string funcName = funcNode.name;
+        
+        if (funcName != "main" && funcName in g_functionPrefixes)
+        {
+            funcName = g_functionPrefixes[funcName];
+        }
+        
         string[] params = funcNode.params;
         string prevFunction = currentFunction;
         currentFunction = funcName;
