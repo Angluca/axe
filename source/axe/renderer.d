@@ -459,6 +459,7 @@ string generateC(ASTNode ast)
                         {
                             g_functionPrefixes[importName] = modulePrefix ~ "_" ~ importName;
                             g_modelNames[importName] = modulePrefix ~ "_" ~ importName;
+                            g_enumNames[modulePrefix ~ "_" ~ importName] = true;
                         }
                     }
                 }
@@ -678,6 +679,71 @@ string generateC(ASTNode ast)
             }
         }
 
+        bool[string] listElementTypes;
+
+        foreach (child; ast.children)
+        {
+            if (child.nodeType == "Function")
+            {
+                auto funcNode = cast(FunctionNode) child;
+                string returnType = funcNode.returnType;
+
+                import std.string : indexOf, lastIndexOf;
+
+                auto bracketPos = returnType.indexOf("[999]");
+                if (bracketPos > 0)
+                {
+                    string elementType = returnType[0 .. bracketPos].strip();
+                    string cElementType = mapAxeTypeToC(elementType);
+                    listElementTypes[cElementType] = true;
+                }
+            }
+            else if (child.nodeType == "Model")
+            {
+                auto modelNode = cast(ModelNode) child;
+                foreach (field; modelNode.fields)
+                {
+                    import std.string : indexOf;
+                    
+                    auto bracketPos = field.type.indexOf("[999]");
+                    if (bracketPos > 0)
+                    {
+                        string elementType = field.type[0 .. bracketPos].strip();
+                        string cElementType = mapAxeTypeToC(elementType);
+                        listElementTypes[cElementType] = true;
+                    }
+                    
+                    if (field.isUnion)
+                    {
+                        foreach (inner; field.nestedFields)
+                        {
+                            auto innerBracketPos = inner.type.indexOf("[999]");
+                            if (innerBracketPos > 0)
+                            {
+                                string innerElementType = inner.type[0 .. innerBracketPos].strip();
+                                string innerCElementType = mapAxeTypeToC(innerElementType);
+                                listElementTypes[innerCElementType] = true;
+                            }
+                            
+                            if (inner.type == "model" && inner.isUnion)
+                            {
+                                foreach (nestedField; inner.nestedFields)
+                                {
+                                    auto nestedBracketPos = nestedField.type.indexOf("[999]");
+                                    if (nestedBracketPos > 0)
+                                    {
+                                        string nestedElementType = nestedField.type[0 .. nestedBracketPos].strip();
+                                        string nestedCElementType = mapAxeTypeToC(nestedElementType);
+                                        listElementTypes[nestedCElementType] = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         {
             import std.string : indexOf, startsWith, strip;
 
@@ -794,10 +860,45 @@ string generateC(ASTNode ast)
                 visit(name);
             }
 
+            // Generate forward declarations for all models first
+            foreach (name; orderedModels)
+            {
+                if (name !in g_generatedTypedefs)
+                {
+                    cCode ~= "struct " ~ name ~ ";\n";
+                }
+            }
+
+            // Also generate typedefs for forward declarations
+            foreach (name; orderedModels)
+            {
+                if (name !in g_generatedTypedefs)
+                {
+                    cCode ~= "typedef struct " ~ name ~ " " ~ name ~ ";\n";
+                }
+            }
+
+            // Generate forward declarations for list types (so models can use pointers to them)
+            foreach (elementType; listElementTypes.byKey())
+            {
+                cCode ~= "typedef struct __list_" ~ elementType ~ "_t __list_" ~ elementType ~ "_t;\n";
+            }
+
+            // Generate the actual model definitions
             foreach (name; orderedModels)
             {
                 auto modelNode = modelMap[name];
                 cCode ~= generateC(modelNode) ~ "\n";
+            }
+
+            // Generate list typedefs AFTER all models are fully defined
+            // (arrays need complete types, not just forward declarations)
+            foreach (elementType; listElementTypes.byKey())
+            {
+                cCode ~= "typedef struct __list_" ~ elementType ~ "_t {\n";
+                cCode ~= "    " ~ elementType ~ " data[999];\n";
+                cCode ~= "    int len;\n";
+                cCode ~= "} __list_" ~ elementType ~ "_t;\n";
             }
 
             auto dtCName = canonicalModelCName("DateTime");
@@ -805,39 +906,6 @@ string generateC(ASTNode ast)
             {
                 cCode ~= "typedef struct DateTime std_time_DateTime;\n";
             }
-        }
-
-        bool[string] listElementTypes;
-
-        foreach (child; ast.children)
-        {
-            if (child.nodeType == "Function")
-            {
-                auto funcNode = cast(FunctionNode) child;
-                string returnType = funcNode.returnType;
-
-                import std.string : indexOf, lastIndexOf;
-
-                auto bracketPos = returnType.indexOf("[999]");
-                if (bracketPos > 0)
-                {
-                    string elementType = returnType[0 .. bracketPos].strip();
-                    string cElementType = mapAxeTypeToC(elementType);
-                    listElementTypes[cElementType] = true;
-                }
-            }
-        }
-        foreach (elementType; listElementTypes.byKey())
-        {
-            debugWriteln("DEBUG: Generating typedef for list of: ", elementType);
-        }
-
-        foreach (elementType; listElementTypes.byKey())
-        {
-            cCode ~= "typedef struct __list_" ~ elementType ~ "_t {\n";
-            cCode ~= "    " ~ elementType ~ " data[999];\n";
-            cCode ~= "    int len;\n";
-            cCode ~= "} __list_" ~ elementType ~ "_t;\n";
         }
 
         string[string] functionModulePrefixes;
@@ -2186,8 +2254,9 @@ string generateC(ASTNode ast)
 
         g_generatedTypedefs[modelName] = true;
 
-        cCode ~= "struct " ~ modelName ~ ";\n";
-        cCode ~= "typedef struct " ~ modelName ~ " {\n";
+        // Forward declaration and typedef already generated in the main loop
+        // Now just define the struct body
+        cCode ~= "struct " ~ modelName ~ " {\n";
 
         bool hasSelfReference = false;
         foreach (field; modelNode.fields)
@@ -2228,16 +2297,23 @@ string generateC(ASTNode ast)
                             
                             import std.string : indexOf;
                             
-                            auto nestedBracketPos = nestedField.type.indexOf('[');
-                            if (nestedBracketPos >= 0)
+                            if (nestedField.type.endsWith("[999]"))
                             {
-                                nestedArrayPart = nestedField.type[nestedBracketPos .. $];
-                                string nestedRawBaseType = nestedField.type[0 .. nestedBracketPos].strip();
-                                nestedType = mapAxeTypeToC(nestedRawBaseType);
+                                nestedType = mapAxeTypeToCForReturnOrParam(nestedField.type) ~ "*";
                             }
                             else
                             {
-                                nestedType = mapAxeTypeToC(nestedField.type);
+                                auto nestedBracketPos = nestedField.type.indexOf('[');
+                                if (nestedBracketPos >= 0)
+                                {
+                                    nestedArrayPart = nestedField.type[nestedBracketPos .. $];
+                                    string nestedRawBaseType = nestedField.type[0 .. nestedBracketPos].strip();
+                                    nestedType = mapAxeTypeToC(nestedRawBaseType);
+                                }
+                                else
+                                {
+                                    nestedType = mapAxeTypeToC(nestedField.type);
+                                }
                             }
                             
                             // Handle ref types - convert "ref T" to "T*"
@@ -2267,16 +2343,26 @@ string generateC(ASTNode ast)
 
                         import std.string : indexOf;
 
-                        auto innerBracketPos = inner.type.indexOf('[');
-                        if (innerBracketPos >= 0)
+                        // Check if this is a list type (ends with [999])
+                        if (inner.type.endsWith("[999]"))
                         {
-                            innerArrayPart = inner.type[innerBracketPos .. $];
-                            string innerRawBaseType = inner.type[0 .. innerBracketPos].strip();
-                            innerType = mapAxeTypeToC(innerRawBaseType);
+                            // This is a list type - use a pointer to the list struct
+                            innerType = mapAxeTypeToCForReturnOrParam(inner.type) ~ "*";
+                            // Don't include the [999] array part for list types
                         }
                         else
                         {
-                            innerType = mapAxeTypeToC(inner.type);
+                            auto innerBracketPos = inner.type.indexOf('[');
+                            if (innerBracketPos >= 0)
+                            {
+                                innerArrayPart = inner.type[innerBracketPos .. $];
+                                string innerRawBaseType = inner.type[0 .. innerBracketPos].strip();
+                                innerType = mapAxeTypeToC(innerRawBaseType);
+                            }
+                            else
+                            {
+                                innerType = mapAxeTypeToC(inner.type);
+                            }
                         }
 
                         // Handle ref types - convert "ref T" to "T*"
@@ -2306,16 +2392,27 @@ string generateC(ASTNode ast)
 
             import std.string : indexOf;
 
-            auto bracketPos = field.type.indexOf('[');
-            if (bracketPos >= 0)
+            // Check if this is a list type (ends with [999])
+            if (field.type.endsWith("[999]"))
             {
-                arrayPart = field.type[bracketPos .. $];
-                string rawBaseType = field.type[0 .. bracketPos].strip();
-                fieldType = mapAxeTypeToC(rawBaseType);
+                // This is a list type - use a pointer to the list struct
+                // (list typedefs come after model definitions, so we need forward compat)
+                fieldType = mapAxeTypeToCForReturnOrParam(field.type) ~ "*";
+                // Don't include the [999] array part for list types
             }
             else
             {
-                fieldType = mapAxeTypeToC(field.type);
+                auto bracketPos = field.type.indexOf('[');
+                if (bracketPos >= 0)
+                {
+                    arrayPart = field.type[bracketPos .. $];
+                    string rawBaseType = field.type[0 .. bracketPos].strip();
+                    fieldType = mapAxeTypeToC(rawBaseType);
+                }
+                else
+                {
+                    fieldType = mapAxeTypeToC(field.type);
+                }
             }
 
             debugWriteln("DEBUG model field: name='", field.name, "' type='", field.type, "' mapped='", fieldType, "' arrayPart='", arrayPart, "'");
@@ -2330,7 +2427,7 @@ string generateC(ASTNode ast)
 
             cCode ~= "    " ~ fieldType ~ " " ~ field.name ~ arrayPart ~ ";\n";
         }
-        cCode ~= "} " ~ modelNode.name ~ ";\n\n";
+        cCode ~= "};\n\n";
         break;
 
     case "ModelInstantiation":

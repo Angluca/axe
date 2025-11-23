@@ -1,0 +1,15 @@
+use std.io;
+
+model Test {
+    data: union {
+        simple_field: model {
+            name: string;
+            value: i32;
+        };
+        another: i32;
+    };
+}
+
+test {
+    println "Test passed";
+}

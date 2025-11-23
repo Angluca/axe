@@ -1,0 +1,8 @@
+model Test {
+    data: union {
+        function: model {
+            name: string;
+        };
+        macro: i32;
+    };
+}

@@ -930,6 +930,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         if (enumNode.name !in addedEnumNames)
                         {
                             addedEnumNames[enumNode.name] = true;
+                            string prefixedName = enumNode.name.startsWith("std_") ? enumNode.name
+                                : (sanitizedModuleName ~ "_" ~ enumNode.name);
+                            enumNode.name = prefixedName;
                             newChildren ~= enumNode;
                         }
                     }
