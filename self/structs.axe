@@ -1,12 +1,329 @@
 use std.string;
 use std.io;
-use lexer;
+use lexer(Token);
 
+/// Macro definition modelure
 model MacroDef {
     params: list(string);
     body: list(Token);
 }
 
+/// AST Node - all node types combined with a union
+pub model ASTNode {
+    node_type: string;
+    children: list(ASTNode);
+    
+    /// Union of all possible node-specific data
+    data: union {
+        /// OverloadNode data
+        overload_node: model {
+            name: string;
+            param_name: string;
+            call_expr: string;
+            type_names: list(string);
+            target_functions: list(string);
+        };
+        
+        /// DeclarationNode data
+        declaration: model {
+            name: string;
+            is_mutable: bool;
+            initializer: string;
+            type_name: string;
+            ref_depth: i32;
+        };
+        
+        /// ArrayDeclarationNode data
+        array_decl: model {
+            name: string;
+            is_mutable: bool;
+            element_type: string;
+            size: string;
+            size2: string;
+            initializer: list(string);
+        };
+        
+        /// ArrayAccessNode data
+        array_access: model {
+            array_name: string;
+            index: string;
+            index2: string;
+        };
+        
+        /// ArrayAssignmentNode data
+        array_assign: model {
+            array_name: string;
+            index: string;
+            index2: string;
+            value: string;
+        };
+        
+        /// ArrayLiteralNode data
+        array_literal: model {
+            element_type: string;
+            elements: list(string);
+        };
+        
+        /// FunctionNode data
+        function: model {
+            name: string;
+            params: list(string);
+            return_type: string;
+            is_public: bool;
+        };
+        
+        /// MacroNode data
+        macro: model {
+            name: string;
+            params: list(string);
+            param_types: list(string);
+            body_tokens: list(Token);
+        };
+        
+        /// AssertNode data
+        assert_node: model {
+            condition: string;
+            message: string;
+        };
+        
+        /// IfNode data
+        if_node: model {
+            condition: string;
+            elif_branches: list(ASTNode);
+            else_body: list(ASTNode);
+        };
+        
+        /// PrintlnNode data
+        println: model {
+            messages: list(string);
+            is_expressions: list(bool);
+        };
+        
+        /// PrintNode data
+        print: model {
+            messages: list(string);
+            is_expressions: list(bool);
+        };
+        
+        /// AssignmentNode data
+        assignment: model {
+            variable: string;
+            expression: string;
+        };
+        
+        /// FunctionCallNode data
+        func_call: model {
+            function_name: string;
+            args: list(string);
+        };
+        
+        /// InterpolatedStringNode data
+        interpolated_str: model {
+            parts: list(string);
+            expressions: list(string);
+        };
+        
+        /// ForNode data
+        for_loop: model {
+            initialization: string;
+            condition: string;
+            increment: string;
+            is_mutable: bool;
+            var_name: string;
+            var_type: string;
+            init_value: string;
+            is_parallel: bool;
+            reduction_clauses: list(string);
+        };
+        
+        /// ForInNode data
+        for_in: model {
+            var_name: string;
+            array_name: string;
+            array_size: string;
+        };
+        
+        /// ReturnNode data
+        return_node: model {
+            expression: string;
+        };
+        
+        /// RawCNode data
+        raw_c: model {
+            code: string;
+        };
+        
+        /// UseNode data
+        use_node: model {
+            module_name: string;
+            imports: list(string);
+            import_all: bool;
+        };
+        
+        /// ModelNode data
+        model_node: model {
+            name: string;
+            is_public: bool;
+            field_names: list(string);
+            field_types: list(string);
+        };
+        
+        /// EnumNode data
+        enum_node: model {
+            name: string;
+            values: list(string);
+        };
+        
+        /// ModelInstantiationNode data
+        model_instantiation: model {
+            model_name: string;
+            variable_name: string;
+            is_mutable: bool;
+            field_names: list(string);
+            field_values: list(string);
+        };
+        
+        /// MemberAccessNode data
+        member_access: model {
+            object_name: string;
+            member_name: string;
+            value: string;
+        };
+        
+        /// ExternalImportNode data
+        external_import: model {
+            header_file: string;
+        };
+        
+        /// OpaqueNode data
+        opaque: model {
+            type_names: list(string);
+        };
+        
+        /// ExternNode data
+        extern_node: model {
+            function_name: string;
+            params: list(string);
+            return_type: string;
+        };
+        
+        /// UnsafeNode data
+        unsafe_node: model {
+            body: list(ASTNode);
+        };
+        
+        /// SwitchNode data
+        switch_node: model {
+            expression: string;
+        };
+        
+        /// CaseNode data
+        case_node: model {
+            value: string;
+            is_default: bool;
+        };
+        
+        /// IncrementDecrementNode data
+        inc_dec: model {
+            variable: string;
+            is_increment: bool;
+        };
+        
+        /// MemberIncrementDecrementNode data
+        member_inc_dec: model {
+            object_name: string;
+            member_name: string;
+            is_increment: bool;
+        };
+        
+        /// PlatformNode data
+        platform: model {
+            platform_name: string;
+        };
+        
+        /// ParallelForNode data
+        parallel_for: model {
+            initialization: string;
+            condition: string;
+            increment: string;
+            reduction_clauses: list(string);
+        };
+        
+        /// Simple nodes with no additional data (Loop, Break, Continue, Test, Program, Parallel, Single)
+        /// These just use node_type and children
+        empty: i32;
+    };
+}
+
+/// Helper functions to create specific node types
+
+def create_function_node(name: string, params: list(string), return_type: string, is_public: bool): ASTNode {
+    mut node: ASTNode;
+    node.node_type = "Function";
+    node.data.function.name = name;
+    node.data.function.params = params;
+    node.data.function.return_type = return_type;
+    node.data.function.is_public = is_public;
+    return node;
+}
+
+def create_declaration_node(name: string, is_mutable: bool, initializer: string, type_name: string, ref_depth: i32): ASTNode {
+    mut node: ASTNode;
+    node.node_type = "Declaration";
+    node.data.declaration.name = name;
+    node.data.declaration.is_mutable = is_mutable;
+    node.data.declaration.initializer = initializer;
+    node.data.declaration.type_name = type_name;
+    node.data.declaration.ref_depth = ref_depth;
+    return node;
+}
+
+def create_if_node(condition: string): ASTNode {
+    mut node: ASTNode;
+    node.node_type = "If";
+    node.data.if_node.condition = condition;
+    return node;
+}
+
+def create_assignment_node(variable: string, expression: string): ASTNode {
+    mut node: ASTNode;
+    node.node_type = "Assignment";
+    node.data.assignment.variable = variable;
+    node.data.assignment.expression = expression;
+    return node;
+}
+
+def create_return_node(expression: string): ASTNode {
+    mut node: ASTNode;
+    node.node_type = "Return";
+    node.data.return_node.expression = expression;
+    return node;
+}
+
+def create_loop_node(): ASTNode {
+    mut node: ASTNode;
+    node.node_type = "Loop";
+    return node;
+}
+
+def create_break_node(): ASTNode {
+    mut node: ASTNode;
+    node.node_type = "Break";
+    return node;
+}
+
+def create_continue_node(): ASTNode {
+    mut node: ASTNode;
+    node.node_type = "Continue";
+    return node;
+}
+
+def create_program_node(): ASTNode {
+    mut node: ASTNode;
+    node.node_type = "Program";
+    return node;
+}
+
 test {
-    println "It works!";
+    println "models module loaded";
 }

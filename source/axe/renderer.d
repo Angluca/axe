@@ -2215,38 +2215,86 @@ string generateC(ASTNode ast)
 
                 foreach (inner; field.nestedFields)
                 {
-                    string innerType;
-                    string innerArrayPart = "";
-
-                    import std.string : indexOf;
-
-                    auto innerBracketPos = inner.type.indexOf('[');
-                    if (innerBracketPos >= 0)
+                    // Check if this is an anonymous model definition
+                    if (inner.type == "model" && inner.isUnion)
                     {
-                        innerArrayPart = inner.type[innerBracketPos .. $];
-                        string innerRawBaseType = inner.type[0 .. innerBracketPos].strip();
-                        innerType = mapAxeTypeToC(innerRawBaseType);
+                        // Render as anonymous struct inside union
+                        cCode ~= "        struct {\n";
+                        
+                        foreach (nestedField; inner.nestedFields)
+                        {
+                            string nestedType;
+                            string nestedArrayPart = "";
+                            
+                            import std.string : indexOf;
+                            
+                            auto nestedBracketPos = nestedField.type.indexOf('[');
+                            if (nestedBracketPos >= 0)
+                            {
+                                nestedArrayPart = nestedField.type[nestedBracketPos .. $];
+                                string nestedRawBaseType = nestedField.type[0 .. nestedBracketPos].strip();
+                                nestedType = mapAxeTypeToC(nestedRawBaseType);
+                            }
+                            else
+                            {
+                                nestedType = mapAxeTypeToC(nestedField.type);
+                            }
+                            
+                            // Handle ref types - convert "ref T" to "T*"
+                            if (nestedType.startsWith("ref "))
+                            {
+                                nestedType = nestedType[4 .. $].strip() ~ "*";
+                            }
+                            
+                            nestedType = formatModelFieldType(nestedType);
+                            
+                            // Self-referential nested fields
+                            if (nestedField.type == modelNode.name)
+                            {
+                                nestedType = "struct " ~ nestedField.type ~ "*";
+                            }
+                            
+                            cCode ~= "            " ~ nestedType ~ " " ~ nestedField.name ~ nestedArrayPart ~ ";\n";
+                        }
+                        
+                        cCode ~= "        } " ~ inner.name ~ ";\n";
                     }
                     else
                     {
-                        innerType = mapAxeTypeToC(inner.type);
+                        // Regular union field
+                        string innerType;
+                        string innerArrayPart = "";
+
+                        import std.string : indexOf;
+
+                        auto innerBracketPos = inner.type.indexOf('[');
+                        if (innerBracketPos >= 0)
+                        {
+                            innerArrayPart = inner.type[innerBracketPos .. $];
+                            string innerRawBaseType = inner.type[0 .. innerBracketPos].strip();
+                            innerType = mapAxeTypeToC(innerRawBaseType);
+                        }
+                        else
+                        {
+                            innerType = mapAxeTypeToC(inner.type);
+                        }
+
+                        // Handle ref types - convert "ref T" to "T*"
+                        if (innerType.startsWith("ref "))
+                        {
+                            innerType = innerType[4 .. $].strip() ~ "*";
+                        }
+
+                        innerType = formatModelFieldType(innerType);
+
+                        // Self-referential inner fields use the forward-declared struct as well
+                        if (inner.type == modelNode.name)
+                        {
+                            innerType = "struct " ~ inner.type ~ "*";
+                        }
+
+                        cCode ~= "        " ~ innerType ~ " " ~ inner.name ~ innerArrayPart ~ ";\n";
                     }
-
-                    // Handle ref types - convert "ref T" to "T*"
-                    if (innerType.startsWith("ref "))
-                    {
-                        innerType = innerType[4 .. $].strip() ~ "*";
-                    }
-
-                    innerType = formatModelFieldType(innerType);
-
-                    // Self-referential inner fields use the forward-declared struct as well
-                    if (inner.type == modelNode.name)
-                    {
-                        innerType = "struct " ~ inner.type ~ "*";
-                    }
-
-                    cCode ~= "        " ~ innerType ~ " " ~ inner.name ~ innerArrayPart ~ ";\n";
                 }
 
                 cCode ~= "    } " ~ field.name ~ ";\n";

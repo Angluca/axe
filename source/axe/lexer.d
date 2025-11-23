@@ -584,12 +584,14 @@ Token[] lex(string source)
                 tokens ~= Token(TokenType.NEW, "new");
                 pos += 3;
             }
-            else if (pos + 4 <= source.length && source[pos .. pos + 4] == "elif")
+            else if (pos + 4 <= source.length && source[pos .. pos + 4] == "elif" &&
+                (pos + 4 >= source.length || !(source[pos + 4].isAlphaNum || source[pos + 4] == '_')))
             {
                 tokens ~= Token(TokenType.ELIF, "elif");
                 pos += 4;
             }
-            else if (pos + 4 <= source.length && source[pos .. pos + 4] == "else")
+            else if (pos + 4 <= source.length && source[pos .. pos + 4] == "else" &&
+                (pos + 4 >= source.length || !(source[pos + 4].isAlphaNum || source[pos + 4] == '_')))
             {
                 tokens ~= Token(TokenType.ELSE, "else");
                 pos += 4;
@@ -612,7 +614,8 @@ Token[] lex(string source)
                 tokens ~= Token(TokenType.IF, "if");
                 pos += 2;
             }
-            else if (pos + 6 <= source.length && source[pos .. pos + 6] == "return")
+            else if (pos + 6 <= source.length && source[pos .. pos + 6] == "return" &&
+                (pos + 6 >= source.length || !(source[pos + 6].isAlphaNum || source[pos + 6] == '_')))
             {
                 tokens ~= Token(TokenType.RETURN, "return");
                 pos += 6;
@@ -623,7 +626,8 @@ Token[] lex(string source)
                 tokens ~= Token(TokenType.REF, "ref");
                 pos += 3;
             }
-            else if (pos + 3 <= source.length && source[pos .. pos + 3] == "raw")
+            else if (pos + 3 <= source.length && source[pos .. pos + 3] == "raw" &&
+                (pos + 3 >= source.length || !(source[pos + 3].isAlphaNum || source[pos + 3] == '_')))
             {
                 tokens ~= Token(TokenType.RAW, "raw");
                 pos += 3;

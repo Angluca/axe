@@ -112,6 +112,15 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
         }
 
         string typeName;
+        
+        // Special case: 'model' keyword can be used as a type for anonymous model definitions
+        if (tokens[pos].type == TokenType.MODEL)
+        {
+            typeName = "model";
+            pos++;
+            return refPrefix ~ typeName;
+        }
+        
         if (tokens[pos].type == TokenType.IDENTIFIER)
         {
             typeName = tokens[pos].value;
@@ -841,8 +850,36 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
                                 continue;
                             }
 
-                            enforce(tokens[pos].type == TokenType.IDENTIFIER,
-                                "Expected field name inside union block");
+                            if (tokens[pos].type != TokenType.IDENTIFIER)
+                            {
+                                bool isKeyword = (tokens[pos].type == TokenType.RETURN ||
+                                                 tokens[pos].type == TokenType.IF ||
+                                                 tokens[pos].type == TokenType.ELSE ||
+                                                 tokens[pos].type == TokenType.ELIF ||
+                                                 tokens[pos].type == TokenType.LOOP ||
+                                                 tokens[pos].type == TokenType.FOR ||
+                                                 tokens[pos].type == TokenType.MODEL ||
+                                                 tokens[pos].type == TokenType.DEF ||
+                                                 tokens[pos].type == TokenType.MUT ||
+                                                 tokens[pos].type == TokenType.USE ||
+                                                 tokens[pos].type == TokenType.MACRO ||
+                                                 tokens[pos].type == TokenType.ENUM ||
+                                                 tokens[pos].type == TokenType.OPAQUE ||
+                                                 tokens[pos].type == TokenType.EXTERN ||
+                                                 tokens[pos].type == TokenType.UNSAFE ||
+                                                 tokens[pos].type == TokenType.SWITCH ||
+                                                 tokens[pos].type == TokenType.CASE ||
+                                                 tokens[pos].type == TokenType.PLATFORM ||
+                                                 tokens[pos].type == TokenType.PARALLEL ||
+                                                 tokens[pos].type == TokenType.RAW ||
+                                                 tokens[pos].type == TokenType.PUB);
+                                if (!isKeyword)
+                                {
+                                    import std.conv : to;
+                                    enforce(false, "Expected field name inside union block, got " ~
+                                        tokens[pos].type.to!string ~ " with value '" ~ tokens[pos].value ~ "'");
+                                }
+                            }
                             string innerName = tokens[pos].value;
                             pos++;
 
@@ -854,7 +891,126 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
                             string innerBaseType = parseType();
                             string innerFieldType;
 
-                            if (pos < tokens.length && tokens[pos].type == TokenType.LBRACKET)
+                            if (innerBaseType == "model" && pos < tokens.length && tokens[pos].type == TokenType.LBRACE)
+                            {
+                                ModelNode.Field innerField;
+                                innerField.name = innerName;
+                                innerField.type = "model";
+                                innerField.isUnion = true;
+                                
+                                pos++; // Skip '{'
+                                
+                                int braceDepth = 0;
+                                while (pos < tokens.length)
+                                {
+                                    if (tokens[pos].type == TokenType.WHITESPACE || tokens[pos].type == TokenType.NEWLINE
+                                        || tokens[pos].type == TokenType.SEMICOLON || tokens[pos].type == TokenType.COMMENT)
+                                    {
+                                        pos++;
+                                        continue;
+                                    }
+
+                                    if (tokens[pos].type == TokenType.RBRACE)
+                                    {
+                                        if (braceDepth == 0)
+                                        {
+                                            break;
+                                        }
+                                        braceDepth--;
+                                        pos++;
+                                        continue;
+                                    }
+
+                                    if (tokens[pos].type == TokenType.LBRACE)
+                                    {
+                                        braceDepth++;
+                                        pos++;
+                                        continue;
+                                    }
+
+                                    if (tokens[pos].type != TokenType.IDENTIFIER)
+                                    {
+                                        bool isKeyword = (tokens[pos].type == TokenType.RETURN ||
+                                                         tokens[pos].type == TokenType.IF ||
+                                                         tokens[pos].type == TokenType.ELSE ||
+                                                         tokens[pos].type == TokenType.ELIF ||
+                                                         tokens[pos].type == TokenType.LOOP ||
+                                                         tokens[pos].type == TokenType.FOR ||
+                                                         tokens[pos].type == TokenType.MODEL ||
+                                                         tokens[pos].type == TokenType.DEF ||
+                                                         tokens[pos].type == TokenType.MUT ||
+                                                         tokens[pos].type == TokenType.USE ||
+                                                         tokens[pos].type == TokenType.MACRO ||
+                                                         tokens[pos].type == TokenType.ENUM ||
+                                                         tokens[pos].type == TokenType.OPAQUE ||
+                                                         tokens[pos].type == TokenType.EXTERN ||
+                                                         tokens[pos].type == TokenType.UNSAFE ||
+                                                         tokens[pos].type == TokenType.SWITCH ||
+                                                         tokens[pos].type == TokenType.CASE ||
+                                                         tokens[pos].type == TokenType.PLATFORM ||
+                                                         tokens[pos].type == TokenType.PARALLEL ||
+                                                         tokens[pos].type == TokenType.RAW ||
+                                                         tokens[pos].type == TokenType.PUB);
+                                        if (!isKeyword)
+                                        {
+                                            import std.conv : to;
+                                            enforce(false, "Expected field name inside anonymous model, got " ~ 
+                                                tokens[pos].type.to!string ~ " with value '" ~ tokens[pos].value ~ "'");
+                                        }
+                                    }
+                                    string nestedFieldName = tokens[pos].value;
+                                    pos++;
+
+                                    enforce(pos < tokens.length && tokens[pos].type == TokenType.COLON,
+                                        "Expected ':' after nested field name");
+                                    pos++; // Skip ':'
+
+                                    size_t nestedSavedPos = pos;
+                                    string nestedBaseType = parseType();
+                                    string nestedFieldType;
+
+                                    if (pos < tokens.length && tokens[pos].type == TokenType.LBRACKET)
+                                    {
+                                        pos = nestedSavedPos;
+                                        auto nestedArrayInfo = parseArrayType();
+                                        nestedFieldType = nestedArrayInfo.elementType;
+                                        if (nestedArrayInfo.size.length > 0)
+                                            nestedFieldType ~= "[" ~ nestedArrayInfo.size ~ "]";
+                                        else
+                                            nestedFieldType ~= "[]";
+
+                                        if (nestedArrayInfo.hasSecondDimension)
+                                        {
+                                            if (nestedArrayInfo.size2.length > 0)
+                                                nestedFieldType ~= "[" ~ nestedArrayInfo.size2 ~ "]";
+                                            else
+                                                nestedFieldType ~= "[]";
+                                        }
+                                    }
+                                    else
+                                    {
+                                        nestedFieldType = nestedBaseType;
+                                    }
+
+                                    ModelNode.Field nestedField;
+                                    nestedField.name = nestedFieldName;
+                                    nestedField.type = nestedFieldType;
+                                    innerField.nestedFields ~= nestedField;
+
+                                    if (pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON)
+                                        pos++;
+                                }
+                                
+                                enforce(pos < tokens.length && tokens[pos].type == TokenType.RBRACE,
+                                    "Expected '}' after anonymous model body");
+                                pos++; // Skip '}'
+                                
+                                unionField.nestedFields ~= innerField;
+                                
+                                if (pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON)
+                                    pos++;
+                            }
+                            else if (pos < tokens.length && tokens[pos].type == TokenType.LBRACKET)
                             {
                                 pos = innerSavedPos;
                                 auto innerArrayInfo = parseArrayType();
@@ -871,16 +1027,21 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
                                     else
                                         innerFieldType ~= "[]";
                                 }
+                                
+                                ModelNode.Field innerField;
+                                innerField.name = innerName;
+                                innerField.type = innerFieldType;
+                                unionField.nestedFields ~= innerField;
                             }
                             else
                             {
                                 innerFieldType = innerBaseType;
+                                
+                                ModelNode.Field innerField;
+                                innerField.name = innerName;
+                                innerField.type = innerFieldType;
+                                unionField.nestedFields ~= innerField;
                             }
-
-                            ModelNode.Field innerField;
-                            innerField.name = innerName;
-                            innerField.type = innerFieldType;
-                            unionField.nestedFields ~= innerField;
 
                             if (pos < tokens.length && tokens[pos].type == TokenType.SEMICOLON)
                                 pos++;
