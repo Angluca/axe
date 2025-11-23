@@ -368,8 +368,45 @@ pub def lex(source: string): list(Token) {
                 append(tokens, create_token(TokenType.DEFAULT, "default"));
                 pos = pos + 7;
             } elif str_equals(source, "def", pos, 3, source_len) and check_boundary(source, pos + 3, source_len) {
-                append(tokens, create_token(TokenType.DEF, "def"));
-                pos = pos + 3;
+                mut lookAhead: i32 = pos + 3;
+                loop {
+                    if lookAhead >= source_len {
+                        break;
+                    }
+                    mut ch_look: char = get_char(source, lookAhead);
+                    if ch_look != ' ' and ch_look != '\t' {
+                        break;
+                    }
+                    lookAhead = lookAhead + 1;
+                }
+
+                if str_equals(source, "main", lookAhead, 4, source_len) and check_boundary(source, lookAhead + 4, source_len) {
+                    lookAhead = lookAhead + 4;
+                    loop {
+                        if lookAhead >= source_len {
+                            break;
+                        }
+                        mut ch_look: char = get_char(source, lookAhead);
+                        if ch_look != ' ' and ch_look != '\t' {
+                            break;
+                        }
+                        lookAhead = lookAhead + 1;
+                    }
+
+                    if lookAhead + 1 < source_len and get_char(source, lookAhead) == '(' and get_char(source, lookAhead + 1) == ')' {
+                        append(tokens, create_token(TokenType.MAIN, "main"));
+                        pos = lookAhead + 2;
+                    } elif lookAhead < source_len and get_char(source, lookAhead) == '{' {
+                        append(tokens, create_token(TokenType.MAIN, "main"));
+                        pos = lookAhead;
+                    } else {
+                        append(tokens, create_token(TokenType.DEF, "def"));
+                        pos = pos + 3;
+                    }
+                } else {
+                    append(tokens, create_token(TokenType.DEF, "def"));
+                    pos = pos + 3;
+                }
             } else {
                 mut start: i32 = pos;
                 loop {
