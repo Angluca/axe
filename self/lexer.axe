@@ -720,3 +720,7 @@ pub def lex(source: string): list(Token) {
     
     return tokens;
 }
+
+test {
+    
+}
