@@ -40,16 +40,16 @@ macro create_map(keytype_elem: untyped, valtype_elem: untyped, mapname: untyped,
                 if i >= keys.len {
                     break;
                 }
-                raw {
-                    if (memcmp(&keys->data[i], &key, sizeof(key)) == 0) {
-                        return values->data[i];
+                unsafe {
+                    if C.memcmp(&keys*.data[i], &key, C.sizeof(key)) == 0 {
+                        return values*.data[i];
                     }
                 }
                 i = i + 1;
             }
             mut default_val: valtype_elem;
-            raw {
-                memset(&default_val, 0, sizeof(default_val));
+            unsafe {
+                C.memset(&default_val, 0, C.sizeof(default_val));
             }
             return default_val;
         }
@@ -61,8 +61,8 @@ macro create_map(keytype_elem: untyped, valtype_elem: untyped, mapname: untyped,
                 if i >= keys.len {
                     break;
                 }
-                raw {
-                    if (memcmp(&keys->data[i], &key, sizeof(key)) == 0) {
+                unsafe {
+                    if C.memcmp(&keys*.data[i], &key, C.sizeof(key)) == 0 {
                         return true;
                     }
                 }
@@ -86,21 +86,20 @@ macro create_map(keytype_elem: untyped, valtype_elem: untyped, mapname: untyped,
                 if i >= keys.len {
                     break;
                 }
-                raw {
-                    if (memcmp(&keys->data[i], &key, sizeof(key)) == 0) {
+                unsafe {
+                    if C.memcmp(&keys*.data[i], &key, C.sizeof(key)) == 0 {
                         found = true;
                     }
                 }
                 if found {
                     result = values.data[i];
-                    raw {
-                        for (int j = i; j < keys->len - 1; j++) {
-                            keys->data[j] = keys->data[j + 1];
-                            values->data[j] = values->data[j + 1];
+                    unsafe {
+                        for mut j = i; j < keys.len - 1; j++ {
+                            keys*.data[j] = keys*.data[j + 1];
+                            values*.data[j] = values*.data[j + 1];
                         }
-                        
-                        keys->len--;
-                        values->len--;
+                        keys*.len--;
+                        values*.len--;
                     }
                     return result;
                 }

@@ -704,7 +704,7 @@ string generateC(ASTNode ast)
                 foreach (field; modelNode.fields)
                 {
                     import std.string : indexOf;
-                    
+
                     auto bracketPos = field.type.indexOf("[999]");
                     if (bracketPos > 0)
                     {
@@ -712,7 +712,7 @@ string generateC(ASTNode ast)
                         string cElementType = mapAxeTypeToC(elementType);
                         listElementTypes[cElementType] = true;
                     }
-                    
+
                     if (field.isUnion)
                     {
                         foreach (inner; field.nestedFields)
@@ -724,7 +724,7 @@ string generateC(ASTNode ast)
                                 string innerCElementType = mapAxeTypeToC(innerElementType);
                                 listElementTypes[innerCElementType] = true;
                             }
-                            
+
                             if (inner.type == "model" && inner.isUnion)
                             {
                                 foreach (nestedField; inner.nestedFields)
@@ -2289,14 +2289,14 @@ string generateC(ASTNode ast)
                     {
                         // Render as anonymous struct inside union
                         cCode ~= "        struct {\n";
-                        
+
                         foreach (nestedField; inner.nestedFields)
                         {
                             string nestedType;
                             string nestedArrayPart = "";
-                            
+
                             import std.string : indexOf;
-                            
+
                             if (nestedField.type.endsWith("[999]"))
                             {
                                 nestedType = mapAxeTypeToCForReturnOrParam(nestedField.type) ~ "*";
@@ -2315,24 +2315,24 @@ string generateC(ASTNode ast)
                                     nestedType = mapAxeTypeToC(nestedField.type);
                                 }
                             }
-                            
+
                             // Handle ref types - convert "ref T" to "T*"
                             if (nestedType.startsWith("ref "))
                             {
                                 nestedType = nestedType[4 .. $].strip() ~ "*";
                             }
-                            
+
                             nestedType = formatModelFieldType(nestedType);
-                            
+
                             // Self-referential nested fields
                             if (nestedField.type == modelNode.name)
                             {
                                 nestedType = "struct " ~ nestedField.type ~ "*";
                             }
-                            
+
                             cCode ~= "            " ~ nestedType ~ " " ~ nestedField.name ~ nestedArrayPart ~ ";\n";
                         }
-                        
+
                         cCode ~= "        } " ~ inner.name ~ ";\n";
                     }
                     else
@@ -2571,11 +2571,18 @@ string generateC(ASTNode ast)
     case "MemberIncrementDecrement":
         auto memberIncDecNode = cast(MemberIncrementDecrementNode) ast;
         string indent = loopLevel > 0 ? "    ".replicate(loopLevel) : "";
+        string accessor = ".";
+
+        if (memberIncDecNode.objectName in g_isPointerVar &&
+            g_isPointerVar[memberIncDecNode.objectName] == "true")
+        {
+            accessor = "->";
+        }
 
         if (memberIncDecNode.isIncrement)
-            cCode ~= indent ~ memberIncDecNode.objectName ~ "." ~ memberIncDecNode.memberName ~ "++;\n";
+            cCode ~= indent ~ memberIncDecNode.objectName ~ accessor ~ memberIncDecNode.memberName ~ "++;\n";
         else
-            cCode ~= indent ~ memberIncDecNode.objectName ~ "." ~ memberIncDecNode.memberName ~ "--;\n";
+            cCode ~= indent ~ memberIncDecNode.objectName ~ accessor ~ memberIncDecNode.memberName ~ "--;\n";
         break;
 
     case "ExternalImport":
@@ -3034,6 +3041,7 @@ string processExpression(string expr, string context = "")
 
     // Strip outer parentheses if they wrap the entire expression
     import std.string : strip;
+
     string strippedExpr = expr.strip();
     if (strippedExpr.startsWith("(") && strippedExpr.endsWith(")"))
     {
@@ -3042,8 +3050,10 @@ string processExpression(string expr, string context = "")
         bool isOuterParen = true;
         for (size_t i = 0; i < strippedExpr.length; i++)
         {
-            if (strippedExpr[i] == '(') depth++;
-            else if (strippedExpr[i] == ')') depth--;
+            if (strippedExpr[i] == '(')
+                depth++;
+            else if (strippedExpr[i] == ')')
+                depth--;
             if (depth == 0 && i < strippedExpr.length - 1)
             {
                 isOuterParen = false;
@@ -5641,7 +5651,7 @@ unittest
         }`);
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
-        
+
         writeln("String interpolation test:");
         writeln(cCode);
         assert(cCode.canFind(`const char x[6];
