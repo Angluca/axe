@@ -86,10 +86,10 @@ pub model Token {
     pub value: string;
 }
 
-def create_token(token_type: i32, value: string): Token {
+def create_token(token_type: i32, value: char*): Token {
     mut t: Token;
     t.token_type = token_type;
-    t.value = value;
+    t.value = str(value);
     return t;
 }
 
@@ -124,7 +124,7 @@ def substring(s: string, start: i32, end: i32): string {
         if i >= end {
             break;
         }
-        result = result + s[i];
+        result = concat(result, get_char(s, i));
         i = i + 1;
     }
     return result;
@@ -147,7 +147,7 @@ def str_equals(s1: string, s2: string, start: i32, len: i32, source_len: i32): b
     return true;
 }
 
-def check_boundary(source: string, pos: i32, source_len: i32): bool {
+def check_boundary(source: char*, pos: i32, source_len: i32): bool {
     if pos >= source_len {
         return true;
     }

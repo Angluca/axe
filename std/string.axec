@@ -383,6 +383,11 @@ pub def double_to_str(value: f64, buffer: char*): char* {
     return buffer;
 }
 
+/// Returns the character at position `pos` in string `s`.
+pub def get_char(s: string, pos: usize): char {
+    return s.data[pos];
+}
+
 /// Returns the index of the first occurrence of character `c` in `s` at or after `start`.
 /// Returns -1 if the character is not found.
 pub def find_char_from(s: string, c: char, start: usize): i32 {
@@ -681,6 +686,8 @@ test {
     assert(has_suffix(base, string.create("")), "empty suffix should always match");
     assert(!has_prefix(base, string.create("foobarbaz")), "longer prefix should not match");
     assert(!has_suffix(base, string.create("foobarbaz")), "longer suffix should not match");
+
+    assert get_char(string.create("hello"), 1) == 'e', "get_char should return correct character";
 
     val y = 10;
     

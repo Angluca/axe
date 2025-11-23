@@ -2980,6 +2980,8 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             {
                 if (tokens[pos].type == TokenType.STR)
                     condition ~= "\"" ~ tokens[pos].value ~ "\" ";
+                else if (tokens[pos].type == TokenType.CHAR)
+                    condition ~= "'" ~ tokens[pos].value ~ "' ";
                 else
                     condition ~= tokens[pos].value ~ " ";
             }

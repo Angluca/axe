@@ -3693,12 +3693,10 @@ string processExpression(string expr, string context = "")
 
     // Handle bare char literals that need to be wrapped in single quotes for C
     // These come from the parser without quotes (e.g., ',' becomes just , in AST)
-    // Only wrap punctuation/symbols that are clearly not variable names, numbers, or operators
+    // However, we only wrap punctuation - NOT letters or digits, as those might be variable names
     if (expr.length == 1)
     {
         char c = expr[0];
-        // Only wrap specific punctuation that are likely char literals
-        // Exclude: letters (a-z, A-Z), digits (0-9), operators (+, -, *, /, %, etc.)
         bool isLetter = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
         bool isDigit = (c >= '0' && c <= '9');
         bool isOperator = (c == '+' || c == '-' || c == '*' || c == '/' || c == '%' ||
@@ -3706,6 +3704,8 @@ string processExpression(string expr, string context = "")
                 c == '!' || c == '~' || c == '^');
         bool isUnderscore = (c == '_');
 
+        // Only wrap punctuation characters (not letters, digits, operators, or underscore)
+        // Letters will be handled properly by the parser wrapping CHAR tokens
         if (!isLetter && !isDigit && !isOperator && !isUnderscore && c >= 32 && c < 127)
         {
             if (c == '\'')
