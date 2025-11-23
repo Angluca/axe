@@ -101,7 +101,6 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
         {
             auto fileName = baseName(currentFilePath).stripExtension();
             currentModulePrefix = "std_" ~ fileName;
-            // Set global module prefix for renderer to use
             g_currentModulePrefix = currentModulePrefix;
         }
     }
@@ -179,7 +178,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
         writeln("DEBUG: Total local models: ", localModels.length);
         writeln("DEBUG: Total local functions: ", localFunctions.length);
         writeln("DEBUG: Total local enums: ", localEnums.length);
-        
+
         g_localFunctionMap = localFunctions.dup;
     }
 
@@ -274,7 +273,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             string[string] moduleModelMap;
             string[string] moduleMacroMap;
 
-            writeln("DEBUG: Processing ", importProgram.children.length, " children from imported module ", useNode.moduleName);
+            writeln("DEBUG: Processing ", importProgram.children.length, " children from imported module ", useNode
+                    .moduleName);
             foreach (importChild; importProgram.children)
             {
                 writeln("DEBUG:   Child nodeType: ", importChild.nodeType);
@@ -393,7 +393,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 else if (importChild.nodeType == "Function")
                 {
                     auto funcNode = cast(FunctionNode) importChild;
-                    writeln("DEBUG: Checking function '", funcNode.name, "' isPublic=", funcNode.isPublic);
+                    writeln("DEBUG: Checking function '", funcNode.name, "' isPublic=", funcNode
+                            .isPublic);
                     // For .axec modules, map ALL functions (public and non-public) so they all get prefixed
                     // For .axe modules, only map explicitly imported or non-public functions
                     if (importIsAxec && funcNode.name != "main")
@@ -739,22 +740,26 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     // if (!funcNode.isPublic)
                     //     continue;
 
-                    if (funcNode.isPublic && (useNode.importAll || useNode.imports.canFind(funcNode.name)))
+                    if (funcNode.isPublic && (useNode.importAll || useNode.imports.canFind(
+                            funcNode.name)))
                         resolvedImports[funcNode.name] = true;
 
-                    if (useNode.importAll || useNode.imports.canFind(funcNode.name) || (funcNode.isPublic && importIsAxec))
+                    if (useNode.importAll || useNode.imports.canFind(funcNode.name) || (funcNode.isPublic &&
+                            importIsAxec))
                     {
                         string originalName = funcNode.name;
                         string prefixedName = moduleFunctionMap[originalName];
-                        
+
                         // Rename the function definition itself so that
                         // generated C has a matching symbol for rewritten
                         // call sites (e.g., std_io_read_int).
+
                         funcNode.name = prefixedName;
 
                         // Name map must use the ORIGINAL name as key so that
                         // call sites like read_int() or randomize() get
                         // rewritten to the prefixed symbol.
+
                         importedFunctions[originalName] = prefixedName;
                         renameFunctionCalls(funcNode, moduleFunctionMap);
                         renameTypeReferences(funcNode, moduleModelMap);
@@ -763,18 +768,18 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     }
                     else if (!funcNode.isPublic && funcNode.name in moduleFunctionMap)
                     {
-                        // Non-public helper function from the module - add with prefixing
                         string originalName = funcNode.name;
                         string prefixedName = moduleFunctionMap[originalName];
-                        
-                        writeln("DEBUG: Non-public function '", originalName, "' - isPublic=", funcNode.isPublic, ", inMap=", (funcNode.name in moduleFunctionMap));
-                        
+
+                        writeln("DEBUG: Non-public function '", originalName, "' - isPublic=", funcNode.isPublic,
+                            ", inMap=", (funcNode.name in moduleFunctionMap));
+
                         if (prefixedName !in addedFunctionNames)
                         {
                             funcNode.name = prefixedName;
                             addedFunctionNames[prefixedName] = true;
                             writeln("DEBUG: Adding non-public function '", originalName, "' as '", prefixedName, "'");
-                            
+
                             renameFunctionCalls(funcNode, moduleFunctionMap);
                             renameTypeReferences(funcNode, moduleModelMap);
                             newChildren ~= funcNode;
@@ -785,17 +790,17 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     {
                         string originalName = funcNode.name;
                         string prefixedName = originalName;
-                        
+
                         if (originalName in moduleFunctionMap)
                         {
                             prefixedName = moduleFunctionMap[originalName];
                         }
-                        
+
                         if (prefixedName !in addedFunctionNames)
                         {
                             addedFunctionNames[prefixedName] = true;
                             writeln("DEBUG: Adding transitive function: ", originalName, " -> ", prefixedName);
-                            
+
                             funcNode.name = prefixedName;
                             renameFunctionCalls(funcNode, moduleFunctionMap);
                             renameTypeReferences(funcNode, moduleModelMap);
@@ -1119,7 +1124,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         functionMap[funcName] = prefixedName;
                     }
                 }
-                
+
                 renameFunctionCalls(child, functionMap);
                 renameTypeReferences(child, localTypeMap);
             }
