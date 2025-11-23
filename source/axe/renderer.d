@@ -48,7 +48,7 @@ private string[string] g_arrayWidthVars;
 private int[][string] g_functionParamReordering;
 private MacroNode[string] g_macros;
 private bool[string] g_pointerFields;
-private string[string] g_listOfTypes; // Maps variable name -> element type for list_of declarations
+private string[string] g_listOfTypes;
 private string[string] g_fieldTypes;
 private string[string] g_varType;
 private string[string] g_isPointerVar;
@@ -1036,7 +1036,7 @@ string generateC(ASTNode ast)
 
         import std.string : startsWith, indexOf, strip;
 
-        // Handle append() for list_of types
+        // Handle append() for list types
         if (callName == "append")
         {
             if (callNode.args.length >= 2)
@@ -1044,7 +1044,7 @@ string generateC(ASTNode ast)
                 string varName = callNode.args[0].strip();
                 string value = callNode.args[1].strip();
 
-                // Check if this is a list_of variable
+                // Check if this is a list variable
                 if (varName in g_listOfTypes)
                 {
                     string lengthVar = "__list_length_" ~ varName;
@@ -1408,7 +1408,7 @@ string generateC(ASTNode ast)
                 string mappedElementType = mapAxeTypeToC(elementType);
                 g_listOfTypes[declNode.name] = mappedElementType;
                 isListOfType = true;
-                debugWriteln("DEBUG renderer: Detected list_of variable '", declNode.name,
+                debugWriteln("DEBUG renderer: Detected list variable '", declNode.name,
                     "' with element type '", elementType, "' -> '", mappedElementType, "'");
             }
         }
@@ -1530,12 +1530,12 @@ string generateC(ASTNode ast)
 
         cCode ~= decl ~ ";\n";
 
-        // For list_of types, also declare a length counter initialized to 0
+        // For list types, also declare a length counter initialized to 0
         if (isListOfType)
         {
             string lengthVar = "__list_length_" ~ declNode.name;
             cCode ~= "int " ~ lengthVar ~ " = 0;\n";
-            debugWriteln("DEBUG renderer: Emitted length counter '", lengthVar, "' for list_of variable");
+            debugWriteln("DEBUG renderer: Emitted length counter '", lengthVar, "' for list variable");
         }
 
         break;
@@ -5400,13 +5400,13 @@ unittest
     }
 
     {
-        auto tokens = lex("main { mut lst: list_of(i32); append(lst, 10); append(lst, 20);}");
+        auto tokens = lex("main { mut lst: list(i32); append(lst, 10); append(lst, 20);}");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
-        writeln("list_of type test:");
+        writeln("list type test:");
         writeln(cCode);
 
-        assert(cCode.canFind("int32_t lst[999];"), "Should declare list_of(i32) as int32_t array");
+        assert(cCode.canFind("int32_t lst[999];"), "Should declare list(i32) as int32_t array");
     }
 }

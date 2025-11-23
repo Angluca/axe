@@ -1,4 +1,4 @@
-// Test the list_of() feature for dynamic arrays
+// Test the list() feature for dynamic arrays
 
 use std.io (
     print_i32,
@@ -11,8 +11,8 @@ model Token {
 }
 
 main {
-    // Create a dynamic array using list_of()
-    mut tokens: list_of(Token);
+    // Create a dynamic array using list()
+    mut tokens: list(Token);
     
     // Create some tokens
     mut t1: Token;
@@ -52,7 +52,7 @@ main {
     println "";
     
     // Test with simple types
-    mut numbers: list_of(i32);
+    mut numbers: list(i32);
     append(numbers, 10);
     append(numbers, 20);
     append(numbers, 30);

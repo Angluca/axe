@@ -139,8 +139,8 @@ def str_equals(s1: string, s2: char*, start: i32, len: i32, source_len: i32): bo
 }
 
 
-pub def lex(source: string): list_of(Token) {
-    mut tokens: list_of(Token);
+pub def lex(source: string): list(Token) {
+    mut tokens: list(Token);
     mut pos: i32 = 0;
     mut source_len: i32 = source.len;
     
@@ -559,7 +559,7 @@ pub def lex(source: string): list_of(Token) {
                 append(tokens, create_token(TokenType.RAW, "raw"));
                 pos = pos + 3;
                 loop {
-                    if pos >= source_len or (not is_whitespace(get_char(source, pos)) and get_char(source, pos) != '\n') {
+                    if pos >= source_len or (!is_whitespace(get_char(source, pos)) and get_char(source, pos) != '\n') {
                         break;
                     }
                     if get_char(source, pos) == '\n' {
@@ -702,7 +702,7 @@ pub def lex(source: string): list_of(Token) {
                 }
                 append(tokens, create_token(TokenType.IDENTIFIER, substring_cse(source, start, pos)));
             }
-        } elif ch == '0' and pos + 1 < source_len and (source[pos + 1] == 'x' or source[pos + 1] == 'X') {
+        } elif ch == '0' and pos + 1 < source_len and (get_char(source, pos + 1) == 'x' or get_char(source, pos + 1) == 'X') {
             mut start: i32 = pos;
             pos = pos + 2;
             loop {

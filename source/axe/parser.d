@@ -116,21 +116,21 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
         {
             typeName = tokens[pos].value;
 
-            if (typeName == "list_of")
+            if (typeName == "list")
             {
-                pos++; // Skip 'list_of'
+                pos++; // Skip 'list'
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
 
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.LPAREN,
-                    "Expected '(' after 'list_of'");
+                    "Expected '(' after 'list'");
                 pos++; // Skip '('
 
                 while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                     pos++;
 
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
-                    "Expected type name inside 'list_of(...)'");
+                    "Expected type name inside 'list(...)'");
 
                 string elementType = tokens[pos].value;
                 pos++; // Skip element type
@@ -139,12 +139,12 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
                     pos++;
 
                 enforce(pos < tokens.length && tokens[pos].type == TokenType.RPAREN,
-                    "Expected ')' after type in 'list_of(...)'");
+                    "Expected ')' after type in 'list(...)'");
                 pos++; // Skip ')'
 
                 typeName = elementType ~ "[999]";
 
-                debugWriteln("DEBUG: Parsed list_of(", elementType, ") -> ", typeName);
+                debugWriteln("DEBUG: Parsed list(", elementType, ") -> ", typeName);
             }
             else
             {
@@ -3853,7 +3853,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             debugWriteln("[VAL case] About to return DeclarationNode");
             currentScope.addVariable(varName, isMutable);
 
-            // Track list_of types - extract element type from Type[999] format
+            // Track list types - extract element type from Type[999] format
             import std.string : indexOf;
             import std.algorithm : canFind;
 
@@ -3864,7 +3864,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                 {
                     string elementType = typeName[0 .. bracketPos];
                     g_listOfTypes[varName] = elementType;
-                    debugWriteln("DEBUG: Tracked list_of variable '", varName, "' with element type '", elementType, "'");
+                    debugWriteln("DEBUG: Tracked list variable '", varName, "' with element type '", elementType, "'");
                 }
             }
 
@@ -5542,21 +5542,21 @@ private string parseTypeHelper(ref size_t pos, Token[] tokens)
         typeName = tokens[pos].value;
         debugWriteln("[parseTypeHelper] Got type name: ", typeName);
 
-        if (typeName == "list_of")
+        if (typeName == "list")
         {
-            pos++; // Skip 'list_of'
+            pos++; // Skip 'list'
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
 
             enforce(pos < tokens.length && tokens[pos].type == TokenType.LPAREN,
-                "Expected '(' after 'list_of'");
+                "Expected '(' after 'list'");
             pos++; // Skip '('
 
             while (pos < tokens.length && tokens[pos].type == TokenType.WHITESPACE)
                 pos++;
 
             enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
-                "Expected type name inside 'list_of(...)'");
+                "Expected type name inside 'list(...)'");
 
             string elementType = tokens[pos].value;
             pos++; // Skip element type
@@ -5565,12 +5565,12 @@ private string parseTypeHelper(ref size_t pos, Token[] tokens)
                 pos++;
 
             enforce(pos < tokens.length && tokens[pos].type == TokenType.RPAREN,
-                "Expected ')' after type in 'list_of(...)'");
+                "Expected ')' after type in 'list(...)'");
             pos++; // Skip ')'
 
             typeName = elementType ~ "[999]";
 
-            debugWriteln("[parseTypeHelper] Parsed list_of(", elementType, ") -> ", typeName);
+            debugWriteln("[parseTypeHelper] Parsed list(", elementType, ") -> ", typeName);
 
             return typeName;
         }
