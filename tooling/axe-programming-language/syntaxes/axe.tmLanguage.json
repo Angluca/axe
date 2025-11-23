@@ -3,15 +3,33 @@
   "name": "Axe",
   "scopeName": "source.axe",
   "patterns": [
-    { "include": "#comments" },
-    { "include": "#strings" },
-    { "include": "#numbers" },
-    { "include": "#keywords" },
-    { "include": "#types" },
-    { "include": "#functions" },
-    { "include": "#operators" },
-    { "include": "#constants" },
-    { "include": "#raw-blocks" }
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#functions"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#constants"
+    },
+    {
+      "include": "#raw-blocks"
+    }
   ],
   "repository": {
     "comments": {
@@ -33,6 +51,17 @@
           "name": "string.quoted.double.axe",
           "begin": "\"",
           "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.axe",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.multiline.axe",
+          "begin": "`",
+          "end": "`",
           "patterns": [
             {
               "name": "constant.character.escape.axe",
@@ -92,8 +121,12 @@
           "name": "entity.name.function.axe",
           "match": "\\b(def|macro)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
           "captures": {
-            "1": { "name": "keyword.other.axe" },
-            "2": { "name": "entity.name.function.axe" }
+            "1": {
+              "name": "keyword.other.axe"
+            },
+            "2": {
+              "name": "entity.name.function.axe"
+            }
           }
         },
         {
@@ -145,7 +178,9 @@
           "begin": "\\braw\\s*\\{",
           "end": "\\}",
           "beginCaptures": {
-            "0": { "name": "keyword.other.axe" }
+            "0": {
+              "name": "keyword.other.axe"
+            }
           },
           "patterns": [
             {
