@@ -106,6 +106,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
 
     string[string] localModels;
     string[string] localFunctions;
+    string[string] localEnums;
     bool[string] addedFunctionNames;
     bool[string] addedModelNames;
     bool[string] addedEnumNames;
@@ -143,9 +144,17 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     }
                 }
             }
+            else if (child.nodeType == "Enum")
+            {
+                auto enumNode = cast(EnumNode) child;
+                localEnums[enumNode.name] = currentModulePrefix ~ "_" ~ enumNode.name;
+                debugWriteln("DEBUG: Added local enum '", enumNode.name, "' -> '", currentModulePrefix ~ "_" ~
+                        enumNode.name, "'");
+            }
         }
         debugWriteln("DEBUG: Total local models: ", localModels.length);
         debugWriteln("DEBUG: Total local functions: ", localFunctions.length);
+        debugWriteln("DEBUG: Total local enums: ", localEnums.length);
     }
 
     bool[string] isTransitiveDependency;
@@ -309,7 +318,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                             auto enumNode = cast(EnumNode) pChild;
                             if (useNode.importAll || useNode.imports.canFind(enumNode.name))
                             {
-                                moduleModelMap[enumNode.name] = enumNode.name;
+                                string prefixedName = enumNode.name.startsWith("std_") ? enumNode.name
+                                    : (sanitizedModuleName ~ "_" ~ enumNode.name);
+                                moduleModelMap[enumNode.name] = prefixedName;
                             }
                         }
                         else if (pChild.nodeType == "Macro")
@@ -394,7 +405,9 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     if (useNode.importAll || useNode.imports.canFind(enumNode.name) || enumNode.name.startsWith(
                             "std_"))
                     {
-                        moduleModelMap[enumNode.name] = enumNode.name;
+                        string prefixedName = enumNode.name.startsWith("std_") ? enumNode.name
+                            : (sanitizedModuleName ~ "_" ~ enumNode.name);
+                        moduleModelMap[enumNode.name] = prefixedName;
                     }
                 }
                 else if (importChild.nodeType == "Extern")
@@ -530,8 +543,14 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                                 string prefixedName = moduleModelMap[modelNode.name];
                                 importedModels[modelNode.name] = prefixedName;
                                 auto newModel = new ModelNode(prefixedName, null);
-                                newModel.fields = modelNode.fields;
+                                newModel.fields = modelNode.fields.dup;
                                 newModel.isPublic = modelNode.isPublic;
+
+                                foreach (ref field; newModel.fields)
+                                {
+                                    if (field.type in moduleModelMap)
+                                        field.type = moduleModelMap[field.type];
+                                }
 
                                 foreach (method; modelNode.methods)
                                 {
@@ -764,8 +783,14 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         string prefixedName = moduleModelMap.get(modelNode.name, modelNode.name);
                         importedModels[baseName] = prefixedName;
                         auto newModel = new ModelNode(prefixedName, null);
-                        newModel.fields = modelNode.fields;
+                        newModel.fields = modelNode.fields.dup;
                         newModel.isPublic = modelNode.isPublic;
+
+                        foreach (ref field; newModel.fields)
+                        {
+                            if (field.type in moduleModelMap)
+                                field.type = moduleModelMap[field.type];
+                        }
 
                         foreach (method; modelNode.methods)
                         {
@@ -925,10 +950,29 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         {
                             localTypeMap[modelName] = prefixedName;
                         }
+                        foreach (enumName, prefixedName; localEnums)
+                        {
+                            localTypeMap[enumName] = prefixedName;
+                        }
 
                         renameFunctionCalls(methodFunc, importedFunctions);
                         renameTypeReferences(methodFunc, localTypeMap);
                     }
+                }
+
+                string[string] fieldTypeMap = importedModels.dup;
+                foreach (modelName, prefixedName; localModels)
+                {
+                    fieldTypeMap[modelName] = prefixedName;
+                }
+                foreach (enumName, prefixedName; localEnums)
+                {
+                    fieldTypeMap[enumName] = prefixedName;
+                }
+                foreach (ref field; modelNode.fields)
+                {
+                    if (field.type in fieldTypeMap)
+                        field.type = fieldTypeMap[field.type];
                 }
             }
             else if (child.nodeType == "Model")
@@ -945,6 +989,10 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 foreach (modelName, prefixedName; localModels)
                 {
                     localTypeMap[modelName] = prefixedName;
+                }
+                foreach (enumName, prefixedName; localEnums)
+                {
+                    localTypeMap[enumName] = prefixedName;
                 }
 
                 foreach (method; modelNode.methods)
@@ -976,11 +1024,25 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 {
                     localTypeMap[modelName] = prefixedName;
                 }
+                foreach (enumName, prefixedName; localEnums)
+                {
+                    localTypeMap[enumName] = prefixedName;
+                }
 
                 // Don't apply localFunctions renaming - they're in the same compilation unit
                 // and should not be prefixed when called from main
                 renameFunctionCalls(child, importedFunctions);
                 renameTypeReferences(child, localTypeMap);
+            }
+            else if (child.nodeType == "Enum" && currentModulePrefix.length > 0)
+            {
+                auto enumNode = cast(EnumNode) child;
+                if (enumNode.name !in isTransitiveDependency)
+                {
+                    string originalEnumName = enumNode.name;
+                    string prefixedEnumName = currentModulePrefix ~ "_" ~ originalEnumName;
+                    enumNode.name = prefixedEnumName;
+                }
             }
             else if (child.nodeType == "Test" && currentModulePrefix.length > 0)
             {
