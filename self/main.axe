@@ -7,16 +7,8 @@ use std.lists;
 use std.string;
 use lexer;
 
-model TokenList {
-    val length: i32;
-
-    def get(index: i32): TokenType {
-        return nil;
-    }
-}
-
 main {
-    val args: StringList = get_cmdline_args();
+    val args: ref StringList = get_cmdline_args();
     
     if StringList.length(args) < 2 {
         println("Usage: axe <input.axe|axec> [options]");
@@ -45,7 +37,7 @@ main {
     
     print("1 | Lex... ");
 
-    mut tokens: TokenList = lex(source_code);
+    mut tokens: ref TokenList = lex(source_code);
 
     println("Done");
     
