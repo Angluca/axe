@@ -3,7 +3,7 @@ use std.arena;
 use std.string;
 
 /// Generic Map using memcmp for key comparison
-macro create_map(keytype_elem: untyped, valtype_elem: untyped, mapname: untyped, keytype: untyped, valtype: untyped) {
+macro make_map(keytype_elem: untyped, valtype_elem: untyped, mapname: untyped, keytype: untyped, valtype: untyped) {
     model mapname {
         keys: ref keytype;
         values: ref valtype;
@@ -116,7 +116,7 @@ macro create_map(keytype_elem: untyped, valtype_elem: untyped, mapname: untyped,
 }
 
 /// Generic StringHashMap with proper string comparison
-macro create_string_map(valtype_elem: untyped, mapname: untyped, valtype: untyped) {
+macro make_string_map(valtype_elem: untyped, mapname: untyped, valtype: untyped) {
     model mapname {
         keys: ref StringList;
         values: ref valtype;
@@ -232,20 +232,20 @@ macro create_string_map(valtype_elem: untyped, mapname: untyped, valtype: untype
     }
 }
 
-create_string_map(i32, StringHashMapInt, IntList);
-create_string_map(f32, StringHashMapFloat, FloatList);
-create_string_map(bool, StringHashMapBool, BoolList);
-create_string_map(string, StringHashMapString, StringList);
+make_string_map(i32, StringHashMapInt, IntList);
+make_string_map(f32, StringHashMapFloat, FloatList);
+make_string_map(bool, StringHashMapBool, BoolList);
+make_string_map(string, StringHashMapString, StringList);
 
-create_map(i32, i32, IntIntMap, IntList, IntList);
-create_map(f32, i32, FloatIntMap, FloatList, IntList);
-create_map(i32, f32, IntFloatMap, IntList, FloatList);
-create_map(f32, f32, FloatFloatMap, FloatList, FloatList);
-create_map(i32, bool, IntBoolMap, IntList, BoolList);
-create_map(bool, i32, BoolIntMap, BoolList, IntList);
-create_map(f32, bool, FloatBoolMap, FloatList, BoolList);
-create_map(bool, f32, BoolFloatMap, BoolList, FloatList);
-create_map(bool, bool, BoolBoolMap, BoolList, BoolList);
+make_map(i32, i32, IntIntMap, IntList, IntList);
+make_map(f32, i32, FloatIntMap, FloatList, IntList);
+make_map(i32, f32, IntFloatMap, IntList, FloatList);
+make_map(f32, f32, FloatFloatMap, FloatList, FloatList);
+make_map(i32, bool, IntBoolMap, IntList, BoolList);
+make_map(bool, i32, BoolIntMap, BoolList, IntList);
+make_map(f32, bool, FloatBoolMap, FloatList, BoolList);
+make_map(bool, f32, BoolFloatMap, BoolList, FloatList);
+make_map(bool, bool, BoolBoolMap, BoolList, BoolList);
 
 test {
     mut arena: Arena = Arena.create(1024);
