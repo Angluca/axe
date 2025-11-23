@@ -1151,14 +1151,19 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             else if (child.nodeType == "Test" && currentModulePrefix.length > 0)
             {
                 string[string] localTypeMap = importedModels.dup;
-                string[string] localNameMap = importedFunctions.dup;
-                string normalizedFilePath = currentFilePath.replace("\\", "/");
-                if (normalizedFilePath.canFind("std/") && currentModulePrefix.length > 0)
+                foreach (modelName, prefixedName; localModels)
                 {
-                    foreach (modelMethod, prefixedName; localFunctions)
-                    {
-                        localNameMap[modelMethod] = prefixedName;
-                    }
+                    localTypeMap[modelName] = prefixedName;
+                }
+                foreach (enumName, prefixedName; localEnums)
+                {
+                    localTypeMap[enumName] = prefixedName;
+                }
+
+                string[string] localNameMap = importedFunctions.dup;
+                foreach (funcName, prefixedName; localFunctions)
+                {
+                    localNameMap[funcName] = prefixedName;
                 }
 
                 renameFunctionCalls(child, localNameMap);

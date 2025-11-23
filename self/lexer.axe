@@ -722,5 +722,9 @@ pub def lex(source: string): list(Token) {
 }
 
 test {
-    
+    mut test_src: string = string.create("mut x = 10;");
+    mut test1: list(Token) = lex(test_src);
+    for t in test1 {
+        println(t.value);
+    }
 }
