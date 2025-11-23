@@ -28,7 +28,11 @@ main {
         quit(1);
     }
     
-    val source_file: string = StringList.get(args, 1);
+    mut source_file: string = StringList.get(args, 1);
+    
+    if !has_suffix(source_file, str(".axe")) and !has_suffix(source_file, str(".axec")) {
+        source_file = concat(source_file, str(".axe"));
+    }
     
     if !is_file(source_file) {
         println($"Error: File '{source_file}' not found");
