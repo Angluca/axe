@@ -1,0 +1,12 @@
+use std.string;
+use std.io;
+use lexer;
+
+model MacroDef {
+    params: list(string);
+    body: list(Token);
+}
+
+test {
+    println "It works!";
+}
