@@ -943,12 +943,10 @@ string mapSingleCErrorToAxe(CErrorInfo err, string inputName, string ext)
     if (cLine.length == 0)
         return "";
 
-    // Extract multiple candidate snippets
     string[] snippets = extractSnippetsFromCLine(cLine);
     if (snippets.length == 0)
         return "";
 
-    // Try each snippet with different search strategies
     foreach (snippet; snippets)
     {
         int axeLine = findAxeLineForSnippet(axeText, snippet);
