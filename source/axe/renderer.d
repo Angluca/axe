@@ -2580,9 +2580,9 @@ string processExpression(string expr, string context = "")
     if (funcNameEnd > 0)
     {
         string funcName = expr[0 .. funcNameEnd].strip();
-        
+
         import std.string : startsWith, strip;
-        
+
         if (funcName.length >= 2 && funcName[0] == 'C')
         {
             string afterC = funcName[1 .. $].strip();
@@ -2590,7 +2590,7 @@ string processExpression(string expr, string context = "")
             {
                 auto dotPos = funcName.indexOf('.');
                 auto underscorePos = funcName.indexOf('_');
-                
+
                 if (dotPos != -1)
                 {
                     funcName = funcName[dotPos + 1 .. $].strip();
@@ -2601,7 +2601,7 @@ string processExpression(string expr, string context = "")
                 }
             }
         }
-        
+
         ptrdiff_t argEnd = funcNameEnd + 1;
         int depth = 1;
         bool inQuote = false;
@@ -4393,7 +4393,7 @@ unittest
             "Top-level char* should use direct string literal initializer");
         assert(!cCode.canFind("const char msg["),
             "Top-level char* should not be converted to char[]");
-        assert(!cCode.canFind("strcpy(msg, \"hello\"") ,
+        assert(!cCode.canFind("strcpy(msg, \"hello\""),
             "Top-level char* should not use strcpy for initialization");
     }
 
