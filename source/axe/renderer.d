@@ -5230,5 +5230,13 @@ unittest
             "Float normalization should not alter contents of string literals");
     }
 
-    writeln("\n\033[32m✓ All tests passed!\033[0m");
+    {
+        auto tokens = lex("main { mut lst: list_of(i32); append(lst, 10); append(lst, 20);}");
+        auto ast = parse(tokens);
+        auto cCode = generateC(ast);
+        
+        writeln("list_of type test:");
+        writeln(cCode);
+        assert(cCode.canFind("int32_t lst[999];"), "Should declare list_of(i32) as int32_t array");
+    }
 }
