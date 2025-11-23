@@ -39,7 +39,7 @@ main {
     
     print("1 | Lex... ");
 
-    mut tokens: ref TokenList = lex(source_code);
+    mut tokens: list_of(Token) = lex(source_code);
 
     println("Done");
     
