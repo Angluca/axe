@@ -32,9 +32,9 @@ macro make_list(
 
         pub def create(arena: ref Arena, capacity: i32): ref name {
             mut lst: ref name;
-            raw {
-                lst = std_arena_Arena_alloc(arena, sizeof(*lst));
-                lst->data = ({{cep}}*)std_arena_Arena_alloc_array(arena, sizeof({{cep}}), capacity);
+            unsafe {
+                lst = Arena.alloc(arena, C.sizeof(name));
+                lst*.data = Arena.alloc_array(arena, C.sizeof(type), capacity);
             }
             lst.len = 0;
             lst.cap = capacity;
@@ -45,10 +45,10 @@ macro make_list(
             if lst.len >= lst.cap {
                 val new_cap: i32 = lst.cap * 2;
                 mut new_data: ref type;
-                raw {
-                    new_data = ({{cep}}*)std_arena_Arena_alloc_array(arena, sizeof({{cep}}), new_cap);
-                    for (int i = 0; i < lst->len; i++) {
-                        memcpy(&new_data[i], &lst->data[i], sizeof({{cep}}));
+                unsafe {
+                    new_data = Arena.alloc_array(arena, C.sizeof(type), new_cap);
+                    for mut i = 0; i < lst*.len; i++ {
+                        C.memcpy(&(new_data[i]), &(lst*.data[i]), C.sizeof(type));
                     }
                 }
                 lst.data = new_data;
