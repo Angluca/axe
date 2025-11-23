@@ -162,6 +162,8 @@ pub def str_copy(src: string, desta: mut string): void {
     }
 }
 
+/// Concatenates a character to the end of a string. Returns the modified string.
+/// Mut here just means that the stack instance is mutable, not that the string data itself is modified in place.
 def concat_chr(a: mut string, b: char): string {
     unsafe {
         mut new_len: usize = a.len + 1;
@@ -735,7 +737,7 @@ test {
     assert equals_c(string.create("test"), "TEST") != 0, "equals_c should return non-zero for different strings";
 
     assert concat_chr(string.create("Price: "), '$').data != nil, "concat_chr should append character to string";
-    
+
     val y = 10;
     
     print_str(str($"This should be 10 dollars: ${y}"));
