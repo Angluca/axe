@@ -1578,7 +1578,6 @@ string generateC(ASTNode ast)
         if (declNode.refDepth > 0)
             debugWriteln("DEBUG set g_isPointerVar['", declNode.name, "'] = true");
 
-        // For list types, override with struct type
         if (isListOfType)
         {
             baseType = listStructName;
@@ -1670,7 +1669,6 @@ string generateC(ASTNode ast)
                 }
             }
 
-            // For list types and all other types
             decl ~= " = " ~ processedExpr;
             cCode ~= decl ~ ";\n";
         }
@@ -1680,7 +1678,6 @@ string generateC(ASTNode ast)
 
             if (isListOfType)
             {
-                // Initialize the list struct with empty data and zero length
                 cCode ~= declNode.name ~ ".len = 0;\n";
                 debugWriteln("DEBUG renderer: Initialized list struct '", declNode.name, "' with len=0");
             }
@@ -1691,7 +1688,6 @@ string generateC(ASTNode ast)
     case "Println":
         auto printlnNode = cast(PrintlnNode) ast;
         {
-            // Check if any messages are interpolated strings
             bool hasInterpolated = false;
             foreach (i, msg; printlnNode.messages)
             {
@@ -1704,9 +1700,7 @@ string generateC(ASTNode ast)
 
             if (hasInterpolated && printlnNode.messages.length == 1)
             {
-                // Simple case: single interpolated string
                 string processedExpr = processExpression(printlnNode.messages[0], "println");
-                // Interpolated strings now return char* directly
                 cCode ~= "printf(\"%s\\n\", " ~ processedExpr ~ ");\n";
             }
             else
@@ -1720,7 +1714,6 @@ string generateC(ASTNode ast)
                     {
                         if (printlnNode.messages[i].startsWith("__INTERPOLATED__"))
                         {
-                            // Interpolated string now returns char* directly
                             formatString ~= "%s";
                             string processedExpr = processExpression(printlnNode.messages[i], "println");
                             exprArgs ~= processedExpr;
@@ -2144,11 +2137,9 @@ string generateC(ASTNode ast)
             }
             else
             {
-                // Handle other statements (declarations, function calls, etc.)
                 string stmt = generateC(child);
                 if (stmt.length > 0)
                 {
-                    // Indent the statement
                     cCode ~= "    " ~ stmt.replace("\n", "\n    ");
                     if (!stmt.endsWith("\n"))
                         cCode ~= "\n";
@@ -2156,7 +2147,6 @@ string generateC(ASTNode ast)
             }
         }
 
-        // Print summary
         cCode ~= "    printf(\"\\n\");\n";
         cCode ~= "    if (failed == 0) {\n";
         cCode ~= "        printf(\"\\033[32mAll tests passed. (%d/%d)\\033[0m\\n\", passed, passed + failed);\n";
@@ -2243,7 +2233,9 @@ string generateC(ASTNode ast)
 
                 // If we haven't discovered a prefix yet and this resolution
                 // changed the name by adding a leading prefix (and kept the
-                // original suffix), infer it now. Example:
+                // original suffix), infer it now. 
+                // 
+                // Example:
                 //   baseName = "print_str"
                 //   cTargetName = "std_io_print_str"  -> overloadPrefix = "std_io_".
                 if (overloadPrefix.length == 0 && cTargetName != baseName && cTargetName.endsWith(

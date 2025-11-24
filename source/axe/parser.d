@@ -190,6 +190,9 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
         }
 
         validateTypeNotForbidden(typeName);
+        
+        if (!isAxec)
+            validateNoRawPointerSyntax(typeName);
 
         if (typeName in g_typeAliases)
         {
@@ -3483,7 +3486,7 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
                         pos++;
                 }
 
-                typeName = parseTypeHelper(pos, tokens);
+                typeName = parseTypeHelper(pos, tokens, isAxec);
                 debugWriteln("[VAL case] After parseTypeHelper, typeName=", typeName, " pos=", pos);
             }
 
@@ -5325,7 +5328,7 @@ private ArrayLiteralNode tryParseArrayLiteral(ref size_t pos, Token[] tokens)
 /**
  * Helper to parse type.
  */
-private string parseTypeHelper(ref size_t pos, Token[] tokens)
+private string parseTypeHelper(ref size_t pos, Token[] tokens, bool isAxec = false)
 {
     import std.stdio : writeln;
 
@@ -5375,16 +5378,16 @@ private string parseTypeHelper(ref size_t pos, Token[] tokens)
 
         pos++;
 
-        // Validate that the type is not forbidden
         validateTypeNotForbidden(typeName);
+        
+        if (!isAxec)
+            validateNoRawPointerSyntax(typeName);
 
-        // Handle array syntax: type[] or type[size]
         while (pos < tokens.length && tokens[pos].type == TokenType.LBRACKET)
         {
             typeName ~= "[";
             pos++;
 
-            // Parse array size if present
             while (pos < tokens.length && tokens[pos].type != TokenType.RBRACKET)
             {
                 typeName ~= tokens[pos].value;
@@ -5398,7 +5401,6 @@ private string parseTypeHelper(ref size_t pos, Token[] tokens)
             }
         }
 
-        // Handle pointer syntax: type*
         while (pos < tokens.length && tokens[pos].type == TokenType.OPERATOR && tokens[pos].value == "*")
         {
             typeName ~= "*";
@@ -5489,6 +5491,42 @@ void validateTypeNotForbidden(string typeName)
     {
         throw new Exception("C type '" ~ typeName ~
                 "' cannot be used directly. Use the corresponding Axe type instead (e.g., i32, u64, f32, etc.)");
+    }
+}
+
+/**
+ * Validates that raw C pointer syntax (*, **, etc.) is not used.
+ * Raw pointer syntax is deprecated in favor of 'ref' semantics.
+ * Throws an error if pointer syntax is detected.
+ */
+void validateNoRawPointerSyntax(string typeName)
+{
+    import std.algorithm : countUntil;
+    import std.string : strip;
+
+    if (typeName.countUntil('*') != -1)
+    {
+        int pointerDepth = 0;
+        foreach (char c; typeName)
+        {
+            if (c == '*')
+                pointerDepth++;
+        }
+
+        string baseType = typeName.strip();
+        size_t firstAsterisk = baseType.countUntil('*');
+        if (firstAsterisk != -1)
+            baseType = baseType[0 .. firstAsterisk].strip();
+
+        string refSuggestion = "";
+        for (int i = 0; i < pointerDepth; i++)
+            refSuggestion ~= "ref ";
+        refSuggestion ~= baseType;
+
+        throw new Exception(
+            "Raw C pointer syntax '" ~ typeName ~ "' is deprecated.\n" ~
+            "Use 'ref' semantics instead: " ~ refSuggestion ~ "\n"
+        );
     }
 }
 
