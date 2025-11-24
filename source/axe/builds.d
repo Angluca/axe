@@ -47,6 +47,7 @@ bool hasParallelBlocks(ASTNode node)
 bool hasParallelismImport()
 {
     import axe.parser : g_importedModules;
+
     return ("std.parallelism" in g_importedModules) !is null;
 }
 
@@ -382,7 +383,7 @@ bool handleMachineArgs(string[] args)
             string fileName = baseName(name);
             string moduleBase = stripExtension(fileName);
             string directory = dirName(name);
-            
+
             if (directory.canFind("std/") || directory.canFind("std\\"))
             {
                 moduleName = "std." ~ moduleBase;
@@ -396,7 +397,7 @@ bool handleMachineArgs(string[] args)
             {
                 moduleName = moduleBase;
             }
-            
+
             debugWriteln("DEBUG: Derived module name '", moduleName, "' from file '", name, "'");
         }
 
@@ -458,7 +459,8 @@ bool handleMachineArgs(string[] args)
             }
             string ext = isAxec ? ".axec" : ".axe";
             std.file.write(replace(name, ext, ".c"), cCode);
-            bool needsOpenMP = hasParallelBlocks(ast) || hasParallelismImport() || name.canFind("parallelism.axec");
+            bool needsOpenMP = hasParallelBlocks(ast) || hasParallelismImport() || name.canFind(
+                "parallelism.axec");
             bool makeDll = args.canFind("-dll");
             string[] clangCmd;
 
