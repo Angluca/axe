@@ -231,7 +231,7 @@ pub def equals_c(a: string, b: char*): i32 {
     unsafe {
         result = C.strcmp((char*)a.data, (char*)b);
     }
-    return result;
+    return result == 0;
 }
 
 /// Compares two strings. Returns 0 if equal.
@@ -788,13 +788,13 @@ test {
     assert(!has_suffix(base, string.create("foobarbaz")), "longer suffix should not match");
 
     assert get_char(string.create("hello"), 1) == 'e', "get_char should return correct character";
-    assert equals_c(string.create("test"), "test") == 0, "equals_c should return 0 for equal strings";
-    assert equals_c(string.create("test"), "TEST") != 0, "equals_c should return non-zero for different strings";
+    assert equals_c(string.create("test"), "test"), "equals_c should return 0 for equal strings";
+    assert !equals_c(string.create("test"), "TEST"), "equals_c should return non-zero for different strings";
     assert concat_chr(string.create("Price: "), '$').data != nil, "concat_chr should append character to string";
 
     assert str_to_int(string.create("12345")) == 12345, "str_to_int should convert string to integer";
 
     val y = 10;
     
-    print_str(str($"This should be 10 dollars: ${y}"));
+    print_str(str($"This should be 10 dollars: $ {y}"));
 }
