@@ -4482,7 +4482,7 @@ unittest
 
         assert(cCode.canFind("struct SomeModel"), "Should generate struct for model");
         assert(cCode.canFind("void SomeModel_some_function("), "Should generate function declaration for model method");
-        assert(cCode.canFind("obj_some_function();"), "Should generate function call in main");
+        assert(cCode.canFind("obj__some_function();"), "Should generate function call in main");
     }
 
     {
@@ -5268,7 +5268,7 @@ unittest
 
         assert(cCode.canFind("struct SomeModel"), "Should generate struct for model");
         assert(cCode.canFind("void SomeModel_some_function("), "Should generate function declaration for model method");
-        assert(cCode.canFind("obj_some_function();"), "Should generate function call in main");
+        assert(cCode.canFind("obj__some_function();"), "Should generate function call in main");
     }
 
     {
