@@ -5,6 +5,7 @@ Axe is a compiled programming language with a focus on type safety, ease of conc
 It provides a clean syntax for systems programming with modern and parallel language features.
 
 ```axe
+use std.io;
 use std.string;
 
 model Person {
