@@ -58,10 +58,10 @@ pub def parse(tokens: list(Token), is_axec: bool, check_entry_point: bool, curre
     mut ast: ASTNode;
     ast.node_type = str("Program");
     
-    // TODO: Initialize and clear these global maps
-    // StringHashMapString.clear(addr_of(g_type_aliases));
-    // StringHashMapBool.clear(addr_of(g_imported_modules));
-    // StringHashMapString.clear(addr_of(g_list_of_types));
+    // Clear global maps
+    StringHashMapString.clear(addr_of(g_type_aliases));
+    StringHashMapBool.clear(addr_of(g_imported_modules));
+    StringHashMapString.clear(addr_of(g_list_of_types));
     
     if str_len(current_module) > 0 {
         // g_imported_modules[current_module] = true
@@ -674,6 +674,8 @@ def parse_function(ctx: ref ParserContext): ASTNode {
 // }
 
 test {
+    initialize_all();
+    
     println "\nTest 1: parse_type with simple type";
     mut tokens1: list(Token) = lex(str("i32"));
     mut ctx1: ParserContext;
