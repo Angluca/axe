@@ -3001,7 +3001,8 @@ private string replaceKeywordOutsideStrings(string input, string keyword, string
                 while (j > 0 && input[j] == '\\')
                 {
                     backslashCount++;
-                    if (j == 0) break;
+                    if (j == 0)
+                        break;
                     j--;
                 }
                 // If odd number of backslashes, the quote is escaped
@@ -3027,7 +3028,8 @@ private string replaceKeywordOutsideStrings(string input, string keyword, string
                 while (j > 0 && input[j] == '\\')
                 {
                     backslashCount++;
-                    if (j == 0) break;
+                    if (j == 0)
+                        break;
                     j--;
                 }
                 // If odd number of backslashes, the quote is escaped
@@ -3065,13 +3067,13 @@ private string replaceKeywordOutsideStrings(string input, string keyword, string
                 // a character that clearly ends an expression (like ', ), ], digit, operator),
                 // allow the match even if followed by alphanumeric. This handles cases like
                 // '0'andch where the parser squashed operators without spaces.
-                bool isLogicalOp = (keyword == "and" || keyword == "or" || 
-                                   keyword == "xor" || keyword == "not");
-                bool afterOperatorOrLiteral = (i > 0 && (input[i - 1] == '\'' || 
-                                                         input[i - 1] == ')' ||
-                                                         input[i - 1] == ']' ||
-                                                         isDigit(input[i - 1])));
-                
+                bool isLogicalOp = (keyword == "and" || keyword == "or" ||
+                        keyword == "xor" || keyword == "not");
+                bool afterOperatorOrLiteral = (i > 0 && (input[i - 1] == '\'' ||
+                        input[i - 1] == ')' ||
+                        input[i - 1] == ']' ||
+                        isDigit(input[i - 1])));
+
                 // Match if: (beforeOk AND afterOk) OR (logical operator after expression)
                 if ((beforeOk && afterOk) || (isLogicalOp && beforeOk && afterOperatorOrLiteral))
                 {
@@ -3735,7 +3737,7 @@ string processExpression(string expr, string context = "")
     {
         expr = expr[2 .. $];
     }
-    
+
     /** 
      * Parse an identifier from the string starting at index i
      * Params:
@@ -3746,12 +3748,12 @@ string processExpression(string expr, string context = "")
     string parseIdentifier(string s, ref size_t i)
     {
         size_t start = i;
-        while (i < s.length && (s[i] >= 'a' && s[i] <= 'z' || s[i] >= 'A' && s[i] <= 'Z' || 
-                                s[i] >= '0' && s[i] <= '9' || s[i] == '_'))
+        while (i < s.length && (s[i] >= 'a' && s[i] <= 'z' || s[i] >= 'A' && s[i] <= 'Z' ||
+                s[i] >= '0' && s[i] <= '9' || s[i] == '_'))
             i++;
         return s[start .. i];
     }
-    
+
     /** 
      * Skip some whitespace characters in the string starting at index i
      * Params:
@@ -3763,11 +3765,11 @@ string processExpression(string expr, string context = "")
         while (i < s.length && (s[i] == ' ' || s[i] == '\t'))
             i++;
     }
-    
+
     string exprResult = "";
     size_t pos = 0;
     bool inStringLiteral = false;
-    
+
     while (pos < expr.length)
     {
         if (expr[pos] == '"' && (pos == 0 || expr[pos - 1] != '\\'))
@@ -3777,37 +3779,37 @@ string processExpression(string expr, string context = "")
             pos++;
             continue;
         }
-        
+
         if (inStringLiteral)
         {
             exprResult ~= expr[pos];
             pos++;
             continue;
         }
-        
+
         // Check if we're at the start of an identifier
         if (expr[pos] >= 'a' && expr[pos] <= 'z' || expr[pos] >= 'A' && expr[pos] <= 'Z' || expr[pos] == '_')
         {
             size_t startPos = pos;
             string ident = parseIdentifier(expr, pos);
-            
+
             // Look ahead to see if this is part of a member access chain or static method call
             size_t lookahead = pos;
             skipWhitespace(expr, lookahead);
-            
+
             if (lookahead < expr.length && expr[lookahead] == '.')
             {
                 // This is the start of a chain - collect the entire chain
                 string chain = ident;
                 bool isPointer = g_isPointerVar.get(ident, "false") == "true";
                 string currentType = g_varType.get(ident, "");
-                
+
                 if (currentType.length > 0)
                 {
                     if (currentType[$ - 1] == '*' || currentType.startsWith("ref "))
                         isPointer = true;
                 }
-                
+
                 string baseModelName = currentType;
                 if (baseModelName.startsWith("ref "))
                     baseModelName = baseModelName[4 .. $].strip();
@@ -3815,12 +3817,12 @@ string processExpression(string expr, string context = "")
                     baseModelName = baseModelName[4 .. $].strip();
                 while (baseModelName.length > 0 && baseModelName[$ - 1] == '*')
                     baseModelName = baseModelName[0 .. $ - 1].strip();
-                
+
                 // Check if this is a static method call (Model.method(...))
                 // The identifier could be either the short name (Arena) or already-prefixed (std__arena__Arena)
                 bool isStaticMethod = false;
                 string prefixedModelName = "";
-                
+
                 if (ident in g_modelNames)
                 {
                     prefixedModelName = g_modelNames[ident];
@@ -3829,20 +3831,20 @@ string processExpression(string expr, string context = "")
                 {
                     prefixedModelName = ident;
                 }
-                
+
                 if (prefixedModelName.length > 0)
                 {
                     size_t temp = lookahead + 1; // Skip the dot
                     skipWhitespace(expr, temp); // Skip any whitespace after the dot
                     string methodName = parseIdentifier(expr, temp);
-                    
+
                     if (methodName.length > 0)
                     {
                         skipWhitespace(expr, temp);
-                        
+
                         bool isEnum = (prefixedModelName in g_enumNames) !is null;
                         bool hasOpenParen = temp < expr.length && expr[temp] == '(';
-                        
+
                         if (hasOpenParen || isEnum)
                         {
                             exprResult ~= prefixedModelName ~ "_" ~ methodName;
@@ -3851,14 +3853,14 @@ string processExpression(string expr, string context = "")
                         }
                     }
                 }
-                
+
                 pos = lookahead;
                 while (pos < expr.length && expr[pos] == '.')
                 {
                     pos++; // Skip dot
                     skipWhitespace(expr, pos); // Skip any whitespace after the dot
                     string fieldName = parseIdentifier(expr, pos);
-                    
+
                     string arraySuffix = "";
                     if (pos < expr.length && expr[pos] == '[')
                     {
@@ -3867,16 +3869,18 @@ string processExpression(string expr, string context = "")
                         int depth = 1;
                         while (pos < expr.length && depth > 0)
                         {
-                            if (expr[pos] == '[') depth++;
-                            else if (expr[pos] == ']') depth--;
+                            if (expr[pos] == '[')
+                                depth++;
+                            else if (expr[pos] == ']')
+                                depth--;
                             pos++;
                         }
                         arraySuffix = expr[bracketStart .. pos];
                     }
-                    
+
                     string op = isPointer ? "->" : ".";
                     chain ~= op ~ fieldName ~ arraySuffix;
-                    
+
                     string fieldKey = baseModelName ~ "." ~ fieldName;
                     if (fieldKey in g_pointerFields)
                     {
@@ -3908,12 +3912,12 @@ string processExpression(string expr, string context = "")
                             baseModelName = fieldType;
                         }
                     }
-                    
+
                     skipWhitespace(expr, pos);
                     if (pos >= expr.length || expr[pos] != '.')
                         break;
                 }
-                
+
                 exprResult ~= chain;
             }
             else
@@ -3927,9 +3931,9 @@ string processExpression(string expr, string context = "")
             pos++;
         }
     }
-    
+
     expr = exprResult;
-    
+
     // OLD CODE - Now completely replaced by recursive parser
     if (false && expr.canFind("."))
     {
@@ -4252,7 +4256,7 @@ string processExpression(string expr, string context = "")
                         current ~= expr[i];
                         continue;
                     }
-                    
+
                     parts ~= current;
                     current = "";
                     i += cast(int) op.length - 1;
