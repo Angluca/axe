@@ -505,7 +505,7 @@ def parse_type(ctx: ref ParserContext): string {
     // Handle 'model' keyword as type for anonymous models
     if token.token_type == TokenType.MODEL {
         consume(ctx);
-        return concat(ref_prefix, "model");
+        return concat_c(ref_prefix, "model");
     }
     
     if token.token_type == TokenType.IDENTIFIER {
@@ -567,7 +567,7 @@ def parse_type(ctx: ref ParserContext): string {
         // Handle pointer syntax *
         loop {
             val tok: Token = peek(ctx);
-            if tok.token_type == TokenType.OPERATOR && equals_c(tok.value, "*") {
+            if tok.token_type == TokenType.OPERATOR and equals_c(tok.value, "*") {
                 consume(ctx);
                 type_name = concat(type_name, str("*"));
             } else {
