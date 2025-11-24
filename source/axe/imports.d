@@ -205,7 +205,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             {
                 auto modelNode = cast(ModelNode) child;
 
-                writeln("DEBUG: Found model with name='", modelNode.name, "'");
+                debugWriteln("DEBUG: Found model with name='", modelNode.name, "'");
 
                 if (modelNode.name == "C")
                 {
@@ -215,13 +215,13 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
 
                 if (modelNode.name in localModels)
                 {
-                    writeln("DEBUG: Model '", modelNode.name, "' already registered, mapped to '",
+                    debugWriteln("DEBUG: Model '", modelNode.name, "' already registered, mapped to '",
                         localModels[modelNode.name], "'");
                 }
                 else
                 {
                     localModels[modelNode.name] = currentModulePrefix ~ "__" ~ modelNode.name;
-                    writeln("DEBUG: Added local model '", modelNode.name, "' -> '", currentModulePrefix ~ "__" ~
+                    debugWriteln("DEBUG: Added local model '", modelNode.name, "' -> '", currentModulePrefix ~ "__" ~
                             modelNode.name, "'");
                 }
 
@@ -234,7 +234,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         string originalCallName = modelNode.name ~ "_" ~ methodName;
                         string prefixedCallName = currentModulePrefix ~ "__" ~ modelNode.name ~ "_" ~ methodName;
                         localFunctions[originalCallName] = prefixedCallName;
-                        writeln("DEBUG: Added local function '", originalCallName, "' -> '",
+                        debugWriteln("DEBUG: Added local function '", originalCallName, "' -> '",
                             prefixedCallName, "'");
                     }
                 }
@@ -243,7 +243,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             {
                 auto enumNode = cast(EnumNode) child;
                 localEnums[enumNode.name] = currentModulePrefix ~ "__" ~ enumNode.name;
-                writeln("DEBUG: Added local enum '", enumNode.name, "' -> '", currentModulePrefix ~ "__" ~
+                debugWriteln("DEBUG: Added local enum '", enumNode.name, "' -> '", currentModulePrefix ~ "__" ~
                         enumNode.name, "'");
             }
             else if (child.nodeType == "Function")
@@ -257,21 +257,18 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     if (currentModulePrefix.length > 0)
                     {
                         localFunctions[funcNode.name] = currentModulePrefix ~ "__" ~ funcNode.name;
-                        writeln("DEBUG: Added local function '", funcNode.name, "' -> '",
+                        debugWriteln("DEBUG: Added local function '", funcNode.name, "' -> '",
                             currentModulePrefix ~ "__" ~ funcNode.name, "' (from .axec)");
                     }
                     else if (!funcNode.isPublic)
                     {
                         localFunctions[funcNode.name] = currentModulePrefix ~ "__" ~ funcNode.name;
-                        writeln("DEBUG: Added local non-public function '", funcNode.name, "' -> '",
+                        debugWriteln("DEBUG: Added local non-public function '", funcNode.name, "' -> '",
                             currentModulePrefix ~ "__" ~ funcNode.name, "'");
                     }
                 }
             }
         }
-        writeln("DEBUG: Total local models: ", localModels.length);
-        writeln("DEBUG: Total local functions: ", localFunctions.length);
-        writeln("DEBUG: Total local enums: ", localEnums.length);
 
         g_localFunctionMap = localFunctions.dup;
     }
@@ -384,12 +381,10 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             string[string] moduleModelMap;
             string[string] moduleMacroMap;
 
-            writeln("DEBUG: Processing ", importProgram.children.length, " children from imported module ", useNode
+            debugWriteln("DEBUG: Processing ", importProgram.children.length, " children from imported module ", useNode
                     .moduleName);
             foreach (importChild; importProgram.children)
             {
-                writeln("DEBUG:   Child nodeType: ", importChild.nodeType);
-
                 if (importChild.nodeType == "ExternalImport")
                 {
                     auto extNode = cast(ExternalImportNode) importChild;
@@ -504,7 +499,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 else if (importChild.nodeType == "Function")
                 {
                     auto funcNode = cast(FunctionNode) importChild;
-                    writeln("DEBUG: Checking function '", funcNode.name, "' isPublic=", funcNode
+                    debugWriteln("DEBUG: Checking function '", funcNode.name, "' isPublic=", funcNode
                             .isPublic);
 
                     // For .axec modules, map ALL functions (public and non-public) so they all get prefixed
@@ -526,7 +521,6 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                                 moduleFunctionMap[baseName] = prefixedName;
                             }
                         }
-                        writeln("DEBUG: Mapped function from .axec '", funcNode.name, "' -> '", prefixedName, "'");
                     }
                     else if (funcNode.isPublic && (useNode.importAll || useNode.imports.canFind(funcNode.name)
                             || funcNode.name.startsWith("std__")))
@@ -534,13 +528,13 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         string prefixedName = funcNode.name.startsWith("std_") ? funcNode.name
                             : (sanitizedModuleName ~ "__" ~ funcNode.name);
                         moduleFunctionMap[funcNode.name] = prefixedName;
-                        writeln("DEBUG: Mapped public function '", funcNode.name, "' -> '", prefixedName, "'");
+                        debugWriteln("DEBUG: Mapped public function '", funcNode.name, "' -> '", prefixedName, "'");
                     }
                     else if (!funcNode.isPublic && funcNode.name != "main")
                     {
                         string prefixedName = sanitizedModuleName ~ "__" ~ funcNode.name;
                         moduleFunctionMap[funcNode.name] = prefixedName;
-                        writeln("DEBUG: Mapped non-public function '", funcNode.name, "' -> '", prefixedName, "'");
+                        debugWriteln("DEBUG: Mapped non-public function '", funcNode.name, "' -> '", prefixedName, "'");
                     }
                 }
                 else if (importChild.nodeType == "Model")
@@ -652,7 +646,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                                                 importedFuncName == "is_alphanum" ||
                                                 importedFuncName == "get_char")
                                             {
-                                                writeln("DEBUG: Added transitive mapping: ",
+                                                debugWriteln("DEBUG: Added transitive mapping: ",
                                                     importedFuncName, " -> ", expectedPrefixedName,
                                                     " (from ", useNode.moduleName, "'s import of ",
                                                     importedUse.moduleName, ")");
@@ -945,21 +939,21 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         string originalName = funcNode.name;
                         string prefixedName = moduleFunctionMap[originalName];
 
-                        writeln("DEBUG: Non-public function '", originalName, "' - isPublic=", funcNode.isPublic,
+                        debugWriteln("DEBUG: Non-public function '", originalName, "' - isPublic=", funcNode.isPublic,
                             ", inMap=", (funcNode.name in moduleFunctionMap));
 
                         if (prefixedName !in addedFunctionNames)
                         {
                             funcNode.name = prefixedName;
                             addedFunctionNames[prefixedName] = true;
-                            writeln("DEBUG: Adding non-public function '", originalName, "' as '", prefixedName, "'");
-                            writeln("DEBUG: moduleFunctionMap has ", moduleFunctionMap.length, " entries for module: ",
+                            debugWriteln("DEBUG: Adding non-public function '", originalName, "' as '", prefixedName, "'");
+                            debugWriteln("DEBUG: moduleFunctionMap has ", moduleFunctionMap.length, " entries for module: ",
                                 useNode.moduleName);
                             foreach (key, value; moduleFunctionMap)
                             {
                                 if (key.canFind("str") || key.canFind("alphanum") || key.canFind(
                                         "get_char"))
-                                    writeln("DEBUG:   '", key, "' -> '", value, "'");
+                                    debugWriteln("DEBUG:   '", key, "' -> '", value, "'");
                             }
 
                             renameFunctionCalls(funcNode, moduleFunctionMap);
@@ -981,7 +975,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         if (prefixedName !in addedFunctionNames)
                         {
                             addedFunctionNames[prefixedName] = true;
-                            writeln("DEBUG: Adding transitive function: ", originalName, " -> ", prefixedName);
+                            debugWriteln("DEBUG: Adding transitive function: ", originalName, " -> ", prefixedName);
 
                             funcNode.name = prefixedName;
                             renameFunctionCalls(funcNode, moduleFunctionMap);
@@ -1284,7 +1278,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 {
                     string originalName = funcNode.name;
                     funcNode.name = currentModulePrefix ~ "__" ~ funcNode.name;
-                    writeln("DEBUG: Renamed function declaration '", originalName, "' -> '", funcNode.name, "'");
+                    debugWriteln("DEBUG: Renamed function declaration '", originalName, "' -> '", funcNode.name, "'");
                 }
 
                 string[string] localTypeMap = importedModels.dup;
@@ -1302,10 +1296,10 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 string[string] functionMap = importedFunctions.dup;
                 if (currentModulePrefix.length > 0)
                 {
-                    writeln("DEBUG: currentModulePrefix=", currentModulePrefix, " applying localFunctions:");
+                    debugWriteln("DEBUG: currentModulePrefix=", currentModulePrefix, " applying localFunctions:");
                     foreach (funcName, prefixedName; localFunctions)
                     {
-                        writeln("  ", funcName, " -> ", prefixedName);
+                        debugWriteln("  ", funcName, " -> ", prefixedName);
                         functionMap[funcName] = prefixedName;
                     }
                 }
