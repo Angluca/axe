@@ -1,4 +1,8 @@
+use std.io;
+use std.string;
+
 def main() {
-    val x: char* = "hello";
-    val y = ($"Hello, {x} world");
+    val x: ref char = "hello";
+    val y: ref char = ($"Hello, {x} world");
+    println str(y);
 }

@@ -4,8 +4,8 @@
 def main() {
     println "Testing parallel for with reduction:";
     
-    mut val sum: i32 = 0;
-    mut val n: i32 = 100;
+    mut sum: i32 = 0;
+    mut n: i32 = 100;
     
     parallel for mut i = 0 to n reduce(+:sum) {
         sum = sum + i;

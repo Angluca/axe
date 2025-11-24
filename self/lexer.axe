@@ -86,7 +86,7 @@ pub model Token {
     pub value: string;
 }
 
-def create_token(token_type: i32, value: char*): Token {
+def create_token(token_type: i32, value: ref char): Token {
     mut t: Token;
     t.token_type = token_type;
     t.value = str(value);
@@ -113,7 +113,7 @@ def check_boundary(source: string, pos: i32, source_len: i32): bool {
     return !is_alphanum(ch);
 }
 
-def str_equals(s1: string, s2: char*, start: i32, len: i32, source_len: i32): bool {
+def str_equals(s1: string, s2: ref char, start: i32, len: i32, source_len: i32): bool {
     if start + len > source_len {
         return false;
     }

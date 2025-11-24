@@ -10,7 +10,7 @@ use std.io(
 pub model error {
     msg: string;
 
-    pub def create(msg: char*): error {
+    pub def create(msg: ref char): error {
         return new error(msg: string.create(msg));
     }
 

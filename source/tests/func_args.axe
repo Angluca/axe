@@ -1,6 +1,8 @@
-def greet(name: char*, t: i32) {
+use std.io;
+
+def greet(name: ref char, t: i32) {
     loop {
-        println "name";
+        println name;
         if t == 1 {
             break;
         }
@@ -8,7 +10,7 @@ def greet(name: char*, t: i32) {
 }
 
 def main() {
-    mut val nums: i32[] = [123, 142, 123123];
+    mut nums: i32[] = [123, 142, 123123];
     for n in nums {
         println n;
     }

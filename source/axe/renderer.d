@@ -37,6 +37,7 @@ static immutable string[string] g_typeMappings = [
     "f64": "double",
     "bool": "bool",
     "char": "char",
+    "rchar": "char*",
     "byte": "uint8_t",
     "size": "usize",
     "ptrdiff": "isize"
@@ -2731,6 +2732,8 @@ string getTypeFormatSpecifier(string varType)
     case "string":
         return "%s";
     case "char*":
+        return "%s";
+    case "ref char":
         return "%s";
     default:
         if (varType.endsWith("*"))

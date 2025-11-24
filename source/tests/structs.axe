@@ -1,11 +1,13 @@
+use std.io;
+
 model Cat {
-    annoyingness_level: int,
-    health            : int,
-    name              : char*
+    annoyingness_level: i32,
+    health            : i32,
+    name              : ref char
 }
 
 def main() {
-    mut val cat = new Cat(
+    mut cat = new Cat(
         health: 100,
         name: "Garfield",
         annoyingness_level: 9999
