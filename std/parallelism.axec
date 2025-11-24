@@ -1,0 +1,25 @@
+pub model Parallel {
+    pub def thread_id(): i32 {
+        raw {
+            return omp_get_thread_num();
+        }
+    }
+    
+    pub def num_threads(): i32 {
+        raw {
+            return omp_get_num_threads();
+        }
+    }
+    
+    pub def max_threads(): i32 {
+        raw {
+            return omp_get_max_threads();
+        }
+    }
+    
+    pub def set_num_threads(num: i32) {
+        raw {
+            omp_set_num_threads(num);
+        }
+    }
+}
