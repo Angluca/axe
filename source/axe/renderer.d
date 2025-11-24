@@ -5916,7 +5916,7 @@ unittest
 
         assert(cCode.canFind("typedef struct SomeStruct SomeStruct;"),
             "Should generate typedef for opaque SomeStruct");
-        assert(cCode.canFind("(ptr-> value)") || cCode.canFind("->value"),
+        assert(cCode.canFind("ptr -> value") || cCode.canFind("->value"),
             "Should convert *. to -> for pointer member access");
         assert(cCode.canFind("(ptr->count) = 42") || cCode.canFind("->count = 42"),
             "Should convert *. to -> for pointer member assignment");
