@@ -450,15 +450,17 @@ string generateC(ASTNode ast)
             {
                 auto useNode = cast(UseNode) child;
                 string modulePrefix = useNode.moduleName.replace(".", "__");
+                debugWriteln("DEBUG: Processing Use node for module '", useNode.moduleName, "' with prefix '", modulePrefix, "'");
                 foreach (importName; useNode.imports)
                 {
                     if (importName.length > 0 && !(importName[0] >= 'A' && importName[0] <= 'Z'))
                     {
-                        // Skip overload names - they should not be prefixed
                         if (importName !in overloadNames)
                         {
-                            g_functionPrefixes[importName] = modulePrefix ~ "__" ~ importName;
-                            g_modelNames[importName] = modulePrefix ~ "__" ~ importName;
+                            string prefixedName = modulePrefix ~ "__" ~ importName;
+                            debugWriteln("DEBUG: Adding g_functionPrefixes['", importName, "'] = '", prefixedName, "'");
+                            g_functionPrefixes[importName] = prefixedName;
+                            g_modelNames[importName] = prefixedName;
                             g_enumNames[modulePrefix ~ "__" ~ importName] = true;
                         }
                     }
@@ -962,10 +964,24 @@ string generateC(ASTNode ast)
                         if (lastUnderscore >= 0)
                         {
                             string baseName = funcNode.name[lastUnderscore + 2 .. $];
-                            if (funcNode.name.startsWith("std_") || funcNode.name.startsWith(
-                                    "lexer_"))
+                            debugWriteln("DEBUG: Found function '", funcNode.name, "' with baseName '", baseName, "'");
+                            // Support both single-underscore std_ prefixes (older style) and
+                            // double-underscore std__module prefixes used for .axec modules,
+                            // so that imported std functions like std__string_str get
+                            // registered and can be called via their unprefixed names.
+                            if (funcNode.name.startsWith("std_") || funcNode.name.startsWith("std__") || funcNode
+                                    .name.startsWith("lexer_"))
                             {
-                                g_functionPrefixes[baseName] = funcNode.name;
+                                // Don't overwrite existing mappings from imports processing
+                                if (baseName !in g_functionPrefixes)
+                                {
+                                    debugWriteln("DEBUG: Adding to g_functionPrefixes['", baseName, "'] = '", funcNode.name, "'");
+                                    g_functionPrefixes[baseName] = funcNode.name;
+                                }
+                                else
+                                {
+                                    debugWriteln("DEBUG: Not overwriting existing g_functionPrefixes['", baseName, "'] = '", g_functionPrefixes[baseName], "' with '", funcNode.name, "'");
+                                }
                             }
                         }
                         prefixedFuncName = funcNode.name;
@@ -1152,10 +1168,11 @@ string generateC(ASTNode ast)
     case "FunctionCall":
         auto callNode = cast(FunctionCallNode) ast;
         string callName = callNode.functionName;
+        
+        debugWriteln("DEBUG: Processing FunctionCall '", callName, "', g_functionPrefixes.keys: ", g_functionPrefixes.keys);
 
         import std.string : startsWith, indexOf, strip;
 
-        // Handle append() for list types
         if (callName == "append")
         {
             if (callNode.args.length >= 2)
@@ -1163,7 +1180,6 @@ string generateC(ASTNode ast)
                 string varName = callNode.args[0].strip();
                 string value = callNode.args[1].strip();
 
-                // Check if this is a list variable
                 if (varName in g_listOfTypes)
                 {
                     string processedValue = processExpression(value);
@@ -1209,6 +1225,7 @@ string generateC(ASTNode ast)
         }
         else if (callName in g_functionPrefixes)
         {
+            debugWriteln("DEBUG: Found callName '", callName, "' in g_functionPrefixes, mapping to '", g_functionPrefixes[callName], "'");
             callName = g_functionPrefixes[callName];
         }
         else
@@ -3845,6 +3862,41 @@ string processExpression(string expr, string context = "")
 
     if (expr.canFind("(") && expr.endsWith(")"))
     {
+        size_t parenPos = expr.indexOf("(");
+        if (parenPos > 0)
+        {
+            string funcName = expr[0 .. parenPos].strip();
+            string args = expr[parenPos .. $];
+            
+            string actualFuncName = funcName;
+            if (funcName.startsWith("!"))
+            {
+                actualFuncName = funcName[1 .. $].strip();
+            }
+            
+            debugWriteln("DEBUG processExpression: Found potential function call '", actualFuncName, "' with args '", args, "'");
+            debugWriteln("DEBUG processExpression: Checking g_functionPrefixes for '", actualFuncName, "'");
+            
+            if (actualFuncName in g_functionPrefixes)
+            {
+                string prefixedFuncName = g_functionPrefixes[actualFuncName];
+                debugWriteln("DEBUG processExpression: Found mapping '", actualFuncName, "' -> '", prefixedFuncName, "'");
+                
+                if (funcName.startsWith("!"))
+                {
+                    return "!" ~ prefixedFuncName ~ args;
+                }
+                else
+                {
+                    return prefixedFuncName ~ args;
+                }
+            }
+            else
+            {
+                debugWriteln("DEBUG processExpression: No mapping found for '", actualFuncName, "'");
+            }
+        }
+        
         return expr;
     }
 
