@@ -696,5 +696,87 @@ def parse_function(ctx: ref ParserContext): ASTNode {
 // }
 
 test {
+    println "\nTest 1: parse_type with simple type";
+    mut tokens1: list(Token) = lex(str("i32"));
+    mut ctx1: ParserContext;
+    ctx1.tokens = addr_of(tokens1);
+    ctx1.pos = 0;
+    mut type1: string = parse_type(addr_of(ctx1));
+    assert equals_c(type1, "i32"), "Expected 'i32' from parse_type";
+    
+    println "\nTest 2: parse_type with ref type";
+    mut tokens2: list(Token) = lex(str("ref string"));
+    mut ctx2: ParserContext;
+    ctx2.tokens = addr_of(tokens2);
+    ctx2.pos = 0;
+    mut type2: string = parse_type(addr_of(ctx2));
+    assert equals_c(type2, "ref string"), "Expected 'ref string' from parse_type";
+    
+    println "\nTest 3: parse_type with list type";
+    mut tokens3: list(Token) = lex(str("list(Token)"));
+    mut ctx3: ParserContext;
+    ctx3.tokens = addr_of(tokens3);
+    ctx3.pos = 0;
+    mut type3: string = parse_type(addr_of(ctx3));
+    println "Result: ";
+    println type3;
+    assert str_len(type3) > 0, "Expected non-empty string from parse_type with list type";
+    
+    println "\nTest 4: parse_ref_depth";
+    mut tokens4: list(Token) = lex(str("ref ref ref i32"));
+    mut ctx4: ParserContext;
+    ctx4.tokens = addr_of(tokens4);
+    ctx4.pos = 0;
+    mut depth4: i32 = parse_ref_depth(addr_of(ctx4));
+    assert depth4 == 3, "Expected parse_ref_depth to return 3";
+    
+    println "\nTest 5: parse_function with simple function";
+    mut tokens5: list(Token) = lex(str("get_value(): i32 { return 42; }"));
+    mut ctx5: ParserContext;
+    ctx5.tokens = addr_of(tokens5);
+    ctx5.pos = 0;
+    mut func5: ASTNode = parse_function(addr_of(ctx5));
+    assert equals_c(func5.node_type, "Function"), "Expected Function node from parse_function with simple function";
+    
+    println "\nTest 6: parse_function with parameters";
+    mut tokens6: list(Token) = lex(str("add(a: i32, b: i32): i32 { return a + b; }"));
+    mut ctx6: ParserContext;
+    ctx6.tokens = addr_of(tokens6);
+    ctx6.pos = 0;
+    mut func6: ASTNode = parse_function(addr_of(ctx6));
+    assert equals_c(func6.node_type, "Function"), "Expected Function node from parse_function with parameters";
+    
+    println "\nTest 7: skip_whitespace";
+    mut tokens7: list(Token) = lex(str("   \n  \t  i32"));
+    mut ctx7: ParserContext;
+    ctx7.tokens = addr_of(tokens7);
+    ctx7.pos = 0;
+    mut pos_before: i32 = ctx7.pos;
+    skip_whitespace(addr_of(ctx7));
+    assert ctx7.pos > pos_before, "skip_whitespace did not advance position";
+    
+    println "\nTest 8: peek and consume";
+    val tokens8: list(Token) = lex(str("identifier"));
+    mut ctx8: ParserContext;
+    ctx8.tokens = addr_of(tokens8);
+    ctx8.pos = 0;
+    mut peeked: Token = peek(addr_of(ctx8));
+    mut pos_after_peek: i32 = ctx8.pos;
+    mut consumed: Token = consume(addr_of(ctx8));
+    mut pos_after_consume: i32 = ctx8.pos;
+    assert pos_after_peek == 0 and pos_after_consume == 1, "Position handling incorrect";
+    
+    println "\nTest 9: expect";
+    mut tokens9: list(Token) = lex(str("def function_name"));
+    mut ctx9: ParserContext;
+    ctx9.tokens = addr_of(tokens9);
+    ctx9.pos = 0;
+    assert expect(addr_of(ctx9), TokenType.DEF), "Expected 'def' token";
+    
+    println "\nTest 10: Full parse of simple program";
+    mut source: string = str("def main() { println \"Hello\"; }");
+    mut tokens10: list(Token) = lex(source);
+    mut ast: ASTNode = parse(addr_of(tokens10), false, false, str(""));
 
+    assert equals_c(ast.node_type, "Program"), "Expected Program AST node";
 }
