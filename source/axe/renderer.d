@@ -3654,7 +3654,6 @@ string processExpression(string expr, string context = "")
         }
     }
 
-    // Handle unsafe pointer member access (*.)
     if (expr.canFind("*."))
     {
         string result = "";
@@ -3679,18 +3678,207 @@ string processExpression(string expr, string context = "")
         expr = result;
     }
 
-    // Strip C. prefix for raw C function calls all the way before dot handling
-    // This prevents C.some_function() from being treated as god damn member access
     if (expr.startsWith("C."))
     {
         expr = expr[2 .. $];
     }
-
-    // Handle member access with auto-detection of pointer types.
-    //
-    // IMPORTANT: Be string-literal aware so we never rewrite dots inside quoted strings
-    // Also skip dots inside parentheses (function call arguments)
-    if (expr.canFind("."))
+    
+    /** 
+     * Parse an identifier from the string starting at index i
+     * Params:
+     *   s = string to parse
+     *   i = reference to the current index in the string; will be updated to the position after the parsed identifier
+     * Returns: the parsed identifier as a string
+     */
+    string parseIdentifier(string s, ref size_t i)
+    {
+        size_t start = i;
+        while (i < s.length && (s[i] >= 'a' && s[i] <= 'z' || s[i] >= 'A' && s[i] <= 'Z' || 
+                                s[i] >= '0' && s[i] <= '9' || s[i] == '_'))
+            i++;
+        return s[start .. i];
+    }
+    
+    /** 
+     * Skip some whitespace characters in the string starting at index i
+     * Params:
+     *   s = string to parse
+     *   i = reference to the current index in the string; will be updated to the position after the skipped whitespace
+     */
+    void skipWhitespace(string s, ref size_t i)
+    {
+        while (i < s.length && (s[i] == ' ' || s[i] == '\t'))
+            i++;
+    }
+    
+    string exprResult = "";
+    size_t pos = 0;
+    bool inStringLiteral = false;
+    
+    while (pos < expr.length)
+    {
+        if (expr[pos] == '"' && (pos == 0 || expr[pos - 1] != '\\'))
+        {
+            inStringLiteral = !inStringLiteral;
+            exprResult ~= expr[pos];
+            pos++;
+            continue;
+        }
+        
+        if (inStringLiteral)
+        {
+            exprResult ~= expr[pos];
+            pos++;
+            continue;
+        }
+        
+        // Check if we're at the start of an identifier
+        if (expr[pos] >= 'a' && expr[pos] <= 'z' || expr[pos] >= 'A' && expr[pos] <= 'Z' || expr[pos] == '_')
+        {
+            size_t startPos = pos;
+            string ident = parseIdentifier(expr, pos);
+            
+            // Look ahead to see if this is part of a member access chain or static method call
+            size_t lookahead = pos;
+            skipWhitespace(expr, lookahead);
+            
+            if (lookahead < expr.length && expr[lookahead] == '.')
+            {
+                // This is the start of a chain - collect the entire chain
+                string chain = ident;
+                bool isPointer = g_isPointerVar.get(ident, "false") == "true";
+                string currentType = g_varType.get(ident, "");
+                
+                if (currentType.length > 0)
+                {
+                    if (currentType[$ - 1] == '*' || currentType.startsWith("ref "))
+                        isPointer = true;
+                }
+                
+                string baseModelName = currentType;
+                if (baseModelName.startsWith("ref "))
+                    baseModelName = baseModelName[4 .. $].strip();
+                if (baseModelName.startsWith("mut "))
+                    baseModelName = baseModelName[4 .. $].strip();
+                while (baseModelName.length > 0 && baseModelName[$ - 1] == '*')
+                    baseModelName = baseModelName[0 .. $ - 1].strip();
+                
+                // Check if this is a static method call (Model.method(...))
+                // The identifier could be either the short name (Arena) or already-prefixed (std__arena__Arena)
+                bool isStaticMethod = false;
+                string prefixedModelName = "";
+                
+                if (ident in g_modelNames)
+                {
+                    prefixedModelName = g_modelNames[ident];
+                }
+                else if (ident.canFind("__"))
+                {
+                    prefixedModelName = ident;
+                }
+                
+                if (prefixedModelName.length > 0)
+                {
+                    size_t temp = lookahead + 1; // Skip the dot
+                    skipWhitespace(expr, temp); // Skip any whitespace after the dot
+                    string methodName = parseIdentifier(expr, temp);
+                    
+                    if (methodName.length > 0)
+                    {
+                        skipWhitespace(expr, temp);
+                        
+                        bool isEnum = (prefixedModelName in g_enumNames) !is null;
+                        bool hasOpenParen = temp < expr.length && expr[temp] == '(';
+                        
+                        if (hasOpenParen || isEnum)
+                        {
+                            exprResult ~= prefixedModelName ~ "_" ~ methodName;
+                            pos = temp;
+                            continue;
+                        }
+                    }
+                }
+                
+                pos = lookahead;
+                while (pos < expr.length && expr[pos] == '.')
+                {
+                    pos++; // Skip dot
+                    skipWhitespace(expr, pos); // Skip any whitespace after the dot
+                    string fieldName = parseIdentifier(expr, pos);
+                    
+                    string arraySuffix = "";
+                    if (pos < expr.length && expr[pos] == '[')
+                    {
+                        size_t bracketStart = pos;
+                        pos++;
+                        int depth = 1;
+                        while (pos < expr.length && depth > 0)
+                        {
+                            if (expr[pos] == '[') depth++;
+                            else if (expr[pos] == ']') depth--;
+                            pos++;
+                        }
+                        arraySuffix = expr[bracketStart .. pos];
+                    }
+                    
+                    string op = isPointer ? "->" : ".";
+                    chain ~= op ~ fieldName ~ arraySuffix;
+                    
+                    string fieldKey = baseModelName ~ "." ~ fieldName;
+                    if (fieldKey in g_pointerFields)
+                    {
+                        isPointer = true;
+                        if (fieldKey in g_fieldTypes)
+                        {
+                            string fieldType = g_fieldTypes[fieldKey];
+                            if (fieldType.startsWith("ref "))
+                                fieldType = fieldType[4 .. $].strip();
+                            if (fieldType.startsWith("mut "))
+                                fieldType = fieldType[4 .. $].strip();
+                            while (fieldType.length > 0 && fieldType[$ - 1] == '*')
+                                fieldType = fieldType[0 .. $ - 1].strip();
+                            baseModelName = fieldType;
+                        }
+                    }
+                    else
+                    {
+                        isPointer = false;
+                        if (fieldKey in g_fieldTypes)
+                        {
+                            string fieldType = g_fieldTypes[fieldKey];
+                            if (fieldType.startsWith("ref "))
+                                fieldType = fieldType[4 .. $].strip();
+                            if (fieldType.startsWith("mut "))
+                                fieldType = fieldType[4 .. $].strip();
+                            while (fieldType.length > 0 && fieldType[$ - 1] == '*')
+                                fieldType = fieldType[0 .. $ - 1].strip();
+                            baseModelName = fieldType;
+                        }
+                    }
+                    
+                    skipWhitespace(expr, pos);
+                    if (pos >= expr.length || expr[pos] != '.')
+                        break;
+                }
+                
+                exprResult ~= chain;
+            }
+            else
+            {
+                exprResult ~= ident;
+            }
+        }
+        else
+        {
+            exprResult ~= expr[pos];
+            pos++;
+        }
+    }
+    
+    expr = exprResult;
+    
+    // OLD CODE - Now completely replaced by recursive parser
+    if (false && expr.canFind("."))
     {
         string[] parts;
         string current = "";
@@ -3999,6 +4187,19 @@ string processExpression(string expr, string context = "")
                     expr[i .. i + op.length] == op &&
                     (i == 0 || expr[i - 1] != op[0]))
                 {
+                    // Don't split on - if it's part of ->
+                    if (op == "-" && i + 1 < expr.length && expr[i + 1] == '>')
+                    {
+                        current ~= expr[i];
+                        continue;
+                    }
+                    // Don't split on > if it's part of ->
+                    if (op == ">" && i > 0 && expr[i - 1] == '-')
+                    {
+                        current ~= expr[i];
+                        continue;
+                    }
+                    
                     parts ~= current;
                     current = "";
                     i += cast(int) op.length - 1;
@@ -4156,12 +4357,14 @@ private string processCondition(string condition)
 
     condition = condition.replace(" mod ", " % ");
     condition = condition.replace(" and ", " && ");
+    condition = condition.replace(")and ", ") && ");
     condition = condition.replace(" band ", " & ");
     condition = condition.replace(" bor ", " | ");
     condition = condition.replace(" shl ", " << ");
     condition = condition.replace(" shr ", " >> ");
     condition = condition.replace(" not ", " ! ");
     condition = condition.replace(" or ", " || ");
+    condition = condition.replace(")or ", ") || ");
     condition = condition.replace(" xor ", " ^ ");
 
     debugWriteln("DEBUG processCondition after replace: '", condition, "'");

@@ -15,6 +15,7 @@ use structs (
 use std.string;
 use std.io;
 use std.maps;
+use std.arena;
 
 mut g_type_aliases: StringHashMapString;
 mut g_imported_modules: StringHashMapBool;
