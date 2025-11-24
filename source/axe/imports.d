@@ -119,7 +119,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
     {
         import std.string : replace;
 
-        currentModulePrefix = moduleName.replace(".", "__");
+        currentModulePrefix = moduleName.replace(".", "__").replace("-", "_");
         g_currentModulePrefix = currentModulePrefix;
         debugWriteln("DEBUG: Set currentModulePrefix='", currentModulePrefix, "' from moduleName='", moduleName, "'");
     }
@@ -376,7 +376,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 }
             }
 
-            string sanitizedModuleName = useNode.moduleName.replace(".", "__");
+            string sanitizedModuleName = useNode.moduleName.replace(".", "__").replace("-", "_");
             string[string] moduleFunctionMap;
             string[string] moduleModelMap;
             string[string] moduleMacroMap;

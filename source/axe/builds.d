@@ -390,7 +390,7 @@ bool handleMachineArgs(string[] args)
             }
             else if (directory != "." && directory.length > 0)
             {
-                string dirBase = baseName(directory);
+                string dirBase = baseName(directory).replace("-", "_");
                 moduleName = dirBase ~ "." ~ moduleBase;
             }
             else

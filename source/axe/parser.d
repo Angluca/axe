@@ -2623,7 +2623,7 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
                         writeln(i, ": ", tokens[i].type, " ('", tokens[i].value, "')");
                     }
                     enforce(false, format(
-                            "Unexpected token in function body at position %s: %s (type: %s)\nExpected one of: %s",
+                            "Unexpected token in function body at position %s: %s (type: %s)\nExpected one of: %s\nFull context: %s",
                             pos.to!string,
                             tokens[pos].value,
                             tokens[pos].type.to!string,
@@ -2632,7 +2632,8 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
                                 TokenType.PRINTLN, TokenType.BREAK, TokenType.FOR,
                                 TokenType.RETURN
                             ].map!(
-                            t => t.to!string).join(", ")));
+                            t => t.to!string).join(", "), tokens[max(0, cast(int) pos - 5) .. pos].map!(
+                            t => t.value)));
                 }
             }
 

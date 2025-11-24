@@ -457,7 +457,7 @@ string generateC(ASTNode ast)
             if (child.nodeType == "Use")
             {
                 auto useNode = cast(UseNode) child;
-                string modulePrefix = useNode.moduleName.replace(".", "__");
+                string modulePrefix = useNode.moduleName.replace(".", "__").replace("-", "_");
                 debugWriteln("DEBUG: Processing Use node for module '", useNode.moduleName, "' with prefix '", modulePrefix, "'");
                 foreach (importName; useNode.imports)
                 {
