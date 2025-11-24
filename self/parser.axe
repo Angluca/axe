@@ -463,12 +463,12 @@ def peek(ctx: ref ParserContext): Token {
     return empty;
 }
 
-// // Consume current token and advance
-// def consume(ctx: ref ParserContext): Token {
-//     val token = peek(ctx);
-//     ctx.pos = ctx.pos + 1;
-//     return token;
-// }
+// Consume current token and advance
+def consume(ctx: ref ParserContext): Token {
+    val token: Token = peek(ctx);
+    ctx.pos = ctx.pos + 1;
+    return token;
+}
 
 // // Check if current token matches expected type
 // def expect(ctx: ref ParserContext, expected_type: i32): bool {
