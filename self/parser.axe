@@ -2985,6 +2985,8 @@ test {
 // COMPLETED:
 // ---------
 // ✓ MAIN function parsing (def main() { ... })
+// ✓ OVERLOAD function parsing (type => function mappings)
+// ✓ SCOPE block parsing 
 // ✓ MODULE field type module path parsing (std.maps.StringIntMap, lexer.Token)
 // ✓ OPAQUE node type_names heap allocation fix
 // ✓ USE statement module path parsing (DOT and SLASH separators)
