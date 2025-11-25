@@ -40,7 +40,7 @@ mut g_field_types: StringStringMap;
 mut g_var_types: StringStringMap;
 
 /// Initialize renderer globals
-def initialize_renderer() {
+pub def initialize_renderer() {
     mut arena: Arena = Arena.create(1024 * 1024);
     
     g_type_mappings = deref(StringStringMap.create(addr_of(arena), 128));
@@ -237,7 +237,7 @@ def process_parameter_type(param_type: string): string {
 }
 
 /// Generate C code from AST
-def generate_c(ast: ref ASTNode): string {
+pub def generate_c(ast: ref ASTNode): string {
     mut result: string = str("");
     
     if ast == nil {
@@ -575,8 +575,48 @@ def generate_c(ast: ref ASTNode): string {
     }
     
     if equals_c(node_type, "Enum") {
-        result = concat(result, str("// Enum node\n"));
-        result = concat(result, str("typedef enum {} enum_placeholder;\n\n"));
+        val enum_name: string = ast.data.enum_node.name;
+        val enum_values: ref list(string) = ast.data.enum_node.values;
+        
+        if StringBoolMap.contains(addr_of(g_generated_typedefs), enum_name) {
+            return str("");
+        }
+        
+        mut arena: Arena = Arena.create(1024);
+        StringBoolMap.set(addr_of(g_generated_typedefs), addr_of(arena), enum_name, true);
+        StringBoolMap.set(addr_of(g_enum_names), addr_of(arena), enum_name, true);
+        
+        result = concat(result, str("typedef enum {\n"));
+        
+        if enum_values != nil {
+            mut value_idx: i32 = 0;
+            val num_values: i32 = len(deref(enum_values));
+            
+            loop {
+                if value_idx >= num_values {
+                    break;
+                }
+                
+                val enum_value: string = enum_values.data[value_idx];
+                
+                result = concat(result, str("    "));
+                result = concat(result, enum_name);
+                result = concat(result, str("_"));
+                result = concat(result, enum_value);
+                
+                if value_idx < num_values - 1 {
+                    result = concat(result, str(","));
+                }
+                result = concat(result, str("\n"));
+                
+                value_idx++;
+            }
+        }
+        
+        result = concat(result, str("} "));
+        result = concat(result, enum_name);
+        result = concat(result, str(";\n\n"));
+        
         return result;
     }
     
@@ -725,4 +765,23 @@ test {
     assert equals_c(map_axe_type_to_c(str("i32")), "int32_t"), "Expected i32 mapping";
     assert equals_c(map_axe_type_to_c(str("ref i64")), "int64_t*"), "Expected ref i64 mapping";
     assert equals_c(map_axe_type_to_c(str("mut f32")), "float"), "Expected mut f32 mapping";
+    
+    println "\nTest 12: Generate enum";
+    mut enum_ast: ASTNode;
+    enum_ast.node_type = str("Enum");
+    enum_ast.data.enum_node.name = str("Color");
+    
+    val enum_values: ref StringList = StringList.create(addr_of(model_arena), 10);
+    StringList.push(enum_values, addr_of(model_arena), str("Red"));
+    StringList.push(enum_values, addr_of(model_arena), str("Green"));
+    StringList.push(enum_values, addr_of(model_arena), str("Blue"));
+    enum_ast.data.enum_node.values = enum_values;
+    
+    enum_ast.children = nil;
+    val enum_code: string = generate_c(addr_of(enum_ast));
+    assert str_contains_c(enum_code, "typedef enum"), "Expected typedef enum";
+    assert str_contains_c(enum_code, "Color_Red"), "Expected Color_Red value";
+    assert str_contains_c(enum_code, "Color_Green"), "Expected Color_Green value";
+    assert str_contains_c(enum_code, "Color_Blue"), "Expected Color_Blue value";
+    assert str_contains_c(enum_code, "} Color;"), "Expected } Color;";
 }
