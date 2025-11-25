@@ -585,8 +585,10 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
                 goto case TokenType.DEF;
             else if (pos < tokens.length && tokens[pos].type == TokenType.MODEL)
                 goto case TokenType.MODEL;
+            else if (pos < tokens.length && (tokens[pos].type == TokenType.VAL || tokens[pos].type == TokenType.MUT))
+                goto case TokenType.VAL; // pub mut/val at top level
             else
-                enforce(false, "Expected 'def' or 'model' after 'pub'");
+                enforce(false, "Expected 'def', 'model' or 'val' after 'pub'");
             break;
 
         case TokenType.PLATFORM:
@@ -2694,10 +2696,21 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
             goto case TokenType.VAL;
 
         case TokenType.VAL:
-            bool hasValKeyword = (pos < tokens.length && tokens[pos].type == TokenType.VAL);
+            // Handle top-level variable declarations. This case can be
+            // reached in three ways:
+            //   - directly on 'val'
+            //   - via 'mut' (case TokenType.MUT jumps here)
+            //   - via 'pub mut' or 'pub val' (PUB case jumps here)
             bool isMutable = false;
-            if (hasValKeyword)
+
+            if (pos < tokens.length && tokens[pos].type == TokenType.MUT)
             {
+                isMutable = true;
+                pos++;
+            }
+            else if (pos < tokens.length && tokens[pos].type == TokenType.VAL)
+            {
+                bool hasValKeyword = true;
                 isMutable = (pos > 0 && tokens[pos - 1].type == TokenType.MUT);
                 pos++; // Skip 'val'
             }
@@ -2710,7 +2723,8 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
                 pos++;
 
             enforce(pos < tokens.length && tokens[pos].type == TokenType.IDENTIFIER,
-                "Expected variable name after 'val'");
+                "Expected variable name after 'val', full context: " ~ tokens[max(0, cast(int) pos - 5) .. pos].map!(
+                t => t.value).join(", "));
             string varName = tokens[pos].value;
             pos++;
 
@@ -2754,7 +2768,7 @@ ASTNode parse(Token[] tokens, bool isAxec = false, bool checkEntryPoint = true, 
                 "Expected ';' after variable declaration");
             pos++;
 
-            auto declNode = new DeclarationNode(varName, isMutable, initializer.strip(), varType);
+            auto declNode = new DeclarationNode(varName, isMutable, initializer.strip(), varType, 0, isNextPublic);
             ast.children ~= declNode;
 
             // Register global variable in currentScope so it can be found by isDeclared checks

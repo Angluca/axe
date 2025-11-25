@@ -572,6 +572,43 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         moduleModelMap[enumNode.name] = prefixedName;
                     }
                 }
+                else if (importChild.nodeType == "Declaration" || importChild.nodeType == "ArrayDeclaration")
+                {
+                    if (!useNode.importAll)
+                        continue;
+
+                    string globalName;
+                    bool isPublic = false;
+
+                    if (importChild.nodeType == "Declaration")
+                    {
+                        auto declNode = cast(DeclarationNode) importChild;
+                        if (declNode !is null)
+                        {
+                            globalName = declNode.name;
+                            isPublic = declNode.isPublic;
+                        }
+                    }
+                    else
+                    {
+                        auto arrayDecl = cast(ArrayDeclarationNode) importChild;
+                        if (arrayDecl !is null)
+                        {
+                            globalName = arrayDecl.name;
+                            isPublic = arrayDecl.isPublic;
+                        }
+                    }
+
+                    if (isPublic && globalName.length > 0)
+                    {
+                        string key = "__global__" ~ useNode.moduleName ~ "__" ~ globalName;
+                        if (key !in g_addedNodeNames)
+                        {
+                            g_addedNodeNames[key] = true;
+                            newChildren ~= importChild;
+                        }
+                    }
+                }
                 else if (importChild.nodeType == "Extern")
                 {
                     // Always propagate extern declarations so that any
@@ -627,10 +664,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         if (importedFuncName.length > 0 &&
                             (importedFuncName[0] < 'A' || importedFuncName[0] > 'Z'))
                         {
-                            // Construct the expected prefixed name
                             string expectedPrefixedName = importedModulePrefix ~ "__" ~ importedFuncName;
 
-                            // Check if this function exists in the AST
                             foreach (funcChild; importProgram.children)
                             {
                                 if (funcChild.nodeType == "Function")

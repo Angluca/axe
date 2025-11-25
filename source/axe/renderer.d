@@ -62,6 +62,7 @@ private string[string] g_enumValueToEnumName;
 private bool g_inTopLevel = false;
 private string g_currentModuleName = "";
 private bool[string] g_localFunctions;
+private string[string] g_globalVarPrefixes;
 
 void setCurrentModuleName(string moduleName)
 {
@@ -465,6 +466,7 @@ string generateC(ASTNode ast)
         g_enumNames.clear();
         g_enumValueToEnumName.clear();
         g_localFunctions.clear();
+        g_globalVarPrefixes.clear();
 
         // Important: g_currentModuleName is set by setCurrentModuleName called from builds.d
         string[] globalExternalHeaders;
@@ -576,6 +578,43 @@ string generateC(ASTNode ast)
                 else
                 {
                     g_modelNames[enumNode.name] = enumNode.name;
+                }
+            }
+        }
+
+        // Discover public global variables and build a mapping from their
+        // logical names to the underlying C symbols (gvar__*). This lets
+        // importing modules refer to them via short names or ::name sugar.
+        foreach (child; ast.children)
+        {
+            if (child.nodeType == "Declaration")
+            {
+                auto declNode = cast(DeclarationNode) child;
+                if (declNode !is null && declNode.isPublic)
+                {
+                    string logicalName = declNode.name;
+                    string cName = "gvar__" ~ logicalName;
+                    if (logicalName.length > 0 && logicalName !in g_globalVarPrefixes)
+                    {
+                        g_globalVarPrefixes[logicalName] = cName;
+                        debugWriteln("DEBUG: Registered public global '", logicalName,
+                            "' -> '", cName, "'");
+                    }
+                }
+            }
+            else if (child.nodeType == "ArrayDeclaration")
+            {
+                auto arrayDecl = cast(ArrayDeclarationNode) child;
+                if (arrayDecl !is null && arrayDecl.isPublic)
+                {
+                    string logicalName = arrayDecl.name;
+                    string cName = "gvar__" ~ logicalName;
+                    if (logicalName.length > 0 && logicalName !in g_globalVarPrefixes)
+                    {
+                        g_globalVarPrefixes[logicalName] = cName;
+                        debugWriteln("DEBUG: Registered public global array '", logicalName,
+                            "' -> '", cName, "'");
+                    }
                 }
             }
         }
@@ -1725,13 +1764,25 @@ string generateC(ASTNode ast)
         for (int i = 0; i < declNode.refDepth; i++)
             baseType ~= "*";
 
-        g_varType[declNode.name] = baseType;
+        g_varType[declNode.name] = baseType; // track by logical name
         g_isPointerVar[declNode.name] = declNode.refDepth > 0 ? "true" : "false";
         if (declNode.refDepth > 0)
             debugWriteln("DEBUG set g_isPointerVar['", declNode.name, "'] = true");
 
         string type = declNode.isMutable ? baseType : "const " ~ baseType;
-        string decl = type ~ " " ~ declNode.name ~ arrayPart;
+
+        // Choose the emitted C variable name. For public top-level vars,
+        // use the gvar__ prefix so they behave like proper globals.
+        string emittedName = declNode.name;
+        if (g_inTopLevel && declNode.isPublic)
+        {
+            if (declNode.name in g_globalVarPrefixes)
+                emittedName = g_globalVarPrefixes[declNode.name];
+            else
+                emittedName = "gvar__" ~ declNode.name;
+        }
+
+        string decl = type ~ " " ~ emittedName ~ arrayPart;
 
         if (declNode.initializer.length > 0)
         {
@@ -1771,9 +1822,9 @@ string generateC(ASTNode ast)
                 size_t bufferSize = cast(int) processedExpr.length - 2 + 1;
 
                 type = declNode.isMutable ? "char" : "const char";
-                decl = type ~ " " ~ declNode.name ~ "[" ~ bufferSize.to!string ~ "]";
+                decl = type ~ " " ~ emittedName ~ "[" ~ bufferSize.to!string ~ "]";
                 cCode ~= decl ~ ";\n";
-                cCode ~= "strcpy(" ~ declNode.name ~ ", " ~ processedExpr ~ ");\n";
+                cCode ~= "strcpy(" ~ emittedName ~ ", " ~ processedExpr ~ ");\n";
                 break;
             }
 
@@ -3290,6 +3341,49 @@ string processExpression(string expr, string context = "")
     import std.string : replace;
     import std.algorithm : canFind;
     import std.regex : replaceAll, regex, matchAll;
+
+    // Syntactic sugar: ::name always refers to a global variable, even if
+    // there is a local with the same name. Rewrite ::name (with optional
+    // whitespace between the colons) to the fully-qualified C symbol
+    // before any other processing.
+    auto globalMatches = matchAll(expr, regex(r":\s*:\s*([A-Za-z_][A-Za-z0-9_]*)"));
+    foreach (m; globalMatches)
+    {
+        string fullMatch = m[0];
+        string name = m[1];
+
+        string mapped;
+        if (name in g_globalVarPrefixes)
+        {
+            mapped = g_globalVarPrefixes[name];
+        }
+        else
+        {
+            mapped = "gvar__" ~ name;
+        }
+
+        debugWriteln("DEBUG: Mapping ::", name, " -> ", mapped);
+        expr = expr.replace(fullMatch, mapped);
+    }
+
+    // If this is a simple identifier and it corresponds to an imported
+    // global (tracked in g_globalVarPrefixes), rewrite it to the
+    // fully-qualified gvar__* symbol. Do not override locals/params
+    // tracked in g_varType. Note that ::name sugar above is handled
+    // first and always takes precedence for explicit global access.
+    if (expr.length > 0 &&
+        !expr.canFind(" ") &&
+        !expr.canFind("(") && !expr.canFind(")") &&
+        !expr.canFind(".") && !expr.canFind("->") &&
+        !expr.canFind("[") && !expr.canFind("]"))
+    {
+        if (expr !in g_varType && expr in g_globalVarPrefixes)
+        {
+            string mapped = g_globalVarPrefixes[expr];
+            debugWriteln("DEBUG: Mapping global identifier '", expr, "' -> '", mapped, "'");
+            expr = mapped;
+        }
+    }
 
     expr = expr.replaceAll(regex(r"\bC\s*\.\s*"), "");
 

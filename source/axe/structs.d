@@ -157,7 +157,11 @@ class DeclarationNode : ASTNode
     // Number of 'ref' modifiers (0 = not a reference, 1 = ref, 2 = ref ref, etc.)
     int refDepth;
 
-    this(string name, bool isMutable, string initializer = "", string typeName = "", int refDepth = 0)
+    // Whether this declaration is public at the module level (declared with 'pub').
+    bool isPublic;
+
+    this(string name, bool isMutable, string initializer = "", string typeName = "", int refDepth = 0,
+        bool isPublic = false)
     {
         super("Declaration");
         this.name = name;
@@ -165,6 +169,7 @@ class DeclarationNode : ASTNode
         this.initializer = initializer;
         this.typeName = typeName;
         this.refDepth = refDepth;
+        this.isPublic = isPublic;
     }
 }
 
@@ -183,8 +188,11 @@ class ArrayDeclarationNode : ASTNode
     // For array literals like [1, 2, 3]
     string[] initializer;
 
+    // Whether this array declaration is public at the damn module level
+    bool isPublic;
+
     this(string name, bool isMutable, string elementType, string size, string[] initializer = [
-        ], string size2 = "")
+        ], string size2 = "", bool isPublic = false)
     {
         super("ArrayDeclaration");
         this.name = name;
@@ -193,6 +201,7 @@ class ArrayDeclarationNode : ASTNode
         this.size = size;
         this.initializer = initializer;
         this.size2 = size2;
+        this.isPublic = isPublic;
     }
 }
 
