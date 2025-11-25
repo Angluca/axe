@@ -3,7 +3,8 @@
 // 
 // Handles the rendering process.
 
-use structs (ASTNode);
+use structs     (ASTNode);
+use std.lists   (StringList);
 use std.string;
 use std.io;
 use std.maps;
@@ -198,7 +199,6 @@ def generate_c(ast: ref ASTNode): string {
         result = concat(result, func_name);
         result = concat(result, str("("));
         
-        // Add parameters
         val params: ref list(string) = ast.data.function.params;
         if params != nil {
             mut param_idx: i32 = 0;
@@ -378,8 +378,44 @@ def generate_c(ast: ref ASTNode): string {
     }
     
     if equals_c(node_type, "Model") {
-        result = concat(result, str("// Model node\n"));
-        result = concat(result, str("typedef struct {} model_placeholder;\n\n"));
+        val model_name: string = ast.data.model_node.name;
+        val is_public: bool = ast.data.model_node.is_public;
+        val field_names: ref list(string) = ast.data.model_node.field_names;
+        val field_types: ref list(string) = ast.data.model_node.field_types;
+        
+        if StringBoolMap.contains(addr_of(g_generated_typedefs), model_name) {
+            return str("");
+        }
+        
+        mut arena: Arena = Arena.create(1024);
+        StringBoolMap.set(addr_of(g_generated_typedefs), addr_of(arena), model_name, true);
+        
+        result = concat(result, str("struct "));
+        result = concat(result, model_name);
+        result = concat(result, str(" {\n"));
+        
+        if field_names != nil and field_types != nil {
+            mut field_idx: i32 = 0;
+            loop {
+                if field_idx >= len(deref(field_names)) {
+                    break;
+                }
+                
+                val field_name: string = field_names.data[field_idx];
+                val field_type: string = field_types.data[field_idx];
+                val mapped_type: string = process_parameter_type(field_type);
+                
+                result = concat(result, str("    "));
+                result = concat(result, mapped_type);
+                result = concat(result, str(" "));
+                result = concat(result, field_name);
+                result = concat(result, str(";\n"));
+                
+                field_idx++;
+            }
+        }
+        
+        result = concat(result, str("};\n\n"));
         return result;
     }
     
@@ -440,4 +476,52 @@ test {
     assert equals_c(process_parameter_type(str("ref i32")), "int32_t*"), "Expected ref i32 -> int32_t*";
     assert equals_c(process_parameter_type(str("mut i32")), "int32_t"), "Expected mut i32 -> int32_t";
     assert equals_c(process_parameter_type(str("i32*")), "int32_t*"), "Expected i32* -> int32_t*";
+    
+    println "\nTest 7: Generate simple model";
+    mut model_arena: Arena = Arena.create(4096);
+    mut model_ast: ASTNode;
+    model_ast.node_type = str("Model");
+    model_ast.data.model_node.name = str("Point");
+    model_ast.data.model_node.is_public = false;
+    
+    val field_names_list: ref StringList = StringList.create(addr_of(model_arena), 10);
+    StringList.push(field_names_list, addr_of(model_arena), str("x"));
+    StringList.push(field_names_list, addr_of(model_arena), str("y"));
+    model_ast.data.model_node.field_names = field_names_list;
+    
+    val field_types_list: ref StringList = StringList.create(addr_of(model_arena), 10);
+    StringList.push(field_types_list, addr_of(model_arena), str("i32"));
+    StringList.push(field_types_list, addr_of(model_arena), str("i32"));
+    model_ast.data.model_node.field_types = field_types_list;
+    
+    model_ast.children = nil;
+    val model_code: string = generate_c(addr_of(model_ast));
+    assert str_contains_c(model_code, "struct Point"), "Expected struct Point";
+    assert str_contains_c(model_code, "int32_t x"), "Expected int32_t x field";
+    assert str_contains_c(model_code, "int32_t y"), "Expected int32_t y field";
+    
+    println "\nTest 8: Generate model with different types";
+    mut model2_ast: ASTNode;
+    model2_ast.node_type = str("Model");
+    model2_ast.data.model_node.name = str("Person");
+    model2_ast.data.model_node.is_public = true;
+    
+    val field_names2: ref StringList = StringList.create(addr_of(model_arena), 10);
+    StringList.push(field_names2, addr_of(model_arena), str("age"));
+    StringList.push(field_names2, addr_of(model_arena), str("height"));
+    StringList.push(field_names2, addr_of(model_arena), str("active"));
+    model2_ast.data.model_node.field_names = field_names2;
+    
+    val field_types2: ref StringList = StringList.create(addr_of(model_arena), 10);
+    StringList.push(field_types2, addr_of(model_arena), str("i32"));
+    StringList.push(field_types2, addr_of(model_arena), str("f32"));
+    StringList.push(field_types2, addr_of(model_arena), str("bool"));
+    model2_ast.data.model_node.field_types = field_types2;
+    
+    model2_ast.children = nil;
+    val model2_code: string = generate_c(addr_of(model2_ast));
+    assert str_contains_c(model2_code, "struct Person"), "Expected struct Person";
+    assert str_contains_c(model2_code, "int32_t age"), "Expected int32_t age field";
+    assert str_contains_c(model2_code, "float height"), "Expected float height field";
+    assert str_contains_c(model2_code, "bool active"), "Expected bool active field";
 }
