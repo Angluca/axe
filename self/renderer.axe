@@ -1,7 +1,7 @@
 // Author: Navid Momtahen (C) 2025
 // License: GPL-3.0
 // 
-// Handles the rendering process - converts AST to C code
+// Handles the rendering process.
 
 use structs (ASTNode);
 use std.string;
