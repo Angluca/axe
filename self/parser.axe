@@ -661,17 +661,512 @@ def parse_function(ctx: ref ParserContext): ASTNode {
     return func;
 }
 
-// // TODO:                Implement remaining parser functions
-// // - parse_model:       Parse model definitions
-// // - parse_enum:        Parse enum definitions
-// // - parse_statement:   Parse statements in function bodies
-// // - parse_expression:  Parse expressions
-// // - parse_block:       Parse { ... } blocks
-
-// def main() {
-//     println "Parser module loaded";
-//     println "TODO: Implement remaining parser functions";
-// }
+/// Parse a single statement (helper for parsing function bodies, loops, etc.)
+///
+/// Returns an ASTNode for the statement, or null node for whitespace/newlines
+def parse_statement_helper(ctx: ref ParserContext): ASTNode {
+    mut node: ASTNode;
+    node.node_type = str("Empty");
+    
+    if ctx.pos >= len(ctx.tokens) {
+        return node;
+    }
+    
+    val token: Token = peek(ctx);
+    val token_type: i32 = token.token_type;
+    
+    if token_type == TokenType.WHITESPACE or token_type == TokenType.NEWLINE {
+        consume(ctx);
+        return node;
+    }
+    
+    // Handle BREAK
+    if token_type == TokenType.BREAK {
+        consume(ctx);
+        skip_whitespace(ctx);
+        
+        if !expect(ctx, TokenType.SEMICOLON) {
+            println "ERROR: Expected ';' after break";
+            return node;
+        }
+        consume(ctx);
+        
+        node.node_type = str("Break");
+        return node;
+    }
+    
+    // Handle CONTINUE
+    if token_type == TokenType.CONTINUE {
+        consume(ctx);
+        skip_whitespace(ctx);
+        
+        if !expect(ctx, TokenType.SEMICOLON) {
+            println "ERROR: Expected ';' after continue";
+            return node;
+        }
+        consume(ctx);
+        
+        node.node_type = str("Continue");
+        return node;
+    }
+    
+    // Handle ASSERT
+    if token_type == TokenType.ASSERT {
+        consume(ctx);
+        skip_whitespace(ctx);
+        
+        mut has_parens: bool = false;
+        if expect(ctx, TokenType.LPAREN) {
+            has_parens = true;
+            consume(ctx);
+        }
+        
+        mut condition: string = str("");
+        mut paren_depth: i32 = 0;
+        
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            val t: Token = peek(ctx);
+            
+            if t.token_type == TokenType.LPAREN {
+                paren_depth = paren_depth + 1;
+                condition = concat(condition, t.value);
+                condition = concat(condition, str(" "));
+            } elif t.token_type == TokenType.RPAREN {
+                if paren_depth == 0 and has_parens {
+                    break;
+                }
+                paren_depth = paren_depth - 1;
+                condition = concat(condition, t.value);
+                condition = concat(condition, str(" "));
+            } elif t.token_type == TokenType.COMMA and paren_depth == 0 {
+                break;
+            } elif t.token_type != TokenType.WHITESPACE and t.token_type != TokenType.NEWLINE {
+                if t.token_type == TokenType.STR {
+                    condition = concat(condition, str("\""));
+                    condition = concat(condition, t.value);
+                    condition = concat(condition, str("\" "));
+                } elif t.token_type == TokenType.CHAR {
+                    condition = concat(condition, str("'"));
+                    condition = concat(condition, t.value);
+                    condition = concat(condition, str("' "));
+                } else {
+                    condition = concat(condition, t.value);
+                    condition = concat(condition, str(" "));
+                }
+            }
+            consume(ctx);
+        }
+        
+        if !expect(ctx, TokenType.COMMA) {
+            println "ERROR: Expected ',' after assert condition";
+            return node;
+        }
+        consume(ctx);
+        skip_whitespace(ctx);
+        
+        if !expect(ctx, TokenType.STR) {
+            println "ERROR: Expected string message after comma in assert";
+            return node;
+        }
+        val message_token: Token = consume(ctx);
+        val message: string = message_token.value;
+        skip_whitespace(ctx);
+        
+        if has_parens {
+            if !expect(ctx, TokenType.RPAREN) {
+                println "ERROR: Expected ')' after assert message";
+                return node;
+            }
+            consume(ctx);
+            skip_whitespace(ctx);
+        }
+        
+        if !expect(ctx, TokenType.SEMICOLON) {
+            println "ERROR: Expected ';' after assert statement";
+            return node;
+        }
+        consume(ctx);
+        
+        node.node_type = str("Assert");
+        // TODO: Store condition and message in node
+        return node;
+    }
+    
+    // Handle RETURN
+    if token_type == TokenType.RETURN {
+        consume(ctx);
+        skip_whitespace(ctx);
+        
+        mut expr: string = str("");
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            val t: Token = peek(ctx);
+            if t.token_type == TokenType.SEMICOLON {
+                break;
+            }
+            if t.token_type == TokenType.STR {
+                expr = concat(expr, str("\""));
+                expr = concat(expr, t.value);
+                expr = concat(expr, str("\" "));
+            } elif t.token_type == TokenType.WHITESPACE or t.token_type == TokenType.NEWLINE {
+                // Skip whitespace
+            } else {
+                expr = concat(expr, t.value);
+                expr = concat(expr, str(" "));
+            }
+            consume(ctx);
+        }
+        
+        if !expect(ctx, TokenType.SEMICOLON) {
+            println "ERROR: Expected ';' after return";
+            return node;
+        }
+        consume(ctx);
+        
+        node.node_type = str("Return");
+        // TODO: Store expression in node
+        return node;
+    }
+    
+    // Handle LOOP
+    if token_type == TokenType.LOOP {
+        consume(ctx);
+        skip_whitespace(ctx);
+        
+        if !expect(ctx, TokenType.LBRACE) {
+            println "ERROR: Expected '{' after loop";
+            return node;
+        }
+        consume(ctx);
+        
+        // Skip loop body for now (just balance braces)
+        mut depth: i32 = 1;
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            val t: Token = peek(ctx);
+            if t.token_type == TokenType.LBRACE {
+                depth = depth + 1;
+            } elif t.token_type == TokenType.RBRACE {
+                depth = depth - 1;
+                if depth == 0 {
+                    consume(ctx);
+                    break;
+                }
+            }
+            consume(ctx);
+        }
+        
+        node.node_type = str("Loop");
+        return node;
+    }
+    
+    // Handle SWITCH
+    if token_type == TokenType.SWITCH {
+        consume(ctx);
+        skip_whitespace(ctx);
+        
+        mut switch_expr: string = str("");
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            val t: Token = peek(ctx);
+            if t.token_type == TokenType.LBRACE {
+                break;
+            }
+            if t.token_type != TokenType.WHITESPACE and t.token_type != TokenType.NEWLINE {
+                switch_expr = concat(switch_expr, t.value);
+                switch_expr = concat(switch_expr, str(" "));
+            }
+            consume(ctx);
+        }
+        
+        if !expect(ctx, TokenType.LBRACE) {
+            println "ERROR: Expected '{' after switch expression";
+            return node;
+        }
+        consume(ctx);
+        
+        mut depth: i32 = 1;
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            val t: Token = peek(ctx);
+            if t.token_type == TokenType.LBRACE {
+                depth = depth + 1;
+            } elif t.token_type == TokenType.RBRACE {
+                depth = depth - 1;
+                if depth == 0 {
+                    consume(ctx);
+                    break;
+                }
+            }
+            consume(ctx);
+        }
+        
+        node.node_type = str("Switch");
+        return node;
+    }
+    
+    // Handle IF
+    if token_type == TokenType.IF {
+        consume(ctx);
+        skip_whitespace(ctx);
+        
+        mut condition: string = str("");
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            val t: Token = peek(ctx);
+            if t.token_type == TokenType.LBRACE {
+                break;
+            }
+            if t.token_type != TokenType.WHITESPACE and t.token_type != TokenType.NEWLINE {
+                condition = concat(condition, t.value);
+                condition = concat(condition, str(" "));
+            }
+            consume(ctx);
+        }
+        
+        if !expect(ctx, TokenType.LBRACE) {
+            println "ERROR: Expected '{' after if condition";
+            return node;
+        }
+        consume(ctx);
+        
+        // Skip if body
+        mut depth: i32 = 1;
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            val t: Token = peek(ctx);
+            if t.token_type == TokenType.LBRACE {
+                depth = depth + 1;
+            } elif t.token_type == TokenType.RBRACE {
+                depth = depth - 1;
+                if depth == 0 {
+                    consume(ctx);
+                    break;
+                }
+            }
+            consume(ctx);
+        }
+        
+        // TODO: Handle elif and else
+        
+        node.node_type = str("If");
+        return node;
+    }
+    
+    // Handle FOR
+    if token_type == TokenType.FOR {
+        consume(ctx);
+        skip_whitespace(ctx);
+        
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            val t: Token = peek(ctx);
+            if t.token_type == TokenType.LBRACE {
+                break;
+            }
+            consume(ctx);
+        }
+        
+        if !expect(ctx, TokenType.LBRACE) {
+            println "ERROR: Expected '{' after for header";
+            return node;
+        }
+        consume(ctx);
+        
+        mut depth: i32 = 1;
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            val t: Token = peek(ctx);
+            if t.token_type == TokenType.LBRACE {
+                depth = depth + 1;
+            } elif t.token_type == TokenType.RBRACE {
+                depth = depth - 1;
+                if depth == 0 {
+                    consume(ctx);
+                    break;
+                }
+            }
+            consume(ctx);
+        }
+        
+        node.node_type = str("For");
+        return node;
+    }
+    
+    // Handle VAL and MUT VAL (variable declarations)
+    if token_type == TokenType.VAL {
+        consume(ctx);
+        skip_whitespace(ctx);
+        
+        if !expect(ctx, TokenType.IDENTIFIER) {
+            println "ERROR: Expected identifier after 'val'";
+            return node;
+        }
+        val var_name: Token = consume(ctx);
+        skip_whitespace(ctx);
+        
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            val t: Token = peek(ctx);
+            if t.token_type == TokenType.SEMICOLON {
+                consume(ctx);
+                break;
+            }
+            consume(ctx);
+        }
+        
+        node.node_type = str("Declaration");
+        return node;
+    }
+    
+    if token_type == TokenType.MUT {
+        consume(ctx); // Skip 'mut'
+        skip_whitespace(ctx);
+        
+        if expect(ctx, TokenType.VAL) {
+            consume(ctx);
+            skip_whitespace(ctx);
+        }
+        
+        if !expect(ctx, TokenType.IDENTIFIER) {
+            println "ERROR: Expected identifier after 'mut'";
+            return node;
+        }
+        val var_name: Token = consume(ctx);
+        skip_whitespace(ctx);
+        
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            val t: Token = peek(ctx);
+            if t.token_type == TokenType.SEMICOLON {
+                consume(ctx);
+                break;
+            }
+            consume(ctx);
+        }
+        
+        node.node_type = str("Declaration");
+        return node;
+    }
+    
+    // Handle IDENTIFIER (function calls, assignments, etc.)
+    if token_type == TokenType.IDENTIFIER {
+        val ident_token: Token = consume(ctx);
+        val ident_name: string = ident_token.value;
+        skip_whitespace(ctx);
+        
+        if ctx.pos >= len(ctx.tokens) {
+            return node;
+        }
+        
+        val next_token: Token = peek(ctx);
+        
+        if next_token.token_type == TokenType.LPAREN {
+            consume(ctx);            
+            mut paren_depth: i32 = 1;
+            loop {
+                if ctx.pos >= len(ctx.tokens) {
+                    break;
+                }
+                val t: Token = peek(ctx);
+                if t.token_type == TokenType.LPAREN {
+                    paren_depth = paren_depth + 1;
+                } elif t.token_type == TokenType.RPAREN {
+                    paren_depth = paren_depth - 1;
+                    if paren_depth == 0 {
+                        consume(ctx);
+                        break;
+                    }
+                }
+                consume(ctx);
+            }
+            
+            skip_whitespace(ctx);
+            
+            if expect(ctx, TokenType.SEMICOLON) {
+                consume(ctx);
+            }
+            
+            node.node_type = str("FunctionCall");
+            return node;
+        }
+        
+        if next_token.token_type == TokenType.OPERATOR and equals_c(next_token.value, "=") {
+            consume(ctx); // Skip '='
+            skip_whitespace(ctx);
+            
+            loop {
+                if ctx.pos >= len(ctx.tokens) {
+                    break;
+                }
+                val t: Token = peek(ctx);
+                if t.token_type == TokenType.SEMICOLON {
+                    consume(ctx);
+                    break;
+                }
+                consume(ctx);
+            }
+            
+            node.node_type = str("Assignment");
+            return node;
+        }
+        
+        // Function call without parentheses (Axe syntax sugar): println "hello"
+        // Consume until semicolon
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            val t: Token = peek(ctx);
+            if t.token_type == TokenType.SEMICOLON {
+                consume(ctx);
+                break;
+            }
+            consume(ctx);
+        }
+        
+        node.node_type = str("FunctionCall");
+        return node;
+    }
+    
+    // TODO: Implement remaining token types:
+    // - USE (imports)
+    // - PLATFORM (platform-specific blocks)
+    // - PARALLEL, SINGLE (parallelism)
+    // - UNSAFE (unsafe blocks)
+    // - RAW, OPAQUE, EXTERN (for .axec files)
+    // - CASE, DEFAULT (handled within switch)
+    // - Member access (DOT)
+    // - Array access (LBRACKET)
+    // - Increment/Decrement
+    
+    // For now, skip unknown tokens
+    consume(ctx);
+    return node;
+}
 
 test {
     initialize_all();
