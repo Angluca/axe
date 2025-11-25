@@ -1,0 +1,185 @@
+// Author: Navid Momtahen (C) 2025
+// License: GPL-3.0
+// 
+// Handles the rendering process - converts AST to C code
+
+use structs (ASTNode);
+use std.string;
+use std.io;
+use std.maps;
+
+/// Type mappings from Axe to C
+mut g_type_mappings: StringStringMap;
+
+/// Track reference depths for variables
+mut g_ref_depths: StringIntMap;
+
+/// Track mutability
+mut g_is_mutable: StringBoolMap;
+
+/// Function prefixes for imported modules
+mut g_function_prefixes: StringStringMap;
+
+/// Model name mappings
+mut g_model_names: StringStringMap;
+
+/// Enum names
+mut g_enum_names: StringBoolMap;
+
+/// Generated typedefs to avoid duplicates
+mut g_generated_typedefs: StringBoolMap;
+
+/// Generated functions to avoid duplicates
+mut g_generated_functions: StringBoolMap;
+
+/// Field types for models
+mut g_field_types: StringStringMap;
+
+/// Variable types
+mut g_var_types: StringStringMap;
+
+/// Initialize renderer globals
+def initialize_renderer() {
+    mut arena: Arena = Arena.create(1024 * 1024);
+    
+    g_type_mappings = deref(StringStringMap.create(addr_of(arena), 128));
+    g_ref_depths = deref(StringIntMap.create(addr_of(arena), 128));
+    g_is_mutable = deref(StringBoolMap.create(addr_of(arena), 128));
+    g_function_prefixes = deref(StringStringMap.create(addr_of(arena), 128));
+    g_model_names = deref(StringStringMap.create(addr_of(arena), 128));
+    g_enum_names = deref(StringBoolMap.create(addr_of(arena), 128));
+    g_generated_typedefs = deref(StringBoolMap.create(addr_of(arena), 128));
+    g_generated_functions = deref(StringBoolMap.create(addr_of(arena), 128));
+    g_field_types = deref(StringStringMap.create(addr_of(arena), 128));
+    g_var_types = deref(StringStringMap.create(addr_of(arena), 128));
+    
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("i8"), str("int8_t"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("u8"), str("uint8_t"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("i16"), str("int16_t"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("u16"), str("uint16_t"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("i32"), str("int32_t"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("u32"), str("uint32_t"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("i64"), str("int64_t"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("u64"), str("uint64_t"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("isize"), str("intptr_t"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("usize"), str("uintptr_t"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("f32"), str("float"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("f64"), str("double"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("bool"), str("bool"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("char"), str("char"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("rchar"), str("char*"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("byte"), str("uint8_t"));
+    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("ptrdiff"), str("isize"));
+}
+
+/// Map Axe type to C type
+def map_type(axe_type: string): string {
+    if StringStringMap.contains(addr_of(g_type_mappings), axe_type) {
+        return StringStringMap.get(addr_of(g_type_mappings), axe_type);
+    }
+    return axe_type;
+}
+
+/// Generate C code from AST
+def generate_c(ast: ref ASTNode): string {
+    mut result: string = str("");
+    
+    if ast == nil {
+        return result;
+    }
+    
+    val node_type: string = ast.node_type;
+    
+    if equals_c(node_type, "Program") {
+        result = concat(result, str("#define nil ((void*)0)\n"));
+        result = concat(result, str("#include <stdio.h>\n"));
+        result = concat(result, str("#include <stdbool.h>\n"));
+        result = concat(result, str("#include <stdlib.h>\n"));
+        result = concat(result, str("#include <string.h>\n"));
+        result = concat(result, str("#include <stdint.h>\n"));
+        result = concat(result, str("\n"));
+        
+        if ast.children != nil {
+            val children: ref list(ASTNode) = ast.children;
+            mut i: i32 = 0;
+            loop {
+                if i >= len(deref(children)) {
+                    break;
+                }
+                val child_code: string = generate_c(addr_of(children.data[i]));
+                result = concat(result, child_code);
+                i++;
+            }
+        }
+    }
+    
+    if equals_c(node_type, "Function") {
+        result = concat(result, str("// Function node\n"));
+        result = concat(result, str("void function_placeholder() {}\n\n"));
+    }
+    
+    if equals_c(node_type, "Model") {
+        result = concat(result, str("// Model node\n"));
+        result = concat(result, str("typedef struct {} model_placeholder;\n\n"));
+    }
+    
+    if equals_c(node_type, "Enum") {
+        result = concat(result, str("// Enum node\n"));
+        result = concat(result, str("typedef enum {} enum_placeholder;\n\n"));
+    }
+    
+    return result;
+}
+
+/// Render a function node
+def render_function(func: ref ASTNode): string {
+    mut result: string = str("");
+    
+    // TODO: Implement function rendering
+    result = concat(result, str("void placeholder() {}\n"));
+    
+    return result;
+}
+
+/// Render a model node
+def render_model(modl: ref ASTNode): string {
+    mut result: string = str("");
+    
+    // TODO: Implement model rendering
+    result = concat(result, str("typedef struct {} placeholder;\n"));
+    
+    return result;
+}
+
+/// Render an enum node
+def render_enum(enum_node: ref ASTNode): string {
+    mut result: string = str("");
+    
+    // TODO: Implement enum rendering
+    result = concat(result, str("typedef enum {} placeholder;\n"));
+    
+    return result;
+}
+
+test {
+    initialize_renderer();
+    
+    println "\nTest 1: Initialize renderer";
+    assert StringStringMap.contains(addr_of(g_type_mappings), str("i32")), "Expected i32 type mapping";
+    assert equals_c(map_type(str("i32")), "int32_t"), "Expected i32 to map to int32_t";
+    
+    println "\nTest 2: Map types";
+    assert equals_c(map_type(str("i64")), "int64_t"), "Expected i64 to map to int64_t";
+    assert equals_c(map_type(str("f32")), "float"), "Expected f32 to map to float";
+    assert equals_c(map_type(str("bool")), "bool"), "Expected bool to map to bool";
+    
+    println "\nTest 3: Generate empty program";
+    mut empty_ast: ASTNode;
+    empty_ast.node_type = str("Program");
+    empty_ast.children = nil;
+    val code: string = generate_c(addr_of(empty_ast));
+    assert str_contains_c(code, "#include <stdio.h>"), "Expected stdio.h include";
+    assert str_contains_c(code, "#include <stdint.h>"), "Expected stdint.h include";
+    
+    println "\nAll renderer tests passed!";
+}

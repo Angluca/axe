@@ -33,6 +33,26 @@ macro make_map(keytype_elem: untyped, valtype_elem: untyped, mapname: untyped, k
             valtype.push(map.values, arena, value);
         }
         
+        pub def set(map: ref mapname, arena: ref Arena, key: keytype_elem, value: valtype_elem) {
+            mut i: i32 = 0;
+            val keys: ref keytype = map.keys;
+            mut values: ref valtype = map.values;
+            loop {
+                if i >= keys.len {
+                    break;
+                }
+                unsafe {
+                    if C.memcmp(&(keys*.data[i]), &key, C.sizeof(key)) == 0 {
+                        values*.data[i] = value;
+                        return;
+                    }
+                }
+                i = i + 1;
+            }
+            keytype.push(map.keys, arena, key);
+            valtype.push(map.values, arena, value);
+        }
+        
         pub def get(map: ref mapname, key: keytype_elem): valtype_elem {
             mut i: i32 = 0;
             val keys: ref keytype = map.keys;
@@ -137,6 +157,29 @@ macro make_string_map(valtype_elem: untyped, mapname: untyped, valtype: untyped)
         }
         
         pub def add(map: ref mapname, arena: ref Arena, key: string, value: valtype_elem) {
+            StringList.push(map.keys, arena, key);
+            valtype.push(map.values, arena, value);
+        }
+        
+        pub def set(map: ref mapname, arena: ref Arena, key: string, value: valtype_elem) {
+            mut i: i32 = 0;
+            val keys: ref StringList = map.keys;
+            mut values: ref valtype = map.values;
+            loop {
+                if i >= keys.len {
+                    break;
+                }
+                val current_key: string = keys.data[i];
+                unsafe {
+                    if current_key.len == key.len {
+                        if C.strncmp(current_key.data, key.data, key.len) == 0 {
+                            values*.data[i] = value;
+                            return;
+                        }
+                    }
+                }
+                i = i + 1;
+            }
             StringList.push(map.keys, arena, key);
             valtype.push(map.values, arena, value);
         }
