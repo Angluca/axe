@@ -670,10 +670,9 @@ def parse_type(ctx: ref ParserContext): string {
         return str("");
     }
     
-    // TODO: Check type aliases
-    // if type_name in g_type_aliases {
-    //     type_name = g_type_aliases[type_name]
-    // }
+    if StringStringMap.contains(addr_of(g_type_aliases), type_name) {
+        type_name = StringStringMap.get(addr_of(g_type_aliases), type_name);
+    }
     
     return concat(ref_prefix, type_name);
 }
