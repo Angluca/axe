@@ -188,22 +188,140 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         skip_whitespace(ctx);
         if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.LBRACE {
             ctx.pos++;
-            mut depth: i32 = 1;
+            
             loop {
                 if ctx.pos >= len(ctx.tokens) {
                     break;
                 }
-                if ctx.tokens.data[ctx.pos].token_type == TokenType.LBRACE {
-                    depth = depth + 1;
+                
+                skip_whitespace(ctx);
+                
+                if ctx.pos >= len(ctx.tokens) {
+                    break;
                 }
+                
                 if ctx.tokens.data[ctx.pos].token_type == TokenType.RBRACE {
-                    depth = depth - 1;
-                    if depth == 0 {
-                        ctx.pos++;
-                        break;
-                    }
+                    ctx.pos++;
+                    break;
                 }
-                ctx.pos++;
+                
+                if ctx.tokens.data[ctx.pos].token_type == TokenType.PUB {
+                    ctx.pos++;
+                    skip_whitespace(ctx);
+                }
+                
+                if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.DEF {
+                    ctx.pos++;
+                    skip_whitespace(ctx);
+                    
+                    if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.IDENTIFIER {
+                        ctx.pos++;
+                    }
+                    
+                    if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.LPAREN {
+                        ctx.pos++;
+                        mut paren_depth: i32 = 1;
+                        loop {
+                            if ctx.pos >= len(ctx.tokens) {
+                                break;
+                            }
+                            if ctx.tokens.data[ctx.pos].token_type == TokenType.LPAREN {
+                                paren_depth = paren_depth + 1;
+                            } elif ctx.tokens.data[ctx.pos].token_type == TokenType.RPAREN {
+                                paren_depth = paren_depth - 1;
+                                if paren_depth == 0 {
+                                    ctx.pos++;
+                                    break;
+                                }
+                            }
+                            ctx.pos++;
+                        }
+                    }
+                    
+                    skip_whitespace(ctx);
+                    
+                    if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.COLON {
+                        ctx.pos++;
+                        val return_type: string = parse_type(ctx);
+                    }
+                    
+                    skip_whitespace(ctx);
+                    
+                    if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.LBRACE {
+                        ctx.pos++;
+                        mut depth: i32 = 1;
+                        loop {
+                            if ctx.pos >= len(ctx.tokens) {
+                                break;
+                            }
+                            if ctx.tokens.data[ctx.pos].token_type == TokenType.LBRACE {
+                                depth = depth + 1;
+                            } elif ctx.tokens.data[ctx.pos].token_type == TokenType.RBRACE {
+                                depth = depth - 1;
+                                if depth == 0 {
+                                    ctx.pos++;
+                                    break;
+                                }
+                            }
+                            ctx.pos++;
+                        }
+                    }
+                } elif ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.IDENTIFIER {
+                    val field_name: string = ctx.tokens.data[ctx.pos].value;
+                    ctx.pos++;
+                    
+                    skip_whitespace(ctx);
+                    
+                    if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.COLON {
+                        ctx.pos++;
+                        skip_whitespace(ctx);
+                        
+                        // Parse base type
+                        mut field_type: string = parse_type(ctx);
+                        
+                        loop {
+                            skip_whitespace(ctx);
+                            if ctx.pos >= len(ctx.tokens) {
+                                break;
+                            }
+                            
+                            if ctx.tokens.data[ctx.pos].token_type == TokenType.DOT {
+                                field_type = concat(field_type, str("."));
+                                ctx.pos++;
+                                
+                                skip_whitespace(ctx);
+                                
+                                if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.IDENTIFIER {
+                                    field_type = concat(field_type, ctx.tokens.data[ctx.pos].value);
+                                    ctx.pos++;
+                                } else {
+                                    break;
+                                }
+                            } elif ctx.tokens.data[ctx.pos].token_type == TokenType.SLASH {
+                                field_type = concat(field_type, str("/"));
+                                ctx.pos++;
+                                
+                                skip_whitespace(ctx);
+                                
+                                if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.IDENTIFIER {
+                                    field_type = concat(field_type, ctx.tokens.data[ctx.pos].value);
+                                    ctx.pos++;
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+                        
+                        skip_whitespace(ctx);
+                        if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.SEMICOLON {
+                            ctx.pos++;
+                        }
+                    }
+                } else {
+                    ctx.pos++;
+                }
             }
         }
         return;
