@@ -1686,22 +1686,12 @@ def parse_statement_helper(ctx: ref ParserContext): ASTNode {
         node.data.use_node.module_name = module_name;
         
         // Heap-allocate the imports list so it persists after function returns
-        // Note: We cannot assign the imports list directly because it's a union field
-        // and lists in unions need heap allocation to persist after function return.
+        // The list struct contains data inline, so we just copy the whole struct
         unsafe {
             val list_size: usize = C.sizeof(list(string));
-            val imports_len: i32 = imports.len;
             mut heap_list: ref list(string) = cast[ref list(string)](C.malloc(list_size));
             if heap_list != nil {
-                heap_list.len = imports_len;
-                mut i: i32 = 0;
-                loop {
-                    if i >= imports_len {
-                        break;
-                    }
-                    heap_list.data[i] = imports.data[i];
-                    i = i + 1;
-                }
+                C.memcpy(heap_list, addr_of(imports), list_size);
                 node.data.use_node.imports = heap_list;
             }
         }
@@ -1942,6 +1932,8 @@ test {
     ctx19.tokens = addr_of(tokens19);
     ctx19.pos = 0;
     ctx19.is_axec = false;
+    ctx19.check_entry_point = false;
+    ctx19.current_module = str("");
     mut stmt19: ASTNode = parse_statement_helper(addr_of(ctx19));
     assert equals_c(stmt19.node_type, "Break"), "Expected Break node";
 
@@ -2023,6 +2015,4 @@ test {
     // mut stmt27: ASTNode = parse_statement_helper(addr_of(ctx27));
     // assert equals_c(stmt27.node_type, "Case"), "Expected Case node for default";
     // assert stmt27.data.case_node.is_default == true, "Expected default case";
-
-    println "\nAll tests completed!";
 }

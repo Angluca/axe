@@ -11,7 +11,7 @@ model MacroDef {
 /// AST Node - all node types combined with a union
 pub model ASTNode {
     node_type: string;
-    children: list(ASTNode);
+    children: ref list(ASTNode);
 
     // Union of all possible node-specific data
     // This allows each node to store only the data relevant to its type
@@ -137,7 +137,7 @@ pub model ASTNode {
         
         use_node: model {
             module_name: string;
-            imports: list(string);
+            imports: ref list(string);
             import_all: bool;
         };
         

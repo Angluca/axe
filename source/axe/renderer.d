@@ -962,7 +962,7 @@ string generateC(ASTNode ast)
             foreach (elementType; listElementTypes.byKey())
             {
                 cCode ~= "typedef struct __list_" ~ elementType ~ "_t {\n";
-                cCode ~= "    " ~ elementType ~ " data[999];\n";
+                cCode ~= "    " ~ elementType ~ " data[50];\n";
                 cCode ~= "    int len;\n";
                 cCode ~= "} __list_" ~ elementType ~ "_t;\n";
             }
