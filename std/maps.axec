@@ -232,10 +232,10 @@ macro make_string_map(valtype_elem: untyped, mapname: untyped, valtype: untyped)
     }
 }
 
-make_string_map(i32, StringHashMapInt, IntList);
-make_string_map(f32, StringHashMapFloat, FloatList);
-make_string_map(bool, StringHashMapBool, BoolList);
-make_string_map(string, StringHashMapString, StringList);
+make_string_map(i32, StringIntMap, IntList);
+make_string_map(f32, StringFloatMap, FloatList);
+make_string_map(bool, StringBoolMap, BoolList);
+make_string_map(string, StringStringMap, StringList);
 
 make_map(i32, i32, IntIntMap, IntList, IntList);
 make_map(f32, i32, FloatIntMap, FloatList, IntList);
@@ -264,18 +264,18 @@ test {
     assert(!IntIntMap.contains(int_map, 999), "IntIntMap should not contain key 999");
     assert(IntIntMap.size(int_map) == 3, "IntIntMap size should be 3");
     
-    val str_int_map: ref StringHashMapInt = StringHashMapInt.create(ref_of(arena), 10);
+    val str_int_map: ref StringIntMap = StringIntMap.create(ref_of(arena), 10);
     
-    StringHashMapInt.add(str_int_map, ref_of(arena), str("foo"), 42);
-    StringHashMapInt.add(str_int_map, ref_of(arena), str("bar"), 99);
-    StringHashMapInt.add(str_int_map, ref_of(arena), str("baz"), 77);
+    StringIntMap.add(str_int_map, ref_of(arena), str("foo"), 42);
+    StringIntMap.add(str_int_map, ref_of(arena), str("bar"), 99);
+    StringIntMap.add(str_int_map, ref_of(arena), str("baz"), 77);
     
-    assert(StringHashMapInt.get(str_int_map, str("foo")) == 42, "StringHashMapInt should return 42 for key 'foo'");
-    assert(StringHashMapInt.get(str_int_map, str("bar")) == 99, "StringHashMapInt should return 99 for key 'bar'");
-    assert(StringHashMapInt.get(str_int_map, str("baz")) == 77, "StringHashMapInt should return 77 for key 'baz'");
-    assert(StringHashMapInt.contains(str_int_map, str("foo")), "StringHashMapInt should contain key 'foo'");
-    assert(!StringHashMapInt.contains(str_int_map, str("missing")), "StringHashMapInt should not contain key 'missing'");
-    assert(StringHashMapInt.size(str_int_map) == 3, "StringHashMapInt size should be 3");
+    assert(StringIntMap.get(str_int_map, str("foo")) == 42, "StringIntMap should return 42 for key 'foo'");
+    assert(StringIntMap.get(str_int_map, str("bar")) == 99, "StringIntMap should return 99 for key 'bar'");
+    assert(StringIntMap.get(str_int_map, str("baz")) == 77, "StringIntMap should return 77 for key 'baz'");
+    assert(StringIntMap.contains(str_int_map, str("foo")), "StringIntMap should contain key 'foo'");
+    assert(!StringIntMap.contains(str_int_map, str("missing")), "StringIntMap should not contain key 'missing'");
+    assert(StringIntMap.size(str_int_map) == 3, "StringIntMap size should be 3");
     
     val float_map: ref FloatIntMap = FloatIntMap.create(ref_of(arena), 10);
     

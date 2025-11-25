@@ -18,15 +18,15 @@ use std.maps;
 use std.arena;
 use std.errors;
 
-mut g_type_aliases: StringHashMapString;
-mut g_imported_modules: StringHashMapBool;
-mut g_list_of_types: StringHashMapString;
+mut g_type_aliases: StringStringMap;
+mut g_imported_modules: StringBoolMap;
+mut g_list_of_types: StringStringMap;
 
 def initialize_all() {
     mut arena: Arena = Arena.create(1024 * 1024);
-    g_type_aliases = deref(StringHashMapString.create(ref_of(arena), 128));
-    g_imported_modules = deref(StringHashMapBool.create(ref_of(arena), 128));
-    g_list_of_types = deref(StringHashMapString.create(ref_of(arena), 128));
+    g_type_aliases = deref(StringStringMap.create(ref_of(arena), 128));
+    g_imported_modules = deref(StringBoolMap.create(ref_of(arena), 128));
+    g_list_of_types = deref(StringStringMap.create(ref_of(arena), 128));
 }
 
 /// Parser context - holds state during parsing
@@ -41,7 +41,7 @@ model ParserContext {
 
 /// Scope tracking for variable declarations
 model Scope {
-    variables: StringHashMapString;
+    variables: StringStringMap;
     parent: ref Scope;
 }
 
@@ -58,9 +58,9 @@ pub def parse(tokens: list(Token), is_axec: bool, check_entry_point: bool, curre
     ast.node_type = str("Program");
     
     // Clear global maps
-    StringHashMapString.clear(addr_of(g_type_aliases));
-    StringHashMapBool.clear(addr_of(g_imported_modules));
-    StringHashMapString.clear(addr_of(g_list_of_types));
+    StringStringMap.clear(addr_of(g_type_aliases));
+    StringBoolMap.clear(addr_of(g_imported_modules));
+    StringStringMap.clear(addr_of(g_list_of_types));
     
     if str_len(current_module) > 0 {
         // g_imported_modules[current_module] = true
@@ -1976,7 +1976,7 @@ test {
     assert stmt24.data.use_node.import_all == true, "Expected import_all to be true";
 
     println "\nTest 25: parse_statement_helper with use selective imports";
-    mut tokens25: list(Token) = lex(str("use std.maps (HashMap, StringHashMap);"));
+    mut tokens25: list(Token) = lex(str("use std.maps (StringIntMap, StringStringMap);"));
     mut ctx25: ParserContext;
     ctx25.tokens = addr_of(tokens25);
     ctx25.pos = 0;
