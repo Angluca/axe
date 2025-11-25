@@ -49,6 +49,7 @@ private int[][string] g_functionParamReordering;
 private MacroNode[string] g_macros;
 private bool[string] g_pointerFields;
 private string[string] g_listOfTypes;
+private bool[string] g_listElementTypes;
 private string[string] g_fieldTypes;
 private string[string] g_varType;
 private string[string] g_isPointerVar;
@@ -704,8 +705,9 @@ string generateC(ASTNode ast)
             }
         }
 
-        // Generate len() macro that accesses the len field
-        cCode ~= "#define len(x) ((x)->len)\n";
+        cCode ~= "#define len_ptr(x) ((x)->len)\n";  // For pointer to list
+        cCode ~= "#define len_v(x) ((&(x))->len)\n";  // For list value
+        cCode ~= "#define len(x) len_v(x)\n";  // Default to value semantics
 
         foreach (child; ast.children)
         {
@@ -729,7 +731,37 @@ string generateC(ASTNode ast)
             }
         }
 
-        bool[string] listElementTypes;
+        g_listElementTypes.clear();
+        
+        /// Recursively scan for list types in all declarations
+        void scanForListTypes(ASTNode node)
+        {
+            if (node.nodeType == "Declaration")
+            {
+                auto declNode = cast(DeclarationNode) node;
+                if (declNode.typeName.length > 0 && declNode.typeName.canFind("[999]"))
+                {
+                    auto bracketPos = declNode.typeName.indexOf("[999]");
+                    if (bracketPos > 0)
+                    {
+                        string elementType = declNode.typeName[0 .. bracketPos];
+                        string mappedElementType = mapAxeTypeToC(elementType);
+                        g_listElementTypes[mappedElementType] = true;
+                        debugWriteln("DEBUG: Scanned list type in declaration: ", mappedElementType);
+                    }
+                }
+            }
+            
+            foreach (childNode; node.children)
+            {
+                scanForListTypes(childNode);
+            }
+        }
+        
+        foreach (child; ast.children)
+        {
+            scanForListTypes(child);
+        }
 
         foreach (child; ast.children)
         {
@@ -749,7 +781,7 @@ string generateC(ASTNode ast)
                         elementType = elementType[4 .. $].strip();
                     }
                     string cElementType = mapAxeTypeToC(elementType);
-                    listElementTypes[cElementType] = true;
+                    g_listElementTypes[cElementType] = true;
                 }
             }
             else if (child.nodeType == "Model")
@@ -768,7 +800,7 @@ string generateC(ASTNode ast)
                             elementType = elementType[4 .. $].strip();
                         }
                         string cElementType = mapAxeTypeToC(elementType);
-                        listElementTypes[cElementType] = true;
+                        g_listElementTypes[cElementType] = true;
                     }
 
                     if (field.isUnion)
@@ -784,7 +816,7 @@ string generateC(ASTNode ast)
                                     innerElementType = innerElementType[4 .. $].strip();
                                 }
                                 string innerCElementType = mapAxeTypeToC(innerElementType);
-                                listElementTypes[innerCElementType] = true;
+                                g_listElementTypes[innerCElementType] = true;
                             }
 
                             if (inner.type == "model" && inner.isUnion)
@@ -800,7 +832,7 @@ string generateC(ASTNode ast)
                                             nestedElementType = nestedElementType[4 .. $].strip();
                                         }
                                         string nestedCElementType = mapAxeTypeToC(nestedElementType);
-                                        listElementTypes[nestedCElementType] = true;
+                                        g_listElementTypes[nestedCElementType] = true;
                                     }
                                 }
                             }
@@ -945,7 +977,7 @@ string generateC(ASTNode ast)
             }
 
             // Generate forward declarations for list types (so models can use pointers to them)
-            foreach (elementType; listElementTypes.byKey())
+            foreach (elementType; g_listElementTypes.byKey())
             {
                 cCode ~= "typedef struct __list_" ~ elementType ~ "_t __list_" ~ elementType ~ "_t;\n";
             }
@@ -959,12 +991,34 @@ string generateC(ASTNode ast)
 
             // Generate list typedefs AFTER all models are fully defined
             // (arrays need complete types, not just forward declarations)
-            foreach (elementType; listElementTypes.byKey())
+            foreach (elementType; g_listElementTypes.byKey())
             {
                 cCode ~= "typedef struct __list_" ~ elementType ~ "_t {\n";
-                cCode ~= "    " ~ elementType ~ " data[50];\n";
+                cCode ~= "    " ~ elementType ~ "* data;\n";
                 cCode ~= "    int len;\n";
-                cCode ~= "} __list_" ~ elementType ~ "_t;\n";
+                cCode ~= "    int capacity;\n";
+                cCode ~= "} __list_" ~ elementType ~ "_t;\n\n";
+                
+                // List initialization function
+                cCode ~= "static inline __list_" ~ elementType ~ "_t __list_" ~ elementType ~ "_init(void) {\n";
+                cCode ~= "    __list_" ~ elementType ~ "_t list;\n";
+                cCode ~= "    list.data = NULL;\n";
+                cCode ~= "    list.len = 0;\n";
+                cCode ~= "    list.capacity = 0;\n";
+                cCode ~= "    return list;\n";
+                cCode ~= "}\n\n";
+                
+                // List push function with automatic growth
+                cCode ~= "static inline void __list_" ~ elementType ~ "_push(__list_" ~ elementType ~ "_t* list, " ~ elementType ~ " item) {\n";
+                cCode ~= "    if (list->len >= list->capacity) {\n";
+                cCode ~= "        int new_capacity = list->capacity == 0 ? 8 : list->capacity * 2;\n";
+                cCode ~= "        " ~ elementType ~ "* new_data = (" ~ elementType ~ "*)realloc(list->data, new_capacity * sizeof(" ~ elementType ~ "));\n";
+                cCode ~= "        if (new_data == NULL) { fprintf(stderr, \"Out of memory\\n\"); exit(1); }\n";
+                cCode ~= "        list->data = new_data;\n";
+                cCode ~= "        list->capacity = new_capacity;\n";
+                cCode ~= "    }\n";
+                cCode ~= "    list->data[list->len++] = item;\n";
+                cCode ~= "}\n\n";
             }
 
             auto dtCName = canonicalModelCName("DateTime");
@@ -1239,8 +1293,8 @@ string generateC(ASTNode ast)
                 if (varName in g_listOfTypes)
                 {
                     string processedValue = processExpression(value);
-                    cCode ~= varName ~ ".data[" ~ varName ~ ".len] = " ~ processedValue ~ ";\n";
-                    cCode ~= varName ~ ".len++;\n";
+                    string elementType = g_listOfTypes[varName];
+                    cCode ~= "__list_" ~ elementType ~ "_push(&" ~ varName ~ ", " ~ processedValue ~ ");\n";
                     debugWriteln("DEBUG: Generated append code for '", varName, "'");
                     break;
                 }
@@ -1607,10 +1661,12 @@ string generateC(ASTNode ast)
                 string elementType = declNode.typeName[0 .. bracketPos999];
                 string mappedElementType = mapAxeTypeToC(elementType);
                 g_listOfTypes[declNode.name] = mappedElementType;
+                g_listElementTypes[mappedElementType] = true;
                 listStructName = "__list_" ~ mappedElementType.replace("*", "_ptr").replace(" ", "_") ~ "_t";
                 isListOfType = true;
                 debugWriteln("DEBUG renderer: Detected list variable '", declNode.name,
                     "' with element type '", elementType, "' -> '", mappedElementType, "'");
+                debugWriteln("DEBUG renderer: Registered list element type: '", mappedElementType, "'");
             }
         }
 
@@ -1737,12 +1793,15 @@ string generateC(ASTNode ast)
         }
         else
         {
-            cCode ~= decl ~ ";\n";
-
             if (isListOfType)
             {
-                cCode ~= declNode.name ~ ".len = 0;\n";
-                debugWriteln("DEBUG renderer: Initialized list struct '", declNode.name, "' with len=0");
+                string elementType = g_listOfTypes[declNode.name];
+                cCode ~= decl ~ " = __list_" ~ elementType ~ "_init();\n";
+                debugWriteln("DEBUG renderer: Initialized list struct '", declNode.name, "' with init function");
+            }
+            else
+            {
+                cCode ~= decl ~ ";\n";
             }
         }
 
@@ -3217,6 +3276,57 @@ string processExpression(string expr, string context = "")
         string cType = processTypeForCast(castType);
         
         string replacement = "(" ~ cType ~ ")(" ~ castValue ~ ")";
+        expr = expr.replace(fullMatch, replacement);
+    }
+
+    auto lenMatches = matchAll(expr, regex(r"\blen\s*\(\s*([^)]+)\s*\)"));
+    foreach (match; lenMatches)
+    {
+        string fullMatch = match[0];
+        string lenArg = match[1].strip();
+        bool isPointer = false;
+        
+        if (lenArg.canFind("->"))
+        {
+            isPointer = true;
+        }
+        else if (lenArg.canFind("."))
+        {
+            auto lastDot = lenArg.lastIndexOf('.');
+            if (lastDot >= 0)
+            {
+                string fieldName = lenArg[lastDot + 1 .. $].strip();
+                auto bracketPos = fieldName.indexOf('[');
+                if (bracketPos >= 0)
+                    fieldName = fieldName[0 .. bracketPos];
+                fieldName = fieldName.strip();
+                
+                foreach (modelName; g_modelNames.byValue)
+                {
+                    string fullFieldKey = modelName ~ "." ~ fieldName;
+                    if (fullFieldKey in g_pointerFields && g_pointerFields[fullFieldKey])
+                    {
+                        isPointer = true;
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            string baseVar = lenArg;
+            auto bracketPos = baseVar.indexOf('[');
+            if (bracketPos >= 0)
+                baseVar = baseVar[0 .. bracketPos];
+            baseVar = baseVar.strip();
+            
+            if (baseVar in g_isPointerVar && g_isPointerVar[baseVar] == "true")
+            {
+                isPointer = true;
+            }
+        }
+        
+        string replacement = isPointer ? ("len_ptr(" ~ lenArg ~ ")") : ("len_v(" ~ lenArg ~ ")");
         expr = expr.replace(fullMatch, replacement);
     }
 
@@ -6082,7 +6192,7 @@ unittest
         writeln("list type test:");
         writeln(cCode);
 
-        assert(cCode.canFind("__list_int32_t_t lst;"), "Should declare list(i32) as int32_t array");
+        assert(cCode.canFind("__list_int32_t_t lst = __list_int32_t_init();"), "Should declare list(i32) as int32_t array");
     }
 
     {
