@@ -95,7 +95,7 @@
         },
         {
           "name": "storage.modifier.axe",
-          "match": "\\b(ref|ref_of|addr_of)\\b"
+          "match": "\\b(ref|ref_of|addr_of|cast)\\b"
         }
       ]
     },
