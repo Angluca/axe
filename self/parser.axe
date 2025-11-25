@@ -1684,8 +1684,26 @@ def parse_statement_helper(ctx: ref ParserContext): ASTNode {
         
         node.node_type = str("Use");
         node.data.use_node.module_name = module_name;
-
-        // TODO: imports list assignment should go here.
+        
+        // Heap-allocate the imports list so it persists after function returns
+        // Note: We cannot assign the imports list directly because it's a union field
+        // and lists in unions need heap allocation to persist after function return.
+        unsafe {
+            // Use sizeof on the actual struct type, not the Axe list syntax
+            val list_size: usize = C.sizeof(__list_std__string__string_t);
+            val imports_len: i32 = imports.len;
+            mut heap_list: ref list(string) = cast[ref list(string)](C.malloc(list_size));
+            heap_list.len = imports_len;
+            mut i: i32 = 0;
+            loop {
+                if i >= imports_len {
+                    break;
+                }
+                heap_list.data[i] = imports.data[i];
+                i = i + 1;
+            }
+            node.data.use_node.imports = heap_list;
+        }
         
         node.data.use_node.import_all = false;
         return node;

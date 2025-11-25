@@ -92,6 +92,7 @@ enum TokenType
     STAR_DOT,
     PUB,
     MULTILINE_STR,
+    CAST,
 }
 
 /** 

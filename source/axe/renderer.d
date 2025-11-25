@@ -1633,6 +1633,12 @@ string generateC(ASTNode ast)
             baseType = "int";
         }
 
+        if (isListOfType)
+        {
+            baseType = listStructName;
+            arrayPart = "";
+        }
+
         for (int i = 0; i < declNode.refDepth; i++)
             baseType ~= "*";
 
@@ -1640,12 +1646,6 @@ string generateC(ASTNode ast)
         g_isPointerVar[declNode.name] = declNode.refDepth > 0 ? "true" : "false";
         if (declNode.refDepth > 0)
             debugWriteln("DEBUG set g_isPointerVar['", declNode.name, "'] = true");
-
-        if (isListOfType)
-        {
-            baseType = listStructName;
-            arrayPart = "";
-        }
 
         string type = declNode.isMutable ? baseType : "const " ~ baseType;
         string decl = type ~ " " ~ declNode.name ~ arrayPart;
@@ -3163,6 +3163,35 @@ private string replaceKeywordOutsideStrings(string input, string keyword, string
 }
 
 /**
+ * Convert Axe type syntax to C type for cast expressions
+ */
+string processTypeForCast(string axeType)
+{
+    axeType = axeType.strip();
+    
+    // Handle ref prefix
+    bool isRef = false;
+    if (axeType.startsWith("ref "))
+    {
+        isRef = true;
+        axeType = axeType[4 .. $].strip();
+    }
+    
+    // Handle list(T) syntax
+    if (axeType.startsWith("list(") && axeType.endsWith(")"))
+    {
+        string elementType = axeType[5 .. $ - 1].strip();
+        string cElementType = mapAxeTypeToC(elementType);
+        string listTypeName = "__list_" ~ cElementType ~ "_t";
+        return isRef ? listTypeName ~ "*" : listTypeName;
+    }
+    
+    // Map basic types
+    string cType = mapAxeTypeToC(axeType);
+    return isRef ? cType ~ "*" : cType;
+}
+
+/**
  * Function to process arithmetic expressions
  */
 string processExpression(string expr, string context = "")
@@ -3171,9 +3200,24 @@ string processExpression(string expr, string context = "")
 
     import std.string : replace;
     import std.algorithm : canFind;
-    import std.regex : replaceAll, regex;
+    import std.regex : replaceAll, regex, matchAll;
 
     expr = expr.replaceAll(regex(r"\bC\s*\.\s*"), "");
+
+    // Handle cast[Type](value) syntax -> (Type)(value)
+    auto castMatches = matchAll(expr, regex(r"\bcast\s*\[\s*([^\]]+)\s*\]\s*\(\s*([^)]+)\s*\)"));
+    foreach (match; castMatches)
+    {
+        string fullMatch = match[0];
+        string castType = match[1].strip();
+        string castValue = match[2].strip();
+        
+        // Process the type to handle 'ref list(string)' -> '__list_std__string__string_t*'
+        string cType = processTypeForCast(castType);
+        
+        string replacement = "(" ~ cType ~ ")(" ~ castValue ~ ")";
+        expr = expr.replace(fullMatch, replacement);
+    }
 
     // Replace model names outside of string literals only
     foreach (typeName, prefixedName; g_modelNames)

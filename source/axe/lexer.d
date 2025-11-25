@@ -573,6 +573,12 @@ Token[] lex(string source)
                 tokens ~= Token(TokenType.POSIX, "posix");
                 pos += 5;
             }
+            else if (pos + 4 <= source.length && source[pos .. pos + 4] == "cast" &&
+                (pos + 4 >= source.length || !(source[pos + 4].isAlphaNum || source[pos + 4] == '_')))
+            {
+                tokens ~= Token(TokenType.CAST, "cast");
+                pos += 4;
+            }
             else if (pos + 4 <= source.length && source[pos .. pos + 4] == "loop")
             {
                 tokens ~= Token(TokenType.LOOP, "loop");
