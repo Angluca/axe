@@ -60,6 +60,13 @@ private bool[string] g_generatedFunctions;
 private bool[string] g_enumNames;
 private string[string] g_enumValueToEnumName;
 private bool g_inTopLevel = false;
+private string g_currentModuleName = "";
+private bool[string] g_localFunctions;
+
+void setCurrentModuleName(string moduleName)
+{
+    g_currentModuleName = moduleName.replace(".", "__").replace("/", "__");
+}
 
 string canonicalModelCName(string name)
 {
@@ -457,7 +464,9 @@ string generateC(ASTNode ast)
         g_generatedFunctions.clear();
         g_enumNames.clear();
         g_enumValueToEnumName.clear();
+        g_localFunctions.clear();
 
+        // Important: g_currentModuleName is set by setCurrentModuleName called from builds.d
         string[] globalExternalHeaders;
         string[][string] platformExternalHeaders;
         collectExternalImports(ast, globalExternalHeaders, platformExternalHeaders);
@@ -1190,6 +1199,7 @@ string generateC(ASTNode ast)
     case "Function":
         auto funcNode = cast(FunctionNode) ast;
         string funcName = funcNode.name;
+        string originalFuncName = funcName;
 
         if (funcName != "main" && funcName in g_functionPrefixes)
         {
@@ -1212,6 +1222,18 @@ string generateC(ASTNode ast)
         }
 
         g_generatedFunctions[funcName] = true;
+
+        // Track that this function is local to this module (not imported)
+        // Only track functions that don't have module prefixes (no "__" in name)
+        // Imported functions like "std__errors__panic" should not be tracked as local
+
+        import std.string : indexOf;
+
+        if (originalFuncName.indexOf("__") == -1)
+        {
+            g_localFunctions[originalFuncName] = true;
+            debugWriteln("DEBUG: Tracked local function '", originalFuncName, "'");
+        }
         g_isPointerVar.clear();
         g_varType.clear();
 
@@ -1333,6 +1355,11 @@ string generateC(ASTNode ast)
         {
             debugWriteln("DEBUG: Found callName '", callName, "' in g_functionPrefixes, mapping to '", g_functionPrefixes[callName], "'");
             callName = g_functionPrefixes[callName];
+        }
+        else if (callName in g_localFunctions && g_currentModuleName.length > 0)
+        {
+            callName = g_currentModuleName ~ "__" ~ callName;
+            debugWriteln("DEBUG: Prefixing local function '", callName, "' with module name");
         }
         else
         {

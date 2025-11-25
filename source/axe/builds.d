@@ -447,6 +447,8 @@ bool handleMachineArgs(string[] args)
         }
         else
         {
+            setCurrentModuleName(moduleName);
+            
             string cCode = "";
             if (args.canFind("--release"))
             {

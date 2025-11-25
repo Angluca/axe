@@ -80,6 +80,45 @@ def map_type(axe_type: string): string {
     return axe_type;
 }
 
+/// Process parameter type (handle ref, mut, pointers, etc.)
+def process_parameter_type(param_type: string): string {
+    mut result: string = param_type;
+    
+    if has_prefix(result, str("mut ")) {
+        result = strip(substr(result, 4, str_len(result) - 4));
+    }
+    
+    if has_prefix(result, str("ref ")) {
+        val base_type: string = strip(substr(result, 4, str_len(result) - 4));
+        val mapped_base: string = map_type(base_type);
+        return concat(mapped_base, str("*"));
+    }
+    
+    if has_suffix(result, str("*")) {
+        val base_type: string = strip(substring_se(result, 0, str_len(result) - 1));
+        val mapped_base: string = map_type(base_type);
+        return concat(mapped_base, str("*"));
+    }
+    
+    if has_prefix(result, str("list(")) and has_suffix(result, str(")")) {
+        val element_type_start: i32 = 5;
+        val element_type_end: i32 = str_len(result) - 1;
+        val element_type: string = substring_se(result, element_type_start, element_type_end);
+        val mapped_element: string = map_type(element_type);
+        
+        mut list_struct: string = str("__list_");
+        list_struct = concat(list_struct, mapped_element);
+        list_struct = concat(list_struct, str("_t"));
+        return list_struct;
+    }
+    
+    if StringStringMap.contains(addr_of(g_model_names), result) {
+        return StringStringMap.get(addr_of(g_model_names), result);
+    }
+    
+    return map_type(result);
+}
+
 /// Generate C code from AST
 def generate_c(ast: ref ASTNode): string {
     mut result: string = str("");
@@ -173,8 +212,19 @@ def generate_c(ast: ref ASTNode): string {
                 }
                 
                 val param: string = params.data[param_idx];
-                // TODO: Parse and process parameters properly
-                result = concat(result, param);
+                val colon_pos: i32 = find_char_from(param, ':', 0);
+
+                if colon_pos >= 0 {
+                    val param_name: string = strip(substring_se(param, 0, colon_pos));
+                    val param_type: string = strip(substr(param, colon_pos + 1, str_len(param) - colon_pos - 1));
+                    val processed_type: string = process_parameter_type(param_type);
+                    
+                    result = concat(result, processed_type);
+                    result = concat(result, str(" "));
+                    result = concat(result, param_name);
+                } else {
+                    result = concat(result, param);
+                }
                 
                 param_idx++;
             }
@@ -330,11 +380,13 @@ def generate_c(ast: ref ASTNode): string {
     if equals_c(node_type, "Model") {
         result = concat(result, str("// Model node\n"));
         result = concat(result, str("typedef struct {} model_placeholder;\n\n"));
+        return result;
     }
     
     if equals_c(node_type, "Enum") {
         result = concat(result, str("// Enum node\n"));
         result = concat(result, str("typedef enum {} enum_placeholder;\n\n"));
+        return result;
     }
     
     return result;
@@ -412,4 +464,12 @@ test {
     simple_func.children = nil;
     val simple_code: string = generate_c(addr_of(simple_func));
     assert str_contains_c(simple_code, "int32_t add"), "Expected int32_t add function";
+    
+    println "\nTest 6: Process parameter types";
+    assert equals_c(process_parameter_type(str("i32")), "int32_t"), "Expected i32 -> int32_t";
+    assert equals_c(process_parameter_type(str("ref i32")), "int32_t*"), "Expected ref i32 -> int32_t*";
+    assert equals_c(process_parameter_type(str("mut i32")), "int32_t"), "Expected mut i32 -> int32_t";
+    assert equals_c(process_parameter_type(str("i32*")), "int32_t*"), "Expected i32* -> int32_t*";
+    
+    println "\nAll renderer tests passed!";
 }
