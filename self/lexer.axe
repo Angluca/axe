@@ -132,7 +132,6 @@ def str_equals(s1: string, s2: ref char, start: i32, len: i32, source_len: i32):
     return true;
 }
 
-
 pub def lex(source: string): list(Token) {
     mut tokens: list(Token);
     mut pos: i32 = 0;
