@@ -1384,6 +1384,26 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 break;
             }
             if t.token_type != TokenType.WHITESPACE and t.token_type != TokenType.NEWLINE {
+
+                // If we see a VAL token immediately followed by an IDENTIFIER token, it
+                // may be an identifier like 'value' that was split into 'val' + 'ue'.
+                //
+                // In that case, concatenate the two pieces without an extra space so
+                // the condition string becomes "value" instead of "val ue".
+
+                if t.token_type == TokenType.VAL and ctx.pos + 1 < len(ctx.tokens) {
+                    val next_tok: Token = ctx.tokens.data[ctx.pos + 1];
+                    if next_tok.token_type == TokenType.IDENTIFIER {
+                        mut merged: string = t.value;
+                        merged = concat(merged, next_tok.value);
+                        condition = concat(condition, merged);
+                        condition = concat(condition, str(" "));
+                        consume(ctx);
+                        consume(ctx);
+                        continue;
+                    }
+                }
+
                 condition = concat(condition, t.value);
                 condition = concat(condition, str(" "));
             }

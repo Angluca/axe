@@ -695,13 +695,30 @@ pub def lex(source: string): list(Token) {
                 append(tokens, create_token(TokenType.IDENTIFIER, substring_scse(source, start, pos)));
             }
         } elif ch == 'v' {
-            if str_equals(source, "val", pos, 3, source_len) and check_boundary(source, pos + 3, source_len) {
+            
+            // Match 'val' keyword only at word boundaries so we don't split identifiers
+            // like 'value' into 'val' + 'ue'. We require both:
+            //
+            //   - preceding char is not an identifier char (or we're at start)
+            //   - following char is not an identifier char (via check_boundary)
+
+            mut at_word_start: bool = false;
+            if pos == 0 {
+                at_word_start = true;
+            } else {
+                val prev_ch: char = get_char(source, pos - 1);
+                if !is_ident_char(prev_ch) {
+                    at_word_start = true;
+                }
+            }
+
+            if at_word_start and str_equals(source, "val", pos, 3, source_len) and check_boundary(source, pos + 3, source_len) {
                 append(tokens, create_token(TokenType.VAL, "val"));
                 pos = pos + 3;
             } else {
                 mut start: i32 = pos;
                 loop {
-                    if pos >= source_len or !is_alphanum(get_char(source, pos)) {
+                    if pos >= source_len or !is_ident_char(get_char(source, pos)) {
                         break;
                     }
                     pos = pos + 1;

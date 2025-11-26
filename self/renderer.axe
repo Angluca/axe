@@ -731,10 +731,10 @@ pub def generate_c(ast: ref ASTNode): string {
     
     if equals_c(node_type, "If") {
         val condition: string = ast.data.if_node.condition;
-        val processed_cond: string = process_expression(condition);
-        
+        mut trimmed_cond: string = strip(condition);
+
         result = concat(result, str("if ("));
-        result = concat(result, processed_cond);
+        result = concat(result, trimmed_cond);
         result = concat(result, str(") {\n"));
         
         if ast.children != nil {
