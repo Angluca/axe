@@ -25,7 +25,7 @@ mut g_imported_modules: StringBoolMap;
 mut g_list_of_types: StringStringMap;
 
 /// Initialize the state-related globals
-def initialize_all() {
+pub def initialize_all() {
     mut arena: Arena = Arena.create(1024 * 1024);
     g_type_aliases = deref(StringStringMap.create(ref_of(arena), 128));
     g_imported_modules = deref(StringBoolMap.create(ref_of(arena), 128));
