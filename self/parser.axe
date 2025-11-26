@@ -2225,28 +2225,28 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             enforce_raw(false, "ERROR: Expected '{' after 'unsafe'");
             return node;
         }
-        consume(ctx);
+        consume(ctx); // Skip '{'
         
-        // Skip body (in future, parse statements recursively)
-        mut depth: i32 = 1;
+        mut body: list(ASTNode);
+        
         loop {
+            skip_whitespace(ctx);
             if ctx.pos >= len(ctx.tokens) {
                 break;
             }
-            val t: Token = peek(ctx);
-            if t.token_type == TokenType.LBRACE {
-                depth = depth + 1;
-            } elif t.token_type == TokenType.RBRACE {
-                depth = depth - 1;
-                if depth == 0 {
-                    consume(ctx);
-                    break;
-                }
+            if ctx.tokens.data[ctx.pos].token_type == TokenType.RBRACE {
+                consume(ctx); // Skip '}'
+                break;
             }
-            consume(ctx);
+            
+            mut stmt: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+            if str_len(stmt.node_type) > 0 {
+                append(body, stmt);
+            }
         }
         
         node.node_type = str("Unsafe");
+        node.data.unsafe_node.body = addr_of(body);
         return node;
     }
     
