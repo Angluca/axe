@@ -51,7 +51,12 @@ def compile_file(filename: string, is_axec: bool): bool {
     
     println "4 | Imports";
     reset_processed_modules();
-    ast = process_imports(addr_of(ast));
+
+    // TODO: File-based module naming can be added later to mirror the D compiler more closely.
+    
+    val base_dir: string = str(".");
+    val module_name: string = str("");
+    ast = process_imports(addr_of(ast), base_dir, is_axec, filename, true, module_name);
 
     println "5 | Collect Decls (TODO)";
     println "6 | Collect Models (TODO)";
