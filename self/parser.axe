@@ -2367,7 +2367,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         }
         
         // Function call without parentheses (Axe syntax sugar): e.g. println "hello"
-        // Consume until semicolon
+        mut args_str_sugar: string = str("");
         loop {
             if ctx.pos >= len(ctx.tokens) {
                 break;
@@ -2377,10 +2377,41 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 consume(ctx);
                 break;
             }
+
+            if t.token_type == TokenType.STR {
+                args_str_sugar = concat(args_str_sugar, str("\""));
+                args_str_sugar = concat(args_str_sugar, t.value);
+                args_str_sugar = concat(args_str_sugar, str("\""));
+            } elif t.token_type == TokenType.CHAR {
+                args_str_sugar = concat(args_str_sugar, str("'"));
+                args_str_sugar = concat(args_str_sugar, t.value);
+                args_str_sugar = concat(args_str_sugar, str("'"));
+            } elif t.token_type == TokenType.WHITESPACE or t.token_type == TokenType.NEWLINE {
+                args_str_sugar = concat(args_str_sugar, str(" "));
+            } else {
+                args_str_sugar = concat(args_str_sugar, t.value);
+            }
             consume(ctx);
         }
-        
+
         node.node_type = str("FunctionCall");
+        node.data.func_call.function_name = ident_name;
+
+        mut sugar_args_list: list(string);
+        val trimmed_sugar: string = strip(args_str_sugar);
+        if str_len(trimmed_sugar) > 0 {
+            append(sugar_args_list, trimmed_sugar);
+        }
+
+        unsafe {
+            val list_size_s: usize = C.sizeof(list(string));
+            mut heap_list_s: ref list(string) = cast[ref list(string)](C.malloc(list_size_s));
+            if heap_list_s != nil {
+                C.memcpy(heap_list_s, addr_of(sugar_args_list), list_size_s);
+                node.data.func_call.args = heap_list_s;
+            }
+        }
+
         return node;
     }
     

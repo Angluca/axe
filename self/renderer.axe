@@ -73,6 +73,55 @@ pub def initialize_renderer() {
     StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("ptrdiff"), str("isize"));
 }
 
+def build_function_prefixes(ast: ref ASTNode) {
+    StringStringMap.clear(addr_of(g_function_prefixes));
+
+    if ast == nil or ast.children == nil {
+        return;
+    }
+
+    val children: ref list(ASTNode) = ast.children;
+    mut i: i32 = 0;
+    loop {
+        if i >= len(deref(children)) {
+            break;
+        }
+
+        val child: ref ASTNode = addr_of(children.data[i]);
+        if equals_c(child.node_type, "Function") {
+            val full_name: string = child.data.function.name;
+
+            mut last_sep: i32 = -1;
+            mut j: i32 = 0;
+            val n: i32 = str_len(full_name);
+            loop {
+                if j + 1 >= n {
+                    break;
+                }
+                val c1: char = get_char(full_name, j);
+                val c2: char = get_char(full_name, j + 1);
+                if c1 == '_' and c2 == '_' {
+                    last_sep = j;
+                }
+                j = j + 1;
+            }
+
+            if last_sep >= 0 and last_sep + 2 < n {
+                val short_name: string = substring_se(full_name, last_sep + 2, n);
+
+                if str_len(short_name) > 0 {
+                    if !StringStringMap.contains(addr_of(g_function_prefixes), short_name) {
+                        mut arena: Arena = Arena.create(256);
+                        StringStringMap.set(addr_of(g_function_prefixes), addr_of(arena), short_name, full_name);
+                    }
+                }
+            }
+        }
+
+        i = i + 1;
+    }
+}
+
 /// Map Axe type to C type
 def map_type(axe_type: string): string {
     if StringStringMap.contains(addr_of(g_type_mappings), axe_type) {
@@ -329,10 +378,11 @@ pub def generate_c(ast: ref ASTNode): string {
         result = concat(result, str("#include <stdint.h>\n"));
         result = concat(result, str("\n"));
         
+        build_function_prefixes(ast);
+
         if ast.children != nil {
             val children: ref list(ASTNode) = ast.children;
             
-            // First, hoist overload macros so user code can use them
             mut i: i32 = 0;
             loop {
                 if i >= len(deref(children)) {
@@ -347,7 +397,22 @@ pub def generate_c(ast: ref ASTNode): string {
                 i = i + 1;
             }
 
-            // Then render all other top-level nodes (functions, models, etc.)
+            i = 0;
+            loop {
+                if i >= len(deref(children)) {
+                    break;
+                }
+                val fn_child: ref ASTNode = addr_of(children.data[i]);
+                if equals_c(fn_child.node_type, "Function") {
+                    val fn_name: string = fn_child.data.function.name;
+                    if !equals_c(fn_name, "main") {
+                        val fn_code: string = generate_c(fn_child);
+                        result = concat(result, fn_code);
+                    }
+                }
+                i = i + 1;
+            }
+
             i = 0;
             loop {
                 if i >= len(deref(children)) {
@@ -705,8 +770,13 @@ pub def generate_c(ast: ref ASTNode): string {
     
     if equals_c(node_type, "FunctionCall") {
         val func_name: string = ast.data.func_call.function_name;
-        
-        result = concat(result, func_name);
+
+        mut emitted_name: string = func_name;
+        if StringStringMap.contains(addr_of(g_function_prefixes), func_name) {
+            emitted_name = StringStringMap.get(addr_of(g_function_prefixes), func_name);
+        }
+
+        result = concat(result, emitted_name);
         result = concat(result, str("("));
         
         val args: ref list(string) = ast.data.func_call.args;
