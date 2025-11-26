@@ -4,7 +4,7 @@ model SomeModel {
 }
 
 def main() {
-    val md: SomeModel = new SomeModel();
+    mut md: SomeModel = new SomeModel();
     md.x = 1;
     md.y = 2;
 }
