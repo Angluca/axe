@@ -5,6 +5,7 @@ use std.io;
 use std.string;
 use std.lists;
 use std.maps;
+use std.os;
 
 mut g_processed_modules: StringBoolMap;
 
@@ -98,9 +99,25 @@ def make_module_path(base_dir: string, use_module: string): string {
             }
             i = i + 1;
         }
+
         val rel: string = concat(path_rest, str(".axec"));
         val std_base: string = join_path(base_dir, str("std"));
-        return join_path(std_base, rel);
+        val local_path: string = join_path(std_base, rel);
+        if file_exists(local_path) {
+            return local_path;
+        }
+
+        val home: string = get_user_home_dir();
+        if str_len(home) > 0 {
+            val home_axe: string = join_path(home, str(".axe"));
+            val home_std: string = join_path(home_axe, str("std"));
+            val home_path: string = join_path(home_std, rel);
+            if file_exists(home_path) {
+                return home_path;
+            }
+        }
+
+        return local_path;
     }
 
     if has_prefix(use_module, str("./")) or has_prefix(use_module, str("../")) {
