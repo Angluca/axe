@@ -107,12 +107,19 @@ def is_whitespace(ch: char): bool {
     return ch == ' ' or ch == '\t' or ch == '\r';
 }
 
+def is_ident_char(ch: char): bool {
+    return (ch >= '0' and ch <= '9') or
+           (ch >= 'a' and ch <= 'z') or
+           (ch >= 'A' and ch <= 'Z') or
+           ch == '_';
+}
+
 def check_boundary(source: string, pos: i32, source_len: i32): bool {
     if pos >= source_len {
         return true;
     }
     mut ch: char = source.data[pos];
-    return !is_alphanum(ch);
+    return !is_ident_char(ch);
 }
 
 def str_equals(s1: string, s2: ref char, start: i32, len: i32, source_len: i32): bool {
@@ -326,7 +333,7 @@ pub def lex(source: string): list(Token) {
             } else {
                 mut start: i32 = pos;
                 loop {
-                    if pos >= source_len or !is_alphanum(get_char(source, pos)) {
+                    if pos >= source_len or !is_ident_char(get_char(source, pos)) {
                         break;
                     }
                     pos = pos + 1;
@@ -742,10 +749,10 @@ pub def lex(source: string): list(Token) {
                 pos = pos + 1;
             }
             append(tokens, create_token(TokenType.IDENTIFIER, substring_scse(source, start, pos)));
-        } elif is_alphanum(ch) {
+        } elif is_ident_char(ch) {
             mut start: i32 = pos;
             loop {
-                if pos >= source_len or !is_alphanum(get_char(source, pos)) {
+                if pos >= source_len or !is_ident_char(get_char(source, pos)) {
                     break;
                 }
                 pos = pos + 1;
