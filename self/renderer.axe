@@ -407,8 +407,11 @@ pub def generate_c(ast: ref ASTNode): string {
         }
         
         if str_len(initializer) > 0 {
-            result = concat(result, str(" = "));
-            result = concat(result, initializer);
+            mut trimmed: string = strip(initializer);
+            if !has_prefix(trimmed, str("new ")) {
+                result = concat(result, str(" = "));
+                result = concat(result, trimmed);
+            }
         }
         
         result = concat(result, str(";\n"));
@@ -510,7 +513,7 @@ pub def generate_c(ast: ref ASTNode): string {
         mut arena: Arena = Arena.create(1024);
         StringBoolMap.set(addr_of(g_generated_typedefs), addr_of(arena), model_name, true);
         
-        result = concat(result, str("struct "));
+        result = concat(result, str("typedef struct "));
         result = concat(result, model_name);
         result = concat(result, str(" {\n"));
         
@@ -574,7 +577,9 @@ pub def generate_c(ast: ref ASTNode): string {
             }
         }
         
-        result = concat(result, str("};\n\n"));
+        result = concat(result, str("} "));
+        result = concat(result, model_name);
+        result = concat(result, str(";\n\n"));
         return result;
     }
     
