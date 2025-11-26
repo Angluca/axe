@@ -52,9 +52,21 @@ def compile_file(filename: string, is_axec: bool): bool {
     println "4 | Imports";
     reset_processed_modules();
 
-    // TODO: File-based module naming can be added later to mirror the D compiler more closely.
-    
-    val base_dir: string = str(".");
+    mut base_dir: string = str(".");
+    val lenf: i32 = str_len(filename);
+    mut idx: i32 = lenf - 1;
+    loop {
+        if idx < 0 {
+            break;
+        }
+        val ch: char = get_char(filename, idx);
+        if ch == '/' or ch == '\\' {
+            base_dir = substring_se(filename, 0, idx);
+            break;
+        }
+        idx = idx - 1;
+    }
+
     val module_name: string = str("");
     ast = process_imports(addr_of(ast), base_dir, is_axec, filename, true, module_name);
 

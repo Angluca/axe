@@ -107,6 +107,14 @@ def make_module_path(base_dir: string, use_module: string): string {
             return local_path;
         }
 
+        val cwd: string = get_cwd();
+        val cwd_parent: string = get_dir_from_path(cwd);
+        val proj_std: string = join_path(cwd_parent, str("std"));
+        val proj_path: string = join_path(proj_std, rel);
+        if file_exists(proj_path) {
+            return proj_path;
+        }
+
         val home: string = get_user_home_dir();
         if str_len(home) > 0 {
             val home_axe: string = join_path(home, str(".axe"));
