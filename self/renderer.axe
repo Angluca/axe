@@ -271,7 +271,7 @@ pub def generate_c(ast: ref ASTNode): string {
     
     if equals_c(node_type, "Function") {
         mut func_name: string = ast.data.function.name;
-        val return_type: string = ast.data.function.return_type;
+        mut return_type: string = ast.data.function.return_type;
         val is_public: bool = ast.data.function.is_public;
         
         if !equals_c(func_name, "main") {
@@ -306,6 +306,10 @@ pub def generate_c(ast: ref ASTNode): string {
             result = concat(result, str("return 0;\n"));
             result = concat(result, str("}\n\n"));
             return result;
+        }
+        
+        if str_len(return_type) == 0 {
+            return_type = str("void");
         }
         
         val mapped_return_type: string = map_type(return_type);
