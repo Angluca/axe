@@ -172,69 +172,10 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
     }
     
     if token_type == TokenType.DEF {
-        ctx.pos++;
-        skip_whitespace(ctx);
-        
-        if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.IDENTIFIER {
-            ctx.pos++;
-        }
-        
-        skip_whitespace(ctx);
-        if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.LPAREN {
-            ctx.pos++;
-            mut depth: i32 = 1;
-            loop {
-                if ctx.pos >= len(ctx.tokens) {
-                    break;
-                }
-                if ctx.tokens.data[ctx.pos].token_type == TokenType.LPAREN {
-                    depth = depth + 1;
-                }
-                if ctx.tokens.data[ctx.pos].token_type == TokenType.RPAREN {
-                    depth = depth - 1;
-                    if depth == 0 {
-                        ctx.pos++;
-                        break;
-                    }
-                }
-                ctx.pos++;
-            }
-        }
-        
-        skip_whitespace(ctx);
-        if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.COLON {
-            ctx.pos++;
-            loop {
-                if ctx.pos >= len(ctx.tokens) {
-                    break;
-                }
-                if ctx.tokens.data[ctx.pos].token_type == TokenType.LBRACE {
-                    break;
-                }
-                ctx.pos++;
-            }
-        }
-        
-        skip_whitespace(ctx);
-        if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.LBRACE {
-            ctx.pos++;
-            mut depth: i32 = 1;
-            loop {
-                if ctx.pos >= len(ctx.tokens) {
-                    break;
-                }
-                if ctx.tokens.data[ctx.pos].token_type == TokenType.LBRACE {
-                    depth = depth + 1;
-                }
-                if ctx.tokens.data[ctx.pos].token_type == TokenType.RBRACE {
-                    depth = depth - 1;
-                    if depth == 0 {
-                        ctx.pos++;
-                        break;
-                    }
-                }
-                ctx.pos++;
-            }
+        ctx.pos++; // Skip 'def'
+        mut func_node: ASTNode = parse_function(ctx);
+        if str_len(func_node.node_type) > 0 {
+            add_child_to_ast(ast, func_node);
         }
         return;
     }
@@ -1120,6 +1061,9 @@ def parse_function(ctx: ref ParserContext): ASTNode {
     }
     
     val func_name: string = ctx.tokens.data[ctx.pos].value;
+    func.data.function.name = func_name;
+    func.data.function.return_type = str("");
+    func.data.function.is_public = false;
     ctx.pos++;
     
     skip_whitespace(ctx);
@@ -1152,6 +1096,7 @@ def parse_function(ctx: ref ParserContext): ASTNode {
     if expect(ctx, TokenType.COLON) {
         consume(ctx);
         val return_type: string = parse_type(ctx);
+        func.data.function.return_type = return_type;
     }
     
     skip_whitespace(ctx);
@@ -1161,23 +1106,36 @@ def parse_function(ctx: ref ParserContext): ASTNode {
     }
     consume(ctx);
     
-    depth = 1;
+    mut children: list(ASTNode);
     loop {
         if ctx.pos >= len(ctx.tokens) {
             break;
         }
         
-        val body_tok: Token = ctx.tokens.data[ctx.pos];
-        if body_tok.token_type == TokenType.LBRACE {
-            depth = depth + 1;
-        } elif body_tok.token_type == TokenType.RBRACE {
-            depth = depth - 1;
-            if depth == 0 {
-                ctx.pos++;
-                break;
-            }
+        skip_whitespace(ctx);
+        
+        if ctx.pos >= len(ctx.tokens) {
+            break;
         }
-        ctx.pos++;
+        
+        if ctx.tokens.data[ctx.pos].token_type == TokenType.RBRACE {
+            ctx.pos++;
+            break;
+        }
+        
+        mut stmt: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+        if str_len(stmt.node_type) > 0 {
+            append(children, stmt);
+        }
+    }
+    
+    unsafe {
+        val list_size: usize = C.sizeof(list(ASTNode));
+        val heap_list: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(list_size));
+        if heap_list != nil {
+            C.memcpy(heap_list, addr_of(children), list_size);
+            func.children = heap_list;
+        }
     }
     
     return func;

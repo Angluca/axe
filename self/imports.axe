@@ -1,0 +1,20 @@
+use structs (ASTNode);
+use std.maps;
+
+mut g_processed_modules: StringBoolMap;
+
+pub def reset_processed_modules() {
+    mut arena: Arena = Arena.create(1024 * 16);
+    g_processed_modules = deref(StringBoolMap.create(addr_of(arena), 128));
+}
+
+pub def has_imported_module(name: string): bool {
+    if StringBoolMap.contains(addr_of(g_processed_modules), name) {
+        return true;
+    }
+    return false;
+}
+
+pub def process_imports(ast: ref ASTNode): ASTNode {
+    return *ast;
+}

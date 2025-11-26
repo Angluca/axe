@@ -16,6 +16,10 @@ use parser (
 );
 
 use renderer;
+use imports (
+    reset_processed_modules,
+    process_imports
+);
 use std.io;
 use std.os;
 
@@ -45,7 +49,10 @@ def compile_file(filename: string, is_axec: bool): bool {
         return false;
     }
     
-    println "4 | Imports (TODO)";
+    println "4 | Imports";
+    reset_processed_modules();
+    ast = process_imports(addr_of(ast));
+
     println "5 | Collect Decls (TODO)";
     println "6 | Collect Models (TODO)";
     println "7 | Validate Calls (TODO)";
@@ -53,7 +60,7 @@ def compile_file(filename: string, is_axec: bool): bool {
 
     initialize_renderer();
     
-    val c_code: string = generate_c(ref ast);
+    val c_code: string = generate_c(addr_of(ast));
     if str_len(c_code) == 0 {
         println str("Error: Failed to generate C code");
         return false;
