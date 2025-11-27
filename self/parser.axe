@@ -2078,6 +2078,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
 
                 mut rhs_has_function_call: bool = false;
                 mut last_non_ws_token_type: i32 = -1;
+                mut first_non_ws_token: Token;
+                mut non_ws_count: i32 = 0;
 
                 loop {
                     if ctx.pos >= len(ctx.tokens) {
@@ -2090,6 +2092,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     }
 
                     if t.token_type != TokenType.WHITESPACE and t.token_type != TokenType.NEWLINE {
+                        if non_ws_count == 0 {
+                            first_non_ws_token = t;
+                        }
+                        non_ws_count = non_ws_count + 1;
+
                         if t.token_type == TokenType.IDENTIFIER {
                             if ctx.pos + 1 < len(ctx.tokens) {
                                 val next_t: Token = ctx.tokens.data[ctx.pos + 1];
@@ -2119,8 +2126,18 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 }
 
                 if !has_explicit_type {
+                    if non_ws_count == 1 {
+                        if first_non_ws_token.token_type == TokenType.NUMBER or (first_non_ws_token.token_type == TokenType.IDENTIFIER and is_all_digits(first_non_ws_token.value)) {
+                            type_name = str("int32_t");
+                        } elif first_non_ws_token.token_type == TokenType.CHAR {
+                            type_name = str("char");
+                        } elif first_non_ws_token.token_type == TokenType.STR {
+                            type_name = str("char*");
+                        }
+                    }
+
                     mut trimmed_init_val: string = strip(initializer);
-                    if has_prefix(trimmed_init_val, str("new ")) {
+                    if str_len(type_name) == 0 and has_prefix(trimmed_init_val, str("new ")) {
                         trimmed_init_val = substring_se(trimmed_init_val, 4, str_len(trimmed_init_val));
                         trimmed_init_val = strip(trimmed_init_val);
 
@@ -2144,7 +2161,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                         if str_len(inferred_name_val) > 0 {
                             type_name = inferred_name_val;
                         }
-                    } else {
+                    } elif str_len(type_name) == 0 {
                         mut err: string = str("ERROR: Type annotation required when initializing '");
                         err = concat(err, var_name.value);
                         err = concat(err, str("' without 'new Model(...)'"));
@@ -2233,6 +2250,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
 
                 mut rhs_has_function_call_mut: bool = false;
                 mut last_non_ws_token_type_mut: i32 = -1;
+                mut first_non_ws_token_mut: Token;
+                mut non_ws_count_mut: i32 = 0;
 
                 loop {
                     if ctx.pos >= len(ctx.tokens) {
@@ -2245,6 +2264,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     }
 
                     if t.token_type != TokenType.WHITESPACE and t.token_type != TokenType.NEWLINE {
+                        if non_ws_count_mut == 0 {
+                            first_non_ws_token_mut = t;
+                        }
+                        non_ws_count_mut = non_ws_count_mut + 1;
+
                         if t.token_type == TokenType.IDENTIFIER {
                             if ctx.pos + 1 < len(ctx.tokens) {
                                 val next_t: Token = ctx.tokens.data[ctx.pos + 1];
@@ -2274,8 +2298,18 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 }
 
                 if !has_explicit_type_mut {
+                    if non_ws_count_mut == 1 {
+                        if first_non_ws_token_mut.token_type == TokenType.NUMBER or (first_non_ws_token_mut.token_type == TokenType.IDENTIFIER and is_all_digits(first_non_ws_token_mut.value)) {
+                            type_name = str("int32_t");
+                        } elif first_non_ws_token_mut.token_type == TokenType.CHAR {
+                            type_name = str("char");
+                        } elif first_non_ws_token_mut.token_type == TokenType.STR {
+                            type_name = str("char*");
+                        }
+                    }
+
                     mut trimmed_init_mut: string = strip(initializer);
-                    if has_prefix(trimmed_init_mut, str("new ")) {
+                    if str_len(type_name) == 0 and has_prefix(trimmed_init_mut, str("new ")) {
                         trimmed_init_mut = substring_se(trimmed_init_mut, 4, str_len(trimmed_init_mut));
                         trimmed_init_mut = strip(trimmed_init_mut);
 
@@ -2299,7 +2333,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                         if str_len(inferred_name_mut) > 0 {
                             type_name = inferred_name_mut;
                         }
-                    } else {
+                    } elif str_len(type_name) == 0 {
                         mut err2: string = str("ERROR: Type annotation required when initializing '");
                         err2 = concat(err2, var_name.value);
                         err2 = concat(err2, str("' without 'new Model(...)'"));
