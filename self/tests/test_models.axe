@@ -1,6 +1,10 @@
 model SomeModel {
     x: i32;
     y: i32;
+
+    def static_method() {
+        put "wow its called! :D";
+    }
 }
 
 def main() {
@@ -8,4 +12,5 @@ def main() {
     md.x = 1;
     md.y = 2;
     put "ASDASD";
+    SomeModel.static_method();
 }

@@ -288,6 +288,38 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
             if ctx.tokens.data[ctx.pos].token_type == TokenType.PUB {
                 ctx.pos++;
                 skip_whitespace(ctx);
+
+                if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.DEF {
+                    ctx.pos++; // skip 'def'
+                    mut method_node: ASTNode = parse_function(ctx);
+                    if str_len(method_node.node_type) > 0 {
+                        method_node.data.function.is_public = true;
+
+                        val orig_name: string = method_node.data.function.name;
+                        mut full_name: string = model_name;
+                        full_name = concat(full_name, str("__"));
+                        full_name = concat(full_name, orig_name);
+                        method_node.data.function.name = full_name;
+
+                        add_child_to_ast(ast, method_node);
+                    }
+                    continue;
+                }
+            }
+
+            if ctx.tokens.data[ctx.pos].token_type == TokenType.DEF {
+                // Non-pub static method inside model
+                ctx.pos++; // skip 'def'
+                mut method_node2: ASTNode = parse_function(ctx);
+                if str_len(method_node2.node_type) > 0 {
+                    val orig_name2: string = method_node2.data.function.name;
+                    mut full_name2: string = model_name;
+                    full_name2 = concat(full_name2, str("__"));
+                    full_name2 = concat(full_name2, orig_name2);
+                    method_node2.data.function.name = full_name2;
+                    add_child_to_ast(ast, method_node2);
+                }
+                continue;
             }
 
             if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.IDENTIFIER {
@@ -2222,9 +2254,29 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 enforce_raw(false, "ERROR: Expected member name after '.'");
                 return node;
             }
+
             val member_token: Token = consume(ctx);
-            val member_name: string = member_token.value;
+            mut member_name: string = member_token.value;
+
             skip_whitespace(ctx);
+
+            if ctx.pos + 1 < len(ctx.tokens) {
+                val look_member: Token = ctx.tokens.data[ctx.pos];
+                val look_after: Token = ctx.tokens.data[ctx.pos + 1];
+                if look_member.token_type == TokenType.IDENTIFIER and look_after.token_type == TokenType.LPAREN {
+                    mut merged_member: string = member_name;
+                    val next_ident_member: string = look_member.value;
+
+                    if str_len(next_ident_member) > 0 and get_char(next_ident_member, 0) != '_' {
+                        merged_member = concat(merged_member, str("_"));
+                    }
+
+                    merged_member = concat(merged_member, next_ident_member);
+                    member_name = merged_member;
+                    ctx.pos = ctx.pos + 1;
+                    skip_whitespace(ctx);
+                }
+            }
 
             if expect(ctx, TokenType.LPAREN) {
                 consume(ctx); // skip '('
@@ -2272,9 +2324,10 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 if equals_c(ident_name, "C") {
                     full_name = member_name;
                 } else {
-                    full_name = concat(full_name, str("."));
+                    full_name = concat(full_name, str("__"));
                     full_name = concat(full_name, member_name);
                 }
+
                 node.data.func_call.function_name = full_name;
 
                 mut args_list2: list(string);
