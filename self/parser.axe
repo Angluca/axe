@@ -132,7 +132,7 @@ def is_variable_mutable(var_name: string): bool {
 }
 
 /// Add a child AST node to a parent AST node
-def add_child_to_ast(ast: ref ASTNode, child: ASTNode) {
+pub def add_child_to_ast(ast: ref ASTNode, child: ASTNode) {
     if ast.children == nil {
         unsafe {
             mut new_list: list(ASTNode);
@@ -222,6 +222,150 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
             add_child_to_ast(ast, node);
         }
         return;
+    }
+
+    if token_type == TokenType.IDENTIFIER {
+        val ident_tok: Token = ctx.tokens.data[ctx.pos];
+        val ident_name: string = ident_tok.value;
+
+        if macros_contains(ident_name) {
+            ctx.pos = ctx.pos + 1; // skip macro name
+            skip_whitespace(ctx);
+
+            if !expect(ctx, TokenType.LPAREN) {
+                enforce_raw(false, "ERROR: Expected '(' after macro name");
+                return;
+            }
+            consume(ctx); // '('
+
+            mut args: list(string);
+            mut current_arg: string = str("");
+            mut paren_depth: i32 = 0;
+
+            loop {
+                if ctx.pos >= len(ctx.tokens) {
+                    break;
+                }
+
+                val t: Token = peek(ctx);
+
+                if t.token_type == TokenType.RPAREN and paren_depth == 0 {
+                    val trimmed: string = strip(current_arg);
+                    if str_len(trimmed) > 0 {
+                        append(args, trimmed);
+                    }
+                    consume(ctx);
+                    break;
+                }
+
+                if t.token_type == TokenType.LPAREN {
+                    paren_depth = paren_depth + 1;
+                    current_arg = concat(current_arg, t.value);
+                    consume(ctx);
+                    continue;
+                }
+
+                if t.token_type == TokenType.RPAREN {
+                    paren_depth = paren_depth - 1;
+                    current_arg = concat(current_arg, t.value);
+                    consume(ctx);
+                    continue;
+                }
+
+                if t.token_type == TokenType.COMMA and paren_depth == 0 {
+                    val trimmed_arg: string = strip(current_arg);
+                    if str_len(trimmed_arg) > 0 {
+                        append(args, trimmed_arg);
+                    }
+                    current_arg = str("");
+                    consume(ctx);
+                    continue;
+                }
+
+                if t.token_type == TokenType.STR {
+                    current_arg = concat(current_arg, str("\""));
+                    current_arg = concat(current_arg, t.value);
+                    current_arg = concat(current_arg, str("\""));
+                } elif t.token_type == TokenType.CHAR {
+                    current_arg = concat(current_arg, str("'"));
+                    current_arg = concat(current_arg, t.value);
+                    current_arg = concat(current_arg, str("'"));
+                } elif t.token_type == TokenType.WHITESPACE or t.token_type == TokenType.NEWLINE {
+                    current_arg = concat(current_arg, str(" "));
+                } else {
+                    current_arg = concat(current_arg, t.value);
+                }
+                consume(ctx);
+            }
+
+            skip_whitespace(ctx);
+
+            if !expect(ctx, TokenType.SEMICOLON) {
+                enforce_raw(false, "ERROR: Expected ';' after macro invocation");
+                return;
+            }
+            consume(ctx);
+
+            val defn: MacroDef = macros_get(ident_name);
+
+            mut expanded_tokens: list(Token);
+            mut i_tok: i32 = 0;
+            loop {
+                if i_tok >= len(defn.body) {
+                    break;
+                }
+                append(expanded_tokens, defn.body.data[i_tok]);
+                i_tok = i_tok + 1;
+            }
+
+            mut i_param: i32 = 0;
+            loop {
+                if i_param >= len(defn.params) or i_param >= len(args) {
+                    break;
+                }
+
+                val param_name: string = defn.params.data[i_param];
+                val arg_expr: string = args.data[i_param];
+
+                mut j_tok: i32 = 0;
+                loop {
+                    if j_tok >= len(expanded_tokens) {
+                        break;
+                    }
+
+                    if expanded_tokens.data[j_tok].token_type == TokenType.IDENTIFIER {
+                        mut exp_token: ref Token = addr_of(expanded_tokens.data[j_tok]);
+                        if compare(exp_token.value, param_name) == 0 {
+                            exp_token.value = arg_expr;
+                        }
+                    }
+                    j_tok = j_tok + 1;
+                }
+
+                i_param = i_param + 1;
+            }
+
+            val expanded_ref: ref list(Token) = addr_of(expanded_tokens);
+            val expanded_ast: ASTNode = parse(expanded_ref, ctx.is_axec, false, ctx.current_module);
+
+            if expanded_ast.children != nil {
+                unsafe {
+                    mut temp_children: list(ASTNode);
+                    val list_size_children: usize = C.sizeof(list(ASTNode));
+                    C.memcpy(addr_of(temp_children), expanded_ast.children, list_size_children);
+                }
+                mut k: i32 = 0;
+                loop {
+                    if k >= len(temp_children) {
+                        break;
+                    }
+                    add_child_to_ast(ast, temp_children.data[k]);
+                    k = k + 1;
+                }
+            }
+
+            return;
+        }
     }
     
     if token_type == TokenType.MAIN {
