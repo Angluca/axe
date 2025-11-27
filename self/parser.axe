@@ -252,7 +252,10 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
             skip_whitespace(ctx);
 
             if !expect(ctx, TokenType.LPAREN) {
-                enforce_raw(false, "ERROR: Expected '(' after macro name");
+                mut err: string = str("ERROR: Expected '(' after macro name");
+                err = concat(err, str(" instead got "));
+                err = concat(err, ctx.tokens.data[ctx.pos].value);
+                enforce(false, error.create(err.data));
                 return;
             }
             consume(ctx); // '('
@@ -968,7 +971,10 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         mut param_types: list(string);
 
         if !expect(ctx, TokenType.LPAREN) {
-            enforce_raw(false, "ERROR: Expected '(' after macro name");
+            mut err: string = str("ERROR: Expected '(' after macro name");
+            err = concat(err, str(" instead got "));
+            err = concat(err, ctx.tokens.data[ctx.pos].value);
+            enforce(false, error.create(err.data));
             return;
         }
         consume(ctx); // '('
