@@ -1,6 +1,15 @@
-use structs (ASTNode);
-use lexer (Token, lex);
-use parser (parse);
+use structs (
+    ASTNode
+);
+
+use lexer (
+    Token, lex
+);
+
+use parser (
+    parse
+);
+
 use std.io;
 use std.string;
 use std.lists;
