@@ -41,7 +41,7 @@ def main() {
     
     val ok: bool = compile_file(source_file, false);
     
-    arena.destroy();
+    Arena.destroy(addr_of(arena));
 
     if !ok {
         quit(1);
