@@ -25,7 +25,7 @@ def main() {
         println("  -q, --quiet   suppress debug output");
         println("  -I<path>      pass a C include directory");
         println("  --version, -v show axe version and exit\n");
-        quit(1);
+        quit(0);
     }
     
     mut source_file: string = StringList.get(args, 1);
