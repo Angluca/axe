@@ -6,7 +6,15 @@ mut loud: bool = false;
 overload debug_print(x: generic) {
     string => debug_print_str;
     char*  => debug_print_raw;
+    i32    => debug_print_int;
 }(x);
+
+/// Ditto.
+def debug_print_i32(msg: i32) {
+    if loud {
+        println msg;
+    }
+}
 
 /// Ditto.
 def debug_print_str(msg: string) {

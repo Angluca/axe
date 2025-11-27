@@ -14,6 +14,7 @@ use structs (
     Scope
 );
 
+use gstate;
 use std.string;
 use std.io;
 use std.maps;
@@ -184,20 +185,19 @@ pub def parse(tokens: ref list(Token), is_axec: bool, check_entry_point: bool, c
     ctx.check_entry_point = check_entry_point;
     ctx.current_module = current_module;
     
-    println "=== DEBUG TOKENS ===";
+    debug_print_raw "=== DEBUG TOKENS ===";
     mut i: i32 = 0;
     loop {
         if i >= len(ctx.tokens) {
             break;
         }
         val t: Token = ctx.tokens.data[i];
-        println i;
-        println t.token_type;
-        println t.value;
+        debug_print_i32 i;
+        debug_print_i32 t.token_type;
+        debug_print_str t.value;
         i = i + 1;
     }
-    println "=== END TOKENS ===";
-
+    debug_print_str str("=== END TOKENS ===");
 
     mut ast: ASTNode;
     ast.node_type = str("Program");
