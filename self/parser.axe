@@ -865,35 +865,10 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         return;
     }
     
-    if token_type == TokenType.MUT {
-        ctx.pos++;
-        skip_whitespace(ctx);
-        if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.VAL {
-            ctx.pos++;  // Skip 'val'
-        }
-        loop {
-            if ctx.pos >= len(ctx.tokens) {
-                break;
-            }
-            if ctx.tokens.data[ctx.pos].token_type == TokenType.SEMICOLON {
-                ctx.pos++;
-            }
-            ctx.pos++;
-        }
-        return;
-    }
-    
-    if token_type == TokenType.VAL {
-        ctx.pos++;  // Skip 'val'
-        loop {
-            if ctx.pos >= len(ctx.tokens) {
-                break;
-            }
-            if ctx.tokens.data[ctx.pos].token_type == TokenType.SEMICOLON {
-                ctx.pos++;
-                break;
-            }
-            ctx.pos++;
+    if token_type == TokenType.MUT or token_type == TokenType.VAL {
+        mut decl_node: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+        if str_len(decl_node.node_type) > 0 {
+            add_child_to_ast(ast, decl_node);
         }
         return;
     }

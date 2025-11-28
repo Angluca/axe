@@ -930,6 +930,21 @@ pub def generate_c(ast: ref ASTNode): string {
                 }
             }
 
+            mut i_globals: i32 = 0;
+            loop {
+                if i_globals >= len(deref(children)) {
+                    break;
+                }
+                val g_child: ref ASTNode = addr_of(children.data[i_globals]);
+                if equals_c(g_child.node_type, "Declaration") {
+                    val g_code: string = generate_c(g_child);
+                    if str_len(g_code) > 0 {
+                        result = concat(result, g_code);
+                    }
+                }
+                i_globals = i_globals + 1;
+            }
+
             mut i_proto: i32 = 0;
             loop {
                 if i_proto >= len(deref(children)) {
@@ -999,7 +1014,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     break;
                 }
                 val child2: ref ASTNode = addr_of(children.data[i]);
-                if !equals_c(child2.node_type, "Overload") and !equals_c(child2.node_type, "Function") and !equals_c(child2.node_type, "Model") and !equals_c(child2.node_type, "Enum") {
+                if !equals_c(child2.node_type, "Overload") and !equals_c(child2.node_type, "Function") and !equals_c(child2.node_type, "Model") and !equals_c(child2.node_type, "Enum") and !equals_c(child2.node_type, "Declaration") {
                     val child_code: string = generate_c(child2);
                     result = concat(result, child_code);
                 }
