@@ -10,6 +10,15 @@ def strlst_contains(lst: StringList, value: string): bool {
     return false;
 }
 
+def strlst_contains_c(lst: StringList, value: ref char): bool {
+    for mut i = 0; i < lst.len; i++ {
+        if equals_c(lst.data[i], value) {
+            return true;
+        }
+    }
+    return false;
+}
+
 def intlst_contains(lst: IntList, vlue: i32): bool { 
     for mut i = 0; i < lst.len; i++ {
         if lst.data[i] == vlue {

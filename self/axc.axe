@@ -1,6 +1,7 @@
 // Author: Navid Momtahen (C) 2025
 // License: GPL-3.0
 
+use std.algorithms;
 use std.io;
 use std.os;
 use std.lists;
@@ -36,9 +37,10 @@ def main() {
         other_arg = strip(StringList.get(args, 2));
     }
     
-    if StringList.contains(args, "-v") or StringList.contains(args, "--version") {
+    if strlst_contains_c(deref(args), "-v") or strlst_contains_c(deref(args), "--version") {
         println("Axe v0.0.1");
         println("Specification and compiler by Navid Momtahen ((C) GPL-3.0, 2025)");
+        quit(0);
     }
 
     if has_suffix(other_arg, str("-tokens")) {
