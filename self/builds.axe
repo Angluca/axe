@@ -89,10 +89,16 @@ def compile_file(filename: string, is_axec: bool): bool {
     println concat(str("Generated: "), c_filename);
     
     println "\n9 | Last compilation pass";
+
     val exe_filename: string = replace_extension(filename, str(".exe"));
-    
+    val needs_omp: bool = should_link_openmp(addr_of(ast), filename);
     mut compile_cmd: string = str("clang ");
+    
     compile_cmd = concat(compile_cmd, c_filename);
+    if needs_omp {
+        compile_cmd = concat(compile_cmd, str(" -fopenmp"));
+    }
+    
     compile_cmd = concat(compile_cmd, str(" -Wno-everything -O0 -o "));
     compile_cmd = concat(compile_cmd, exe_filename);
     
@@ -126,6 +132,50 @@ def replace_extension(filename: string, new_ext: string): string {
     }
     
     return concat(filename, new_ext);
+}
+
+/// Return true if we should link against OpenMP.
+///
+/// Conditions:
+///   - The AST contains parallel constructs (blocks/loops), or
+///   - The root module imports std.parallelism, or
+///   - We are compiling the parallelism.axec module itself.
+def should_link_openmp(ast: ref ASTNode, filename: string): bool {
+    if has_suffix(filename, str("parallelism.axec")) {
+        return true;
+    }
+
+    if has_parallel_blocks(ast) {
+        return true;
+    }
+
+    if ast == nil {
+        return false;
+    }
+
+    val node_type: string = ast.node_type;
+    if equals_c(node_type, "Use") {
+        val mod_name: string = ast.data.use_node.module_name;
+        if equals_c(mod_name, "std.parallelism") {
+            return true;
+        }
+    }
+
+    if ast.children != nil {
+        val children: ref list(ASTNode) = ast.children;
+        mut i: i32 = 0;
+        loop {
+            if i >= len(deref(children)) {
+                break;
+            }
+            if should_link_openmp(addr_of(children.data[i]), filename) {
+                return true;
+            }
+            i++;
+        }
+    }
+
+    return false;
 }
 
 /// Check if AST contains parallel blocks
