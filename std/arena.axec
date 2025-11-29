@@ -19,7 +19,7 @@ pub model Arena {
         mut arena: Arena;
         
         unsafe {
-            arena.buffer = C.malloc(size * 10);
+            arena.buffer = C.malloc(size * 100);
             arena.capacity = size * 100;
             arena.offset = 0;
         }

@@ -239,7 +239,7 @@ def prefix_type_name(type_name: string, module_prefix: string, exported: ref Str
         return type_name;
     }
 
-    mut t: string = strip(type_name);
+    mut t: string = type_name;
 
     if has_prefix(t, str("ref ")) {
         val rest: string = strip(substr(t, 4, str_len(t) - 4));
@@ -431,17 +431,6 @@ def merge_imported_module(program: ref ASTNode, imported: ref ASTNode, use_modul
         }
 
         append_child(program, child);
-        if program.children != nil {
-            val pchildren: ref list(ASTNode) = program.children;
-            mut pi: i32 = 0;
-            loop {
-                if pi >= len(deref(pchildren)) {
-                    break;
-                }
-                prefix_types_in_node(addr_of(pchildren.data[pi]), module_prefix, addr_of(exported));
-                pi++;
-            }
-        }
         i++;
     }
 }
