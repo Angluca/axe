@@ -15,21 +15,21 @@ pub def set_loud_logger(v: bool) {
 }
 
 /// Ditto.
-def debug_print_i32(msg: i32) {
+pub def debug_print_i32(msg: i32) {
     if loud_logger {
         println msg;
     }
 }
 
 /// Ditto.
-def debug_print_str(msg: string) {
+pub def debug_print_str(msg: string) {
     if loud_logger {
         println msg;
     }
 }
 
 /// Ditto.
-def debug_print_raw(msg: ref char) {
+pub def debug_print_raw(msg: ref char) {
     if loud_logger {
         println msg;
     }
