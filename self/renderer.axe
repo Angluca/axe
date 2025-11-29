@@ -831,8 +831,7 @@ pub def generate_c(ast: ref ASTNode): string {
                                 val mappedElem: string = map_axe_type_to_c(elemCandidate);
                                 add_list_element(mappedElem);
                             }
-
-                            fidx = fidx + 1;
+                            fidx++;
                         }
                     }
                 }
