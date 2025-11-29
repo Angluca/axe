@@ -8,7 +8,7 @@ function activate(context) {
     let serverPath = config.get('serverPath', '');
     
     if (!serverPath) {
-        serverPath = process.platform === 'win32' ? 'axe-lsp.exe' : 'axe-lsp';
+        serverPath = process.platform === 'win32' ? 'axels.exe' : 'axels';
     }
     
     const serverOptions = {
