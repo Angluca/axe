@@ -3871,10 +3871,13 @@ private ASTNode parseStatementHelper(ref size_t pos, Token[] tokens, ref Scope c
             if (!isAxec)
             {
                 import std.algorithm : min;
-                import std.string : startsWith;
+                import std.string : startsWith, endsWith;
 
                 bool isListType = typeName.endsWith("[999]");
-                if (!isListType)
+                bool isComplexType = (typeName.length > 0 &&
+                    (typeName[0] >= 'A' && typeName[0] <= 'Z'));
+
+                if (!isListType && !isComplexType)
                 {
                     size_t endPos = min(pos + 10, tokens.length);
                     enforce(initializer.length > 0,

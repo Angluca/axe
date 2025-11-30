@@ -1798,6 +1798,15 @@ string generateC(ASTNode ast)
 
         string decl = type ~ " " ~ emittedName ~ arrayPart;
 
+        if (declNode.initializer.length == 0 && declNode.typeName.length > 0)
+        {
+            dchar first = declNode.typeName[0];
+            if (first >= 'A' && first <= 'Z')
+            {
+                decl ~= " = {}";
+            }
+        }
+
         if (declNode.initializer.length > 0)
         {
             string processedExpr = processExpression(declNode.initializer, "assignment");
