@@ -1245,6 +1245,15 @@ string generateC(ASTNode ast)
         {
             funcName = g_functionPrefixes[funcName];
         }
+        else if (funcName != "main" && g_currentModuleName.length > 0)
+        {
+            import std.string : indexOf;
+
+            if (originalFuncName.indexOf("__") == -1)
+            {
+                funcName = g_currentModuleName ~ "__" ~ funcName;
+            }
+        }
 
         string[] params = funcNode.params;
         string prevFunction = currentFunction;
