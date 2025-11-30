@@ -154,8 +154,20 @@ void collectDeclaredFunctions(ASTNode node, ref bool[string] declared)
 
 void validateFunctionCalls(ASTNode node, bool[string] declared, string[string] modelNames, string modulePrefix = "")
 {
-    // Add built-in functions that are always available
     declared["append"] = true;
+
+    bool[string] declaredSuffixes;
+    foreach (declaredName; declared.keys)
+    {
+        foreach (i; 0 .. cast(size_t) declaredName.length)
+        {
+            if (declaredName[i] == '_')
+            {
+                if (i + 1 < declaredName.length)
+                    declaredSuffixes[declaredName[i + 1 .. $]] = true;
+            }
+        }
+    }
 
     if (node.nodeType == "Model")
     {
@@ -195,21 +207,10 @@ void validateFunctionCalls(ASTNode node, bool[string] declared, string[string] m
                 isDeclared = *p;
             }
 
-            // For simple function names without dots, check if there's ANY prefixed version
-            // from imported modules (e.g., "panic" might be "std_errors_panic")
             if (!isDeclared && !name.canFind("."))
             {
-                foreach (declaredName; declared.keys)
-                {
-                    if (declaredName.canFind("_" ~ name))
-                    {
-                        if (declaredName.endsWith("_" ~ name))
-                        {
-                            isDeclared = true;
-                            break;
-                        }
-                    }
-                }
+                if (auto s = name in declaredSuffixes)
+                    isDeclared = *s;
             }
 
             if (!isDeclared && name.canFind("."))
@@ -270,9 +271,105 @@ void validateFunctionCalls(ASTNode node, bool[string] declared, string[string] m
         }
     }
 
-    foreach (child; node.children)
+    ASTNode[] stack;
+    stack ~= node;
+
+    while (!stack.empty)
     {
-        validateFunctionCalls(child, declared, modelNames, modulePrefix);
+        auto cur = stack[$ - 1];
+        stack.length--;
+        if (cur.nodeType == "Use") {
+            continue;
+        }
+        if (cur.nodeType == "Model")
+        {
+            auto modelNode = cast(ModelNode) cur;
+            if (modelNode !is null)
+            {
+                foreach (method; modelNode.methods)
+                {
+                    auto methodFunc = cast(FunctionNode) method;
+                    if (methodFunc !is null)
+                        stack ~= methodFunc;
+                }
+            }
+        }
+
+        if (cur.nodeType == "FunctionCall")
+        {
+            auto callNode = cast(FunctionCallNode) cur;
+            if (callNode !is null)
+            {
+                string name = callNode.functionName;
+
+                import std.string : startsWith, replace, split, strip;
+
+                bool isCEscape = name.startsWith("C.") || name.startsWith("C__");
+
+                bool isDeclared = false;
+                if (auto p = name in declared)
+                    isDeclared = *p;
+
+                if (!isDeclared && !name.canFind('.'))
+                {
+                    if (auto s = name in declaredSuffixes)
+                        isDeclared = *s;
+                }
+
+                if (!isDeclared && name.canFind('.'))
+                {
+                    auto parts = name.split('.');
+                    if (parts.length == 2)
+                    {
+                        string modelName = parts[0].strip();
+                        string methodName = parts[1].strip();
+
+                        if (modelName in modelNames)
+                        {
+                            string modelCName = canonicalModelCName(modelName, modelNames);
+                            if (modelCName.length == 0)
+                                modelCName = modelName;
+
+                            string fullMethodName = modelCName ~ "_" ~ methodName;
+                            if (auto q = fullMethodName in declared)
+                                isDeclared = *q;
+                        }
+                    }
+
+                    if (!isDeclared)
+                    {
+                        string underscored = name.replace(".", "_");
+                        if (auto q = underscored in declared)
+                            isDeclared = *q;
+
+                        if (!isDeclared && modulePrefix.length > 0)
+                        {
+                            string fullyPrefixed = modulePrefix ~ "__" ~ underscored;
+                            if (auto r = fullyPrefixed in declared)
+                                isDeclared = *r;
+                        }
+                    }
+                }
+
+                if (!isCEscape && !isDeclared)
+                {
+                    import std.stdio : writeln;
+
+                    writeln("Failed validation for: ", name);
+                    writeln("Module prefix: ", modulePrefix);
+                    writeln("Declared keys: ", declared.keys);
+                    throw new Exception("Undefined function: " ~ name);
+                }
+            }
+        }
+
+        foreach (child; cur.children)
+        {
+            if (child.nodeType == "RawC" || child.nodeType == "Break") {
+                continue;
+            }
+            stack ~= child;
+        }
     }
 }
 
@@ -447,8 +544,8 @@ bool handleMachineArgs(string[] args)
         }
         else
         {
+            writeln("9 | Setting module name");
             setCurrentModuleName(moduleName);
-
             string cCode = "";
             if (args.canFind("--release"))
             {
@@ -459,8 +556,10 @@ bool handleMachineArgs(string[] args)
             {
                 cCode = generateC(ast);
             }
+            writeln("10 | Emitting C code");
             string ext = isAxec ? ".axec" : ".axe";
             std.file.write(replace(name, ext, ".c"), cCode);
+            writeln("10 | Checking parallelism");
             bool needsOpenMP = hasParallelBlocks(ast) || hasParallelismImport() || name.canFind(
                 "parallelism.axec");
             bool makeDll = args.canFind("-dll");
@@ -620,6 +719,7 @@ bool handleMachineArgs(string[] args)
                 }
             }
 
+            writeln("10 | Collecting external headers");
             string[] externalHeaders;
             collectExternalHeaders(ast, externalHeaders);
             foreach (header; externalHeaders)
@@ -648,7 +748,7 @@ bool handleMachineArgs(string[] args)
                 clangCmd ~= ["-o", replace(name, ext, ".exe")];
             }
 
-            writeln("9 | Lowering to LLVM/ASM");
+            writeln("11 | Lowering to LLVM/ASM");
             auto e = execute(clangCmd);
             if (e[0] != 0)
             {
