@@ -1176,6 +1176,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 i = i + 1;
             }
         }
+        result = replace_all(result, str("(->"), str("->"));
     }
 
     if equals_c(node_type, "Test") {
@@ -1788,7 +1789,6 @@ pub def generate_c(ast: ref ASTNode): string {
                 i++;
             }
         }
-        result = replace_all(result, str("(->"), str("->"));
         result = concat(result, str("}\n"));
         return result;
     }
