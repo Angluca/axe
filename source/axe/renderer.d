@@ -1274,6 +1274,19 @@ string generateC(ASTNode ast)
             g_localFunctions[originalFuncName] = true;
             debugWriteln("DEBUG: Tracked local function '", originalFuncName, "'");
         }
+
+        import std.string : lastIndexOf;
+
+        auto lastUnderscore = funcName.lastIndexOf("__");
+        if (lastUnderscore >= 0)
+        {
+            string baseName = funcName[lastUnderscore + 2 .. $];
+            if (baseName.length > 0 && baseName !in g_functionPrefixes)
+            {
+                g_functionPrefixes[baseName] = funcName;
+            }
+        }
+
         g_isPointerVar.clear();
         g_varType.clear();
 
@@ -4656,6 +4669,15 @@ string applyFunctionPrefixes(string expr)
     {
         expr = expr.replaceAll(regex(r"\b" ~ funcName ~ r"\s*\("), prefixedName ~ "(");
     }
+
+    if (g_currentModuleName.length > 0)
+    {
+        foreach (funcName, _; g_localFunctions)
+        {
+            string prefixedName = g_currentModuleName ~ "__" ~ funcName;
+            expr = expr.replaceAll(regex(r"\b" ~ funcName ~ r"\s*\("), prefixedName ~ "(");
+        }
+    }
     return expr;
 }
 
@@ -4735,6 +4757,7 @@ private string processCondition(string condition)
             string right = condition[idx + op.length .. $].strip();
             string result = "(" ~ processCondition(left) ~ " " ~ op ~ " " ~ processCondition(
                 right) ~ ")";
+            result = applyFunctionPrefixes(result);
             return result;
         }
     }
@@ -4748,11 +4771,13 @@ private string processCondition(string condition)
             string left = condition[0 .. idx].strip();
             string right = condition[idx + op.length .. $].strip();
             string result = "(" ~ processExpression(left) ~ op ~ processExpression(right) ~ ")";
+            result = applyFunctionPrefixes(result);
             return result;
         }
     }
 
     string result = processExpression(condition);
+    result = applyFunctionPrefixes(result);
     return result;
 }
 
