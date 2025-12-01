@@ -831,7 +831,7 @@ def is_token_char(c: char): bool {
     if c >= '0' and c <= '9' {
         return true;
     }
-    if c == '_' or c == '.' {
+    if c == '_' {
         return true;
     }
     return false;
@@ -2110,6 +2110,7 @@ pub def generate_c(ast: ref ASTNode): string {
         result = replace_all(result, str("C . "), str(""));
         result = replace_all(result, str("C."), str(""));
         result = collapse_duplicate_segments(result);
+        result = rewrite_method_calls(result);
     }
 
     if equals_c(node_type, "Test") {
