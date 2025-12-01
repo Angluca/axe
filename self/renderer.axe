@@ -153,42 +153,6 @@ def canonical_model_c_name(name: string): string {
     return str("");
 }
 
-def normalize_method_function_name(name: string): string {
-    mut sep: i32 = -1;
-    mut i: i32 = 0;
-    val n: i32 = str_len(name);
-
-    loop {
-        if i + 1 >= n {
-            break;
-        }
-        val c1: char = get_char(name, i);
-        val c2: char = get_char(name, i + 1);
-        if c1 == '_' and c2 == '_' {
-            sep = i;
-            break;
-        }
-        i = i + 1;
-    }
-
-    if sep < 0 or sep + 2 >= n {
-        return name;
-    }
-
-    val model_part: string = substring_se(name, 0, sep);
-    val method_part: string = substring_se(name, sep + 2, n);
-    val canon: string = canonical_model_c_name(model_part);
-
-    if str_len(canon) == 0 {
-        return name;
-    }
-
-    mut full: string = canon;
-    full = concat(full, str("__"));
-    full = concat(full, method_part);
-    return full;
-}
-
 /// Map Axe type to C type (comprehensive version for model fields)
 def map_axe_type_to_c(axe_type: string): string {
     mut result: string = axe_type;
@@ -377,6 +341,50 @@ def rewrite_method_calls(expr: string): string {
                 }
 
                 if str_len(method) > 0 and p < str_len(expr) and get_char(expr, p) == '(' {
+                    mut fixed_method: string = method;
+                    mut inner_sep: i32 = -1;
+                    mut mi: i32 = 0;
+                    val mlen: i32 = str_len(method);
+                    loop {
+                        if mi + 1 >= mlen {
+                            break;
+                        }
+                        val mc1: char = get_char(method, mi);
+                        val mc2: char = get_char(method, mi + 1);
+                        if mc1 == '_' and mc2 == '_' {
+                            inner_sep = mi;
+                            break;
+                        }
+                        mi = mi + 1;
+                    }
+
+                    if inner_sep > 0 {
+                        val inner_model: string = substring_se(method, 0, inner_sep);
+
+                        mut base_tail: string = base;
+                        mut bsep: i32 = -1;
+                        mut bi: i32 = 0;
+                        val blen: i32 = str_len(base);
+                        loop {
+                            if bi + 1 >= blen {
+                                break;
+                            }
+                            val bc1: char = get_char(base, bi);
+                            val bc2: char = get_char(base, bi + 1);
+                            if bc1 == '_' and bc2 == '_' {
+                                bsep = bi;
+                            }
+                            bi = bi + 1;
+                        }
+                        if bsep >= 0 and bsep + 2 < blen {
+                            base_tail = substring_se(base, bsep + 2, blen);
+                        }
+
+                        if compare(inner_model, base) == 0 or compare(inner_model, base_tail) == 0 {
+                            fixed_method = substring_se(method, inner_sep + 2, mlen);
+                        }
+                    }
+
                     val canon: string = canonical_model_c_name(base);
                     mut full_name: string = str("");
                     if str_len(canon) > 0 {
@@ -385,7 +393,7 @@ def rewrite_method_calls(expr: string): string {
                         full_name = base;
                     }
                     full_name = concat(full_name, str("__"));
-                    full_name = concat(full_name, method);
+                    full_name = concat(full_name, fixed_method);
                     out = concat(out, full_name);
                     i = m;
                     continue;
@@ -1335,7 +1343,51 @@ def generate_function_prototype(ast: ref ASTNode): string {
     }
 
     mut func_name: string = func_name_raw;
-    func_name = normalize_method_function_name(func_name);
+    mut sep: i32 = -1;
+    mut i: i32 = 0;
+    val n: i32 = str_len(func_name);
+    loop {
+        if i + 1 >= n {
+            break;
+        }
+        val c1: char = get_char(func_name, i);
+        val c2: char = get_char(func_name, i + 1);
+        if c1 == '_' and c2 == '_' {
+            sep = i;
+        }
+        i = i + 1;
+    }
+
+    if sep >= 0 and sep + 2 < n {
+        val model_part: string = substring_se(func_name, 0, sep);
+        val method_part: string = substring_se(func_name, sep + 2, n);
+        mut has_inner_sep: bool = false;
+        mut j: i32 = 0;
+        val mlen: i32 = str_len(model_part);
+        loop {
+            if j + 1 >= mlen {
+                break;
+            }
+            val mc1: char = get_char(model_part, j);
+            val mc2: char = get_char(model_part, j + 1);
+            if mc1 == '_' and mc2 == '_' {
+                has_inner_sep = true;
+                break;
+            }
+            j = j + 1;
+        }
+
+        if !has_inner_sep {
+            val canon_model: string = canonical_model_c_name(model_part);
+            if str_len(canon_model) > 0 {
+                mut full: string = canon_model;
+                full = concat(full, str("__"));
+                full = concat(full, method_part);
+                func_name = full;
+            }
+        }
+    }
+
     if StringStringMap.contains(addr_of(g_function_prefixes), func_name) {
         func_name = StringStringMap.get(addr_of(g_function_prefixes), func_name);
     }
@@ -2075,7 +2127,52 @@ pub def generate_c(ast: ref ASTNode): string {
         val is_public: bool = ast.data.function.is_public;
         
         if !equals_c(func_name, "main") {
-            func_name = normalize_method_function_name(func_name);
+            mut sep2: i32 = -1;
+            mut i2: i32 = 0;
+            val n2: i32 = str_len(func_name);
+            loop {
+                if i2 + 1 >= n2 {
+                    break;
+                }
+                val c1b: char = get_char(func_name, i2);
+                val c2b: char = get_char(func_name, i2 + 1);
+                if c1b == '_' and c2b == '_' {
+                    sep2 = i2;
+                }
+                i2 = i2 + 1;
+            }
+
+            if sep2 >= 0 and sep2 + 2 < n2 {
+                val model_part2: string = substring_se(func_name, 0, sep2);
+                val method_part2: string = substring_se(func_name, sep2 + 2, n2);
+
+                mut has_inner_sep2: bool = false;
+                mut j2: i32 = 0;
+                val mlen2: i32 = str_len(model_part2);
+                loop {
+                    if j2 + 1 >= mlen2 {
+                        break;
+                    }
+                    val mc1b: char = get_char(model_part2, j2);
+                    val mc2b: char = get_char(model_part2, j2 + 1);
+                    if mc1b == '_' and mc2b == '_' {
+                        has_inner_sep2 = true;
+                        break;
+                    }
+                    j2 = j2 + 1;
+                }
+
+                if !has_inner_sep2 {
+                    val canon_model2: string = canonical_model_c_name(model_part2);
+                    if str_len(canon_model2) > 0 {
+                        mut full2: string = canon_model2;
+                        full2 = concat(full2, str("__"));
+                        full2 = concat(full2, method_part2);
+                        func_name = full2;
+                    }
+                }
+            }
+
             if StringStringMap.contains(addr_of(g_function_prefixes), func_name) {
                 func_name = StringStringMap.get(addr_of(g_function_prefixes), func_name);
             }

@@ -568,8 +568,12 @@ pub def find_char_from(s: string, c: char, start: usize): i32 {
 /// If `start` is beyond the end of the string or `length` is zero, an empty string is returned.
 /// The function clamps the requested range to the bounds of the source string.
 pub def substr(s: string, start: usize, length: usize): string {
-    mut result: string = string.create("");
+    mut result: string;
     raw {
+        result.data = NULL;
+        result.len  = 0;
+        result.cap  = 0;
+
         if (start >= s.len || length == 0) {
             return result;
         }
@@ -584,8 +588,10 @@ pub def substr(s: string, start: usize, length: usize): string {
         }
         memcpy(buf, s.data + start, copy_len);
         buf[copy_len] = '\0';
-        result = std__string__string_create(buf);
-        free(buf);
+
+        result.data = buf;
+        result.len  = copy_len;
+        result.cap  = copy_len + 1;
     }
     return result;
 }
