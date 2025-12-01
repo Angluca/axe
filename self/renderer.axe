@@ -1912,7 +1912,7 @@ pub def generate_c(ast: ref ASTNode): string {
                         result = concat(result, str(";\n"));
                     }
                 }
-                i_models2 = i_models2 + 1;
+                i_models2++;
             }
 
             mut i_models3: i32 = 0;
@@ -1932,7 +1932,7 @@ pub def generate_c(ast: ref ASTNode): string {
                         result = concat(result, str(";\n"));
                     }
                 }
-                i_models3 = i_models3 + 1;
+                i_models3++;
             }
 
             if g_list_elements != nil {
@@ -1963,7 +1963,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     val m_code: string = generate_c(m_child_fd);
                     result = concat(result, m_code);
                 }
-                i_models_fd = i_models_fd + 1;
+                i_models_fd++;
             }
 
             if g_list_elements != nil {
@@ -2025,7 +2025,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     result = concat(result, str("    list->data[list->len++] = item;\n"));
                     result = concat(result, str("}\n\n"));
 
-                    jj = jj + 1;
+                    jj++;
                 }
             }
 
