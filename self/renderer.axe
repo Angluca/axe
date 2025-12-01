@@ -3033,8 +3033,9 @@ pub def generate_c(ast: ref ASTNode): string {
 
         result = concat(result, lhs);
 
-        if str_len(strip(value)) > 0 {
-            val processed_value: string = strip(value);
+        mut trimmed_value: string = strip(value);
+        if str_len(trimmed_value) > 0 {
+            val processed_value: string = process_expression(trimmed_value);
             println "\n[DEBUG]   processed value:";
             println processed_value;
             result = concat(result, str(" = "));
@@ -3442,6 +3443,30 @@ pub def generate_c(ast: ref ASTNode): string {
         mut arena: Arena = Arena.create(1024);
         StringBoolMap.set(addr(g_generated_typedefs), addr(arena), enum_name, true);
         StringBoolMap.set(addr(g_enum_names), addr(arena), enum_name, true);
+        
+        mut base_enum_name: string = enum_name;
+        mut last_sep_enum: i32 = -1;
+        mut ei: i32 = 0;
+        val elen: i32 = str_len(enum_name);
+        loop {
+            if ei + 1 >= elen {
+                break;
+            }
+            val ec1: char = get_char(enum_name, ei);
+            val ec2: char = get_char(enum_name, ei + 1);
+            if ec1 == '_' and ec2 == '_' {
+                last_sep_enum = ei;
+            }
+            ei = ei + 1;
+        }
+
+        if last_sep_enum >= 0 and last_sep_enum + 2 < elen {
+            base_enum_name = substring_se(enum_name, last_sep_enum + 2, elen);
+        }
+
+        if str_len(base_enum_name) > 0 {
+            StringStringMap.set(addr(g_model_names), addr(arena), base_enum_name, enum_name);
+        }
         
         result = concat(result, str("typedef enum {\n"));
         
