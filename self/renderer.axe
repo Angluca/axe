@@ -243,8 +243,18 @@ def sanitize_list_element_name(c_elem: string): string {
         i = i + 1;
     }
     println "[DBG-ENUM] rewrite_enum_member_refs output:";
-    println out;
-    return out;
+    println out;    return out;
+}
+
+def collapse_duplicate_segments(s: string): string {
+    mut current: string = s;
+    loop {
+        val next: string = collapse_duplicate_segments_once(current);
+        if compare(next, current) == 0 {
+            return current;
+        }
+        current = next;
+    }
 }
 
 /// Rewrite method-style calls of the form `Base.method(...)` into a single
@@ -870,6 +880,93 @@ def c_prefix_end_index(s: string): i32 {
     }
 
     return i;
+}
+
+/// Collapse duplicated '__segment__segment' patterns in identifiers.
+/// For example, 'std__string__string__create' stays the same, but
+/// 'std__string__string_string__create' becomes 'std__string__string__create'.
+def collapse_duplicate_segments_once(s: string): string {
+    mut out: string = str("");
+    mut i: i32 = 0;
+    val n: i32 = str_len(s);
+
+    loop {
+        if i >= n {
+            break;
+        }
+
+        if i + 2 < n and get_char(s, i) == '_' and get_char(s, i + 1) == '_' {
+            mut j: i32 = i + 2;
+            mut seg1: string = str("");
+            loop {
+                if j >= n {
+                    break;
+                }
+                val ch: char = get_char(s, j);
+                if ch == '_' {
+                    break;
+                }
+                seg1 = concat_chr(seg1, ch);
+                j = j + 1;
+            }
+
+            if str_len(seg1) > 0 {
+                if j + 2 < n and get_char(s, j) == '_' and get_char(s, j + 1) == '_' {
+                    mut k: i32 = j + 2;
+                    mut seg2: string = str("");
+                    loop {
+                        if k >= n {
+                            break;
+                        }
+                        val ch2: char = get_char(s, k);
+                        if ch2 == '_' {
+                            break;
+                        }
+                        seg2 = concat_chr(seg2, ch2);
+                        k = k + 1;
+                    }
+
+                    if compare(seg1, seg2) == 0 {
+                        out = concat(out, str("__"));
+                        out = concat(out, seg1);
+                        i = k;
+                        continue;
+                    }
+                }
+
+                if j + 3 < n and get_char(s, j) == '_' and get_char(s, j + 1) != '_' {
+                    mut k2: i32 = j + 1;
+                    mut seg2b: string = str("");
+                    loop {
+                        if k2 >= n {
+                            break;
+                        }
+                        val ch3: char = get_char(s, k2);
+                        if ch3 == '_' {
+                            break;
+                        }
+                        seg2b = concat_chr(seg2b, ch3);
+                        k2 = k2 + 1;
+                    }
+
+                    if k2 + 1 < n and get_char(s, k2) == '_' and get_char(s, k2 + 1) == '_' {
+                        if compare(seg1, seg2b) == 0 {
+                            out = concat(out, str("__"));
+                            out = concat(out, seg1);
+                            out = concat(out, str("__"));
+                            i = k2 + 2;
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+
+        out = concat_chr(out, get_char(s, i));
+        i = i + 1;
+    }
+
+    return out;
 }
 
 /// Strip any C. prefixes (C, optional spaces, '.', optional spaces) that may
@@ -2006,6 +2103,7 @@ pub def generate_c(ast: ref ASTNode): string {
         result = strip_all_c_prefixes(result);
         result = replace_all(result, str("C . "), str(""));
         result = replace_all(result, str("C."), str(""));
+        result = collapse_duplicate_segments(result);
     }
 
     if equals_c(node_type, "Test") {
