@@ -246,6 +246,7 @@ def sanitize_list_element_name(c_elem: string): string {
     println out;    return out;
 }
 
+/// Collapse all duplicate segments in the specified string expression.
 def collapse_duplicate_segments(s: string): string {
     mut current: string = s;
     loop {
