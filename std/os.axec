@@ -559,7 +559,7 @@ test {
     assert(!file_exists(string.create("testfile.txt")), "file should not exist after deletion");
 
     mut val arena: Arena = Arena.create(65536);
-    val args: ref StringList = get_cmdline_args(ref_of(arena));
+    val args: ref StringList = get_cmdline_args(addr(arena));
     assert(args.len >= 1, "there should be at least one commandline argument");
 
     print "(And that commandline argument is: ";

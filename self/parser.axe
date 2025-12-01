@@ -31,10 +31,10 @@ mut g_macro_defs: list(MacroDef);
 /// Initialize the state-related globals
 pub def initialize_all() {
     mut arena: Arena = Arena.create(1024 * 1024);
-    g_type_aliases = deref(StringStringMap.create(ref_of(arena), 128));
-    g_imported_modules = deref(StringBoolMap.create(ref_of(arena), 128));
-    g_list_of_types = deref(StringStringMap.create(ref_of(arena), 128));
-    g_var_mutability = deref(StringBoolMap.create(ref_of(arena), 128));
+    g_type_aliases = deref(StringStringMap.create(addr(arena), 128));
+    g_imported_modules = deref(StringBoolMap.create(addr(arena), 128));
+    g_list_of_types = deref(StringStringMap.create(addr(arena), 128));
+    g_var_mutability = deref(StringBoolMap.create(addr(arena), 128));
     g_macro_names.len = 0;
     g_macro_defs.len = 0;
 }
@@ -117,12 +117,12 @@ def register_variable(var_name: string, is_mutable: bool) {
     } else {
         println "false";
     }
-    StringBoolMap.set(addr_of(g_var_mutability), addr_of(arena), var_name, is_mutable);
+    StringBoolMap.set(addr(g_var_mutability), addr(arena), var_name, is_mutable);
 }
 
 /// Check if a variable has been declared (tracked in mutability map)
 def is_variable_declared(var_name: string): bool {
-    val declared: bool = StringBoolMap.contains(addr_of(g_var_mutability), var_name);
+    val declared: bool = StringBoolMap.contains(addr(g_var_mutability), var_name);
     println "\n[DEBUG] is_variable_declared:";
     println var_name;
     if declared {
@@ -140,7 +140,7 @@ def is_variable_mutable(var_name: string): bool {
         println var_name;
         return true;
     }
-    val mut_val: bool = StringBoolMap.get(addr_of(g_var_mutability), var_name);
+    val mut_val: bool = StringBoolMap.get(addr(g_var_mutability), var_name);
     println "\n[DEBUG] is_variable_mutable:";
     print var_name;
     if mut_val {
@@ -159,7 +159,7 @@ pub def add_child_to_ast(ast: ref ASTNode, child: ASTNode) {
             val list_size: usize = C.sizeof(list(ASTNode));
             val heap_list: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(list_size));
             if heap_list != nil {
-                C.memcpy(heap_list, addr_of(new_list), list_size);
+                C.memcpy(heap_list, addr(new_list), list_size);
                 ast.children = heap_list;
             }
         }
@@ -169,9 +169,9 @@ pub def add_child_to_ast(ast: ref ASTNode, child: ASTNode) {
         unsafe {
             mut temp_list: list(ASTNode);
             val list_size: usize = C.sizeof(list(ASTNode));
-            C.memcpy(addr_of(temp_list), ast.children, list_size);
+            C.memcpy(addr(temp_list), ast.children, list_size);
             append(temp_list, child);          
-            C.memcpy(ast.children, addr_of(temp_list), list_size);
+            C.memcpy(ast.children, addr(temp_list), list_size);
         }
     }
 }
@@ -202,10 +202,10 @@ pub def parse(tokens: ref list(Token), is_axec: bool, check_entry_point: bool, c
     mut ast: ASTNode;
     ast.node_type = str("Program");
     
-    StringStringMap.clear(addr_of(g_type_aliases));
-    StringBoolMap.clear(addr_of(g_imported_modules));
-    StringStringMap.clear(addr_of(g_list_of_types));
-    StringBoolMap.clear(addr_of(g_var_mutability));
+    StringStringMap.clear(addr(g_type_aliases));
+    StringBoolMap.clear(addr(g_imported_modules));
+    StringStringMap.clear(addr(g_list_of_types));
+    StringBoolMap.clear(addr(g_var_mutability));
     
     if str_len(current_module) > 0 {
         // g_imported_modules[current_module] = true
@@ -217,11 +217,11 @@ pub def parse(tokens: ref list(Token), is_axec: bool, check_entry_point: bool, c
         if ctx.pos >= len(ctx.tokens) {
             break;
         }
-        skip_whitespace(addr_of(ctx));        
+        skip_whitespace(addr(ctx));        
         if ctx.pos >= len(ctx.tokens) {
             break;
         }
-        parse_top_level(addr_of(ctx), addr_of(ast));
+        parse_top_level(addr(ctx), addr(ast));
     }
     
     return ast;
@@ -236,7 +236,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
     val token_type = ctx.tokens.data[ctx.pos].token_type;
     
     if token_type == TokenType.USE {
-        mut node: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+        mut node: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
         if str_len(node.node_type) > 0 {
             add_child_to_ast(ast, node);
         }
@@ -356,7 +356,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
                     }
 
                     if expanded_tokens.data[j_tok].token_type == TokenType.IDENTIFIER {
-                        mut exp_token: ref Token = addr_of(expanded_tokens.data[j_tok]);
+                        mut exp_token: ref Token = addr(expanded_tokens.data[j_tok]);
                         if compare(exp_token.value, param_name) == 0 {
                             exp_token.value = arg_expr;
 
@@ -371,7 +371,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
                 i_param = i_param + 1;
             }
 
-            val expanded_ref: ref list(Token) = addr_of(expanded_tokens);
+            val expanded_ref: ref list(Token) = addr(expanded_tokens);
             val expanded_ast: ASTNode = parse(expanded_ref, ctx.is_axec, false, ctx.current_module);
 
             if expanded_ast.children != nil {
@@ -410,7 +410,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
             val params_size: usize = C.sizeof(list(string));
             val heap_params: ref list(string) = cast[ref list(string)](C.malloc(params_size));
             if heap_params != nil {
-                C.memcpy(heap_params, addr_of(empty_params), params_size);
+                C.memcpy(heap_params, addr(empty_params), params_size);
                 main_node.data.function.params = heap_params;
             }
         }
@@ -432,7 +432,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
                 break;
             }
             
-            mut stmt: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+            mut stmt: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
             if str_len(stmt.node_type) > 0 {
                 append(children, stmt);
             }
@@ -442,7 +442,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
             val list_size: usize = C.sizeof(list(ASTNode));
             val heap_list: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(list_size));
             if heap_list != nil {
-                C.memcpy(heap_list, addr_of(children), list_size);
+                C.memcpy(heap_list, addr(children), list_size);
                 main_node.children = heap_list;
             }
         }
@@ -797,13 +797,13 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
             val list_size: usize = C.sizeof(list(string));
             val heap_names: ref list(string) = cast[ref list(string)](C.malloc(list_size));
             if heap_names != nil {
-                C.memcpy(heap_names, addr_of(field_names), list_size);
+                C.memcpy(heap_names, addr(field_names), list_size);
                 model_node.data.model_node.field_names = heap_names;
             }
 
             val heap_types: ref list(string) = cast[ref list(string)](C.malloc(list_size));
             if heap_types != nil {
-                C.memcpy(heap_types, addr_of(field_types), list_size);
+                C.memcpy(heap_types, addr(field_types), list_size);
                 model_node.data.model_node.field_types = heap_types;
             }
 
@@ -811,19 +811,19 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
             if len(union_member_parents) > 0 {
                 val heap_union_parents: ref list(string) = cast[ref list(string)](C.malloc(union_list_size));
                 if heap_union_parents != nil {
-                    C.memcpy(heap_union_parents, addr_of(union_member_parents), union_list_size);
+                    C.memcpy(heap_union_parents, addr(union_member_parents), union_list_size);
                     model_node.data.model_node.union_member_parents = heap_union_parents;
                 }
 
                 val heap_union_names: ref list(string) = cast[ref list(string)](C.malloc(union_list_size));
                 if heap_union_names != nil {
-                    C.memcpy(heap_union_names, addr_of(union_member_names), union_list_size);
+                    C.memcpy(heap_union_names, addr(union_member_names), union_list_size);
                     model_node.data.model_node.union_member_names = heap_union_names;
                 }
 
                 val heap_union_types: ref list(string) = cast[ref list(string)](C.malloc(union_list_size));
                 if heap_union_types != nil {
-                    C.memcpy(heap_union_types, addr_of(union_member_types), union_list_size);
+                    C.memcpy(heap_union_types, addr(union_member_types), union_list_size);
                     model_node.data.model_node.union_member_types = heap_union_types;
                 }
             }
@@ -892,7 +892,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
             val list_size: usize = C.sizeof(list(string));
             mut heap_list: ref list(string) = cast[ref list(string)](C.malloc(list_size));
             if heap_list != nil {
-                C.memcpy(heap_list, addr_of(values), list_size);
+                C.memcpy(heap_list, addr(values), list_size);
                 enum_node.data.enum_node.values = heap_list;
             }
         }
@@ -902,7 +902,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
     }
     
     if token_type == TokenType.MUT or token_type == TokenType.VAL {
-        mut decl_node: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+        mut decl_node: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
         if str_len(decl_node.node_type) > 0 {
             add_child_to_ast(ast, decl_node);
         }
@@ -938,7 +938,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
                 break;
             }
             
-            mut stmt: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+            mut stmt: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
             if str_len(stmt.node_type) > 0 {
                 append(children, stmt);
             }
@@ -948,7 +948,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
             val list_size: usize = C.sizeof(list(ASTNode));
             val heap_list: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(list_size));
             if heap_list != nil {
-                C.memcpy(heap_list, addr_of(children), list_size);
+                C.memcpy(heap_list, addr(children), list_size);
                 test_node.children = heap_list;
             }
         }
@@ -1142,14 +1142,14 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
             val type_list_size: usize = C.sizeof(list(string));
             val heap_type_list: ref list(string) = cast[ref list(string)](C.malloc(type_list_size));
             if heap_type_list != nil {
-                C.memcpy(heap_type_list, addr_of(type_names), type_list_size);
+                C.memcpy(heap_type_list, addr(type_names), type_list_size);
                 overload_node.data.overload_node.type_names = heap_type_list;
             }
             
             val func_list_size: usize = C.sizeof(list(string));
             val heap_func_list: ref list(string) = cast[ref list(string)](C.malloc(func_list_size));
             if heap_func_list != nil {
-                C.memcpy(heap_func_list, addr_of(target_funcs), func_list_size);
+                C.memcpy(heap_func_list, addr(target_funcs), func_list_size);
                 overload_node.data.overload_node.target_functions = heap_func_list;
             }
         }
@@ -1284,15 +1284,15 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         mut macro_node: ASTNode;
         macro_node.node_type = str("Macro");
         macro_node.data.macro_node.name = macro_name;
-        macro_node.data.macro_node.params = addr_of(params);
-        macro_node.data.macro_node.param_types = addr_of(param_types);
-        macro_node.data.macro_node.body_tokens = addr_of(body_tokens);
+        macro_node.data.macro_node.params = addr(params);
+        macro_node.data.macro_node.param_types = addr(param_types);
+        macro_node.data.macro_node.body_tokens = addr(body_tokens);
 
         add_child_to_ast(ast, macro_node);
 
         mut defn: MacroDef;
-        defn.params = addr_of(params);
-        defn.body = addr_of(body_tokens);
+        defn.params = addr(params);
+        defn.body = addr(body_tokens);
         macros_add(macro_name, defn);
 
         return;
@@ -1490,8 +1490,8 @@ def parse_type(ctx: ref ParserContext): string {
         return str("");
     }
     
-    if StringStringMap.contains(addr_of(g_type_aliases), type_name) {
-        type_name = StringStringMap.get(addr_of(g_type_aliases), type_name);
+    if StringStringMap.contains(addr(g_type_aliases), type_name) {
+        type_name = StringStringMap.get(addr(g_type_aliases), type_name);
     }
     
     return concat(ref_prefix, type_name);
@@ -1694,7 +1694,7 @@ def parse_function(ctx: ref ParserContext): ASTNode {
             val params_size: usize = C.sizeof(list(string));
             val heap_params: ref list(string) = cast[ref list(string)](C.malloc(params_size));
             if heap_params != nil {
-                C.memcpy(heap_params, addr_of(params), params_size);
+                C.memcpy(heap_params, addr(params), params_size);
                 func.data.function.params = heap_params;
             }
         }
@@ -1733,7 +1733,7 @@ def parse_function(ctx: ref ParserContext): ASTNode {
             break;
         }
         
-        mut stmt: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+        mut stmt: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
         if str_len(stmt.node_type) > 0 {
             append(children, stmt);
         }
@@ -1743,7 +1743,7 @@ def parse_function(ctx: ref ParserContext): ASTNode {
         val list_size: usize = C.sizeof(list(ASTNode));
         val heap_list: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(list_size));
         if heap_list != nil {
-            C.memcpy(heap_list, addr_of(children), list_size);
+            C.memcpy(heap_list, addr(children), list_size);
             func.children = heap_list;
         }
     }
@@ -1970,7 +1970,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 break;
             }
 
-            mut stmt: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+            mut stmt: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
             if str_len(stmt.node_type) > 0 {
                 append(body, stmt);
             }
@@ -1980,7 +1980,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             val list_size: usize = C.sizeof(list(ASTNode));
             val heap_list: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(list_size));
             if heap_list != nil {
-                C.memcpy(heap_list, addr_of(body), list_size);
+                C.memcpy(heap_list, addr(body), list_size);
                 lnode.children = heap_list;
             }
         }
@@ -2121,7 +2121,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 break;
             }
 
-            mut stmt: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+            mut stmt: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
             if str_len(stmt.node_type) > 0 {
                 append(if_children, stmt);
             }
@@ -2210,7 +2210,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     break;
                 }
 
-                mut stmt_eb: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+                mut stmt_eb: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
                 if str_len(stmt_eb.node_type) > 0 {
                     append(elif_children, stmt_eb);
                 }
@@ -2236,7 +2236,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 val sz_el: usize = C.sizeof(list(ASTNode));
                 val heap_el: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(sz_el));
                 if heap_el != nil {
-                    C.memcpy(heap_el, addr_of(body_list_el), sz_el);
+                    C.memcpy(heap_el, addr(body_list_el), sz_el);
                     elif_node.children = heap_el;
                 }
             }
@@ -2271,7 +2271,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     val sz_nested: usize = C.sizeof(list(ASTNode));
                     val heap_nested: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(sz_nested));
                     if heap_nested != nil {
-                        C.memcpy(heap_nested, addr_of(nested_body), sz_nested);
+                        C.memcpy(heap_nested, addr(nested_body), sz_nested);
                         elif_node.children = heap_nested;
                     }
                 }
@@ -2310,7 +2310,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     break;
                 }
 
-                mut stmt2: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+                mut stmt2: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
                 if str_len(stmt2.node_type) > 0 {
                     append(else_children, stmt2);
                 }
@@ -2354,7 +2354,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             val list_size_if: usize = C.sizeof(list(ASTNode));
             val heap_list_if: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(list_size_if));
             if heap_list_if != nil {
-                C.memcpy(heap_list_if, addr_of(body_list), list_size_if);
+                C.memcpy(heap_list_if, addr(body_list), list_size_if);
                 node.children = heap_list_if;
             }
         }
@@ -2453,7 +2453,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 break;
             }
 
-            mut stmt: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+            mut stmt: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
             if str_len(stmt.node_type) > 0 {
                 append(body, stmt);
             }
@@ -2463,7 +2463,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             val list_size: usize = C.sizeof(list(ASTNode));
             val heap_list: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(list_size));
             if heap_list != nil {
-                C.memcpy(heap_list, addr_of(body), list_size);
+                C.memcpy(heap_list, addr(body), list_size);
                 fnode.children = heap_list;
             }
         }
@@ -2509,14 +2509,14 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             val list_size_str: usize = C.sizeof(list(string));
             mut heap_messages: ref list(string) = cast[ref list(string)](C.malloc(list_size_str));
             if heap_messages != nil {
-                C.memcpy(heap_messages, addr_of(messages), list_size_str);
+                C.memcpy(heap_messages, addr(messages), list_size_str);
                 node.data.print.messages = heap_messages;
             }
 
             val list_size_bool: usize = C.sizeof(list(bool));
             mut heap_flags: ref list(bool) = cast[ref list(bool)](C.malloc(list_size_bool));
             if heap_flags != nil {
-                C.memcpy(heap_flags, addr_of(flags), list_size_bool);
+                C.memcpy(heap_flags, addr(flags), list_size_bool);
                 node.data.print.is_expressions = heap_flags;
             }
         }
@@ -2943,7 +2943,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 val list_size: usize = C.sizeof(list(string));
                 mut heap_list: ref list(string) = cast[ref list(string)](C.malloc(list_size));
                 if heap_list != nil {
-                    C.memcpy(heap_list, addr_of(args_list), list_size);
+                    C.memcpy(heap_list, addr(args_list), list_size);
                     node.data.func_call.args = heap_list;
                 }
             }
@@ -3174,7 +3174,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     val list_size2: usize = C.sizeof(list(string));
                     mut heap_list2: ref list(string) = cast[ref list(string)](C.malloc(list_size2));
                     if heap_list2 != nil {
-                        C.memcpy(heap_list2, addr_of(args_list2), list_size2);
+                        C.memcpy(heap_list2, addr(args_list2), list_size2);
                         node.data.func_call.args = heap_list2;
                     }
                 }
@@ -3438,7 +3438,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             val list_size_s: usize = C.sizeof(list(string));
             mut heap_list_s: ref list(string) = cast[ref list(string)](C.malloc(list_size_s));
             if heap_list_s != nil {
-                C.memcpy(heap_list_s, addr_of(sugar_args_list), list_size_s);
+                C.memcpy(heap_list_s, addr(sugar_args_list), list_size_s);
                 node.data.func_call.args = heap_list_s;
             }
         }
@@ -3619,7 +3619,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 break;
             }
             
-            mut stmt: ASTNode = parse_statement_helper(ctx, addr_of(ctx.current_scope));
+            mut stmt: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
             if str_len(stmt.node_type) > 0 {
                 append(body, stmt);
             }
@@ -3631,7 +3631,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             val list_size_ast: usize = C.sizeof(list(ASTNode));
             mut heap_body: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(list_size_ast));
             if heap_body != nil {
-                C.memcpy(heap_body, addr_of(body), list_size_ast);
+                C.memcpy(heap_body, addr(body), list_size_ast);
                 node.data.unsafe_node.body = heap_body;
             }
         }
@@ -3750,7 +3750,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             val list_size: usize = C.sizeof(list(string));
             mut heap_list: ref list(string) = cast[ref list(string)](C.malloc(list_size));
             if heap_list != nil {
-                C.memcpy(heap_list, addr_of(type_names), list_size);
+                C.memcpy(heap_list, addr(type_names), list_size);
                 node.data.opaque_node.type_names = heap_list;
             }
         }
@@ -3960,7 +3960,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             val list_size: usize = C.sizeof(list(string));
             mut heap_list: ref list(string) = cast[ref list(string)](C.malloc(list_size));
             if heap_list != nil {
-                C.memcpy(heap_list, addr_of(imports), list_size);
+                C.memcpy(heap_list, addr(imports), list_size);
                 node.data.use_node.imports = heap_list;
             }
         }
@@ -4073,155 +4073,155 @@ test {
     println "\nTest 1: parse_type with simple type";
     mut tokens1: list(Token) = lex(str("i32"));
     mut ctx1: ParserContext;
-    ctx1.tokens = addr_of(tokens1);
+    ctx1.tokens = addr(tokens1);
     ctx1.pos = 0;
-    mut type1: string = parse_type(addr_of(ctx1));
+    mut type1: string = parse_type(addr(ctx1));
     assert equals_c(type1, "i32"), "Expected i32.";
 
     println "\nTest 2: skip_whitespace";
     mut tokens2: list(Token) = lex(str("   \n  \t  i32"));
     mut ctx2: ParserContext;
-    ctx2.tokens = addr_of(tokens2);
+    ctx2.tokens = addr(tokens2);
     ctx2.pos = 0;
     mut pos_before: i32 = ctx2.pos;
-    skip_whitespace(addr_of(ctx2));
+    skip_whitespace(addr(ctx2));
     assert ctx2.pos > pos_before, "Expected position to advance after skipping whitespace";
 
     println "\nTest 3: peek and consume";
     mut tokens3: list(Token) = lex(str("identifier"));
     mut ctx3: ParserContext;
-    ctx3.tokens = addr_of(tokens3);
+    ctx3.tokens = addr(tokens3);
     ctx3.pos = 0;
-    mut peeked: Token = peek(addr_of(ctx3));
+    mut peeked: Token = peek(addr(ctx3));
     mut pos_after_peek: i32 = ctx3.pos;
-    mut consumed: Token = consume(addr_of(ctx3));
+    mut consumed: Token = consume(addr(ctx3));
     mut pos_after_consume: i32 = ctx3.pos;
     assert pos_after_peek == 0 and pos_after_consume == 1, "Expected position to advance after consume";
 
     println "\nTest 4: expect";
     mut tokens4: list(Token) = lex(str("def function_name"));
     mut ctx4: ParserContext;
-    ctx4.tokens = addr_of(tokens4);
+    ctx4.tokens = addr(tokens4);
     ctx4.pos = 0;
-    assert expect(addr_of(ctx4), TokenType.DEF), "Expected to find 'def' token";
+    assert expect(addr(ctx4), TokenType.DEF), "Expected to find 'def' token";
 
     println "\nTest 5: parse_type with ref type";
     mut tokens5: list(Token) = lex(str("ref i32"));
     mut ctx5: ParserContext;
-    ctx5.tokens = addr_of(tokens5);
+    ctx5.tokens = addr(tokens5);
     ctx5.pos = 0;
-    mut type5: string = parse_type(addr_of(ctx5));
+    mut type5: string = parse_type(addr(ctx5));
     assert str_len(type5) > 0, "Expected non-empty type string for 'ref i32'";
     assert str_contains_c(type5, "i32"), "Expected type to contain 'i32'";
 
     println "\nTest 6: parse_type with list type";
     mut tokens6: list(Token) = lex(str("list(Token)"));
     mut ctx6: ParserContext;
-    ctx6.tokens = addr_of(tokens6);
+    ctx6.tokens = addr(tokens6);
     ctx6.pos = 0;
-    mut type6: string = parse_type(addr_of(ctx6));
+    mut type6: string = parse_type(addr(ctx6));
     assert str_len(type6) > 0, "Expected non-empty type for list(Token)";
     assert str_contains_c(type6, "Token"), "Expected type to contain 'Token'";
 
     println "\nTest 7: parse simple function with parse_function";
     mut tokens7: list(Token) = lex(str("foo(): i32 { return 42; }"));
     mut ctx7: ParserContext;
-    ctx7.tokens = addr_of(tokens7);
+    ctx7.tokens = addr(tokens7);
     ctx7.pos = 0;
-    mut func7: ASTNode = parse_function(addr_of(ctx7));
+    mut func7: ASTNode = parse_function(addr(ctx7));
     assert equals_c(func7.node_type, "Function"), "Expected Function node type";
 
     println "\nTest 8: parse function with parameters";
     mut tokens8: list(Token) = lex(str("add(a: i32): i32 { return a; }"));
     mut ctx8: ParserContext;
-    ctx8.tokens = addr_of(tokens8);
+    ctx8.tokens = addr(tokens8);
     ctx8.pos = 0;
-    mut func8: ASTNode = parse_function(addr_of(ctx8));
+    mut func8: ASTNode = parse_function(addr(ctx8));
     assert equals_c(func8.node_type, "Function"), "Expected Function node for function with params";
 
     println "\nTest 9: parse full program with def main";
     mut tokens9: list(Token) = lex(str("def main() { }"));
     mut empty_module: string = str("");
-    mut ast9: ASTNode = parse(addr_of(tokens9), false, false, empty_module);
+    mut ast9: ASTNode = parse(addr(tokens9), false, false, empty_module);
     assert equals_c(ast9.node_type, "Program"), "Expected Program AST node";
 
     println "\nTest 10: parse program with model definition";
     mut tokens10: list(Token) = lex(str("model Point { x: i32 } def main() { }"));
-    mut ast10: ASTNode = parse(addr_of(tokens10), false, false, str(""));
+    mut ast10: ASTNode = parse(addr(tokens10), false, false, str(""));
     assert equals_c(ast10.node_type, "Program"), "Expected Program node with model";
 
     println "\nTest 11: parse program with enum definition";
     mut tokens11: list(Token) = lex(str("enum Color { Red } def main() { }"));
-    mut ast11: ASTNode = parse(addr_of(tokens11), false, false, str(""));
+    mut ast11: ASTNode = parse(addr(tokens11), false, false, str(""));
     assert equals_c(ast11.node_type, "Program"), "Expected Program node with enum";
 
     println "\nTest 12: parse program with use statement";
     mut tokens12: list(Token) = lex(str("use std.io; def main() { }"));
-    mut ast12: ASTNode = parse(addr_of(tokens12), false, false, str(""));
+    mut ast12: ASTNode = parse(addr(tokens12), false, false, str(""));
     assert equals_c(ast12.node_type, "Program"), "Expected Program node with use statement";
 
     println "\nTest 13: parse program with global val";
     mut tokens13: list(Token) = lex(str("val CONSTANT: i32 = 42; def main() { }"));
-    mut ast13: ASTNode = parse(addr_of(tokens13), false, false, str(""));
+    mut ast13: ASTNode = parse(addr(tokens13), false, false, str(""));
     assert equals_c(ast13.node_type, "Program"), "Expected Program node with global val";
 
     println "\nTest 14: parse program with mut val";
     mut tokens14: list(Token) = lex(str("mut val counter: i32 = 0; def main() { }"));
-    mut ast14: ASTNode = parse(addr_of(tokens14), false, false, str(""));
+    mut ast14: ASTNode = parse(addr(tokens14), false, false, str(""));
     assert equals_c(ast14.node_type, "Program"), "Expected Program node with mut val";
 
     println "\nTest 15: parse program with pub function";
     mut tokens15: list(Token) = lex(str("pub def helper() { } def main() { }"));
-    mut ast15: ASTNode = parse(addr_of(tokens15), false, false, str(""));
+    mut ast15: ASTNode = parse(addr(tokens15), false, false, str(""));
     assert equals_c(ast15.node_type, "Program"), "Expected Program node with pub function";
 
     println "\nTest 16: parse empty test block";
     mut tokens16: list(Token) = lex(str("test { }"));
-    mut ast16: ASTNode = parse(addr_of(tokens16), false, false, str(""));
+    mut ast16: ASTNode = parse(addr(tokens16), false, false, str(""));
     assert equals_c(ast16.node_type, "Program"), "Expected Program node with test block";
 
     println "\nTest 17: parse_type with pointer syntax";
     mut tokens17: list(Token) = lex(str("i32*"));
     mut ctx17: ParserContext;
-    ctx17.tokens = addr_of(tokens17);
+    ctx17.tokens = addr(tokens17);
     ctx17.pos = 0;
-    mut type17: string = parse_type(addr_of(ctx17));
+    mut type17: string = parse_type(addr(ctx17));
     assert str_len(type17) > 0, "Expected non-empty type for i32*";
     assert str_contains_c(type17, "i32"), "Expected type to contain 'i32'";
 
     println "\nTest 18: parse multiple functions";
     mut tokens18: list(Token) = lex(str("def foo() { } def bar() { } def main() { }"));
-    mut ast18: ASTNode = parse(addr_of(tokens18), false, false, str(""));
+    mut ast18: ASTNode = parse(addr(tokens18), false, false, str(""));
     assert equals_c(ast18.node_type, "Program"), "Expected Program node with multiple functions";
 
     println "\nTest 19: parse_statement_helper with break";
     mut tokens19: list(Token) = lex(str("break;"));
     mut ctx19: ParserContext;
-    ctx19.tokens = addr_of(tokens19);
+    ctx19.tokens = addr(tokens19);
     ctx19.pos = 0;
     ctx19.is_axec = false;
     ctx19.check_entry_point = false;
     ctx19.current_module = str("");
-    mut stmt19: ASTNode = parse_statement_helper(addr_of(ctx19), addr_of(ctx19.current_scope));
+    mut stmt19: ASTNode = parse_statement_helper(addr(ctx19), addr(ctx19.current_scope));
     assert equals_c(stmt19.node_type, "Break"), "Expected Break node";
 
     println "\nTest 20: parse_statement_helper with return";
     mut tokens20: list(Token) = lex(str("return 42;"));
     mut ctx20: ParserContext;
-    ctx20.tokens = addr_of(tokens20);
+    ctx20.tokens = addr(tokens20);
     ctx20.pos = 0;
     ctx20.is_axec = false;
-    mut stmt20: ASTNode = parse_statement_helper(addr_of(ctx20), addr_of(ctx20.current_scope));
+    mut stmt20: ASTNode = parse_statement_helper(addr(ctx20), addr(ctx20.current_scope));
     assert equals_c(stmt20.node_type, "Return"), "Expected Return node";
     assert str_contains_c(stmt20.data.return_node.expression, "42"), "Expected return expression to contain '42'";
 
     println "\nTest 21: parse_statement_helper with assert";
     mut tokens21: list(Token) = lex(str("assert x > 0, \"x must be positive\";"));
     mut ctx21: ParserContext;
-    ctx21.tokens = addr_of(tokens21);
+    ctx21.tokens = addr(tokens21);
     ctx21.pos = 0;
     ctx21.is_axec = false;
-    mut stmt21: ASTNode = parse_statement_helper(addr_of(ctx21), addr_of(ctx21.current_scope));
+    mut stmt21: ASTNode = parse_statement_helper(addr(ctx21), addr(ctx21.current_scope));
     assert equals_c(stmt21.node_type, "Assert"), "Expected Assert node";
     assert str_len(stmt21.data.assert_node.condition) > 0, "Expected assert condition";
     assert str_len(stmt21.data.assert_node.message) > 0, "Expected assert message";
@@ -4229,68 +4229,68 @@ test {
     println "\nTest 22: parse_statement_helper with unsafe block";
     mut tokens22: list(Token) = lex(str("unsafe { }"));
     mut ctx22: ParserContext;
-    ctx22.tokens = addr_of(tokens22);
+    ctx22.tokens = addr(tokens22);
     ctx22.pos = 0;
     ctx22.is_axec = false;
-    mut stmt22: ASTNode = parse_statement_helper(addr_of(ctx22), addr_of(ctx22.current_scope));
+    mut stmt22: ASTNode = parse_statement_helper(addr(ctx22), addr(ctx22.current_scope));
     assert equals_c(stmt22.node_type, "Unsafe"), "Expected Unsafe node";
 
     println "\nTest 23: parse_statement_helper with if-elif-else";
     mut tokens23: list(Token) = lex(str("if x > 0 { println x; } elif x < 0 { println x; } else { println x; }"));
     mut ctx23: ParserContext;
-    ctx23.tokens = addr_of(tokens23);
+    ctx23.tokens = addr(tokens23);
     ctx23.pos = 0;
     ctx23.is_axec = false;
-    mut stmt23: ASTNode = parse_statement_helper(addr_of(ctx23), addr_of(ctx23.current_scope));
+    mut stmt23: ASTNode = parse_statement_helper(addr(ctx23), addr(ctx23.current_scope));
     assert equals_c(stmt23.node_type, "If"), "Expected If node with elif and else";
 
     println "\nTest 24: parse_statement_helper with use statement";
     mut tokens24: list(Token) = lex(str("use std.io;"));
     mut ctx24: ParserContext;
-    ctx24.tokens = addr_of(tokens24);
+    ctx24.tokens = addr(tokens24);
     ctx24.pos = 0;
     ctx24.is_axec = false;
-    mut stmt24: ASTNode = parse_statement_helper(addr_of(ctx24), addr_of(ctx24.current_scope));
+    mut stmt24: ASTNode = parse_statement_helper(addr(ctx24), addr(ctx24.current_scope));
     assert equals_c(stmt24.node_type, "Use"), "Expected Use node";
     assert stmt24.data.use_node.import_all == true, "Expected import_all to be true";
 
     println "\nTest 25: parse_statement_helper with use selective imports";
     mut tokens25: list(Token) = lex(str("use std.maps (StringIntMap, StringStringMap);"));
     mut ctx25: ParserContext;
-    ctx25.tokens = addr_of(tokens25);
+    ctx25.tokens = addr(tokens25);
     ctx25.pos = 0;
     ctx25.is_axec = false;
-    mut stmt25: ASTNode = parse_statement_helper(addr_of(ctx25), addr_of(ctx25.current_scope));
+    mut stmt25: ASTNode = parse_statement_helper(addr(ctx25), addr(ctx25.current_scope));
     assert equals_c(stmt25.node_type, "Use"), "Expected Use node with selective imports";
     assert stmt25.data.use_node.import_all == false, "Expected import_all to be false";
 
     println "\nTest 26: parse_statement_helper with case";
     mut tokens26: list(Token) = lex(str("case 1 { println \"one\"; }"));
     mut ctx26: ParserContext;
-    ctx26.tokens = addr_of(tokens26);
+    ctx26.tokens = addr(tokens26);
     ctx26.pos = 0;
     ctx26.is_axec = false;
-    mut stmt26: ASTNode = parse_statement_helper(addr_of(ctx26), addr_of(ctx26.current_scope));
+    mut stmt26: ASTNode = parse_statement_helper(addr(ctx26), addr(ctx26.current_scope));
     assert equals_c(stmt26.node_type, "Case"), "Expected Case node";
     assert stmt26.data.case_node.is_default == false, "Expected non-default case";
 
     println "\nTest 27: parse_statement_helper with default";
     mut tokens27: list(Token) = lex(str("default { println \"other\"; }"));
     mut ctx27: ParserContext;
-    ctx27.tokens = addr_of(tokens27);
+    ctx27.tokens = addr(tokens27);
     ctx27.pos = 0;
     ctx27.is_axec = false;
-    mut stmt27: ASTNode = parse_statement_helper(addr_of(ctx27), addr_of(ctx27.current_scope));
+    mut stmt27: ASTNode = parse_statement_helper(addr(ctx27), addr(ctx27.current_scope));
     assert equals_c(stmt27.node_type, "Case"), "Expected Case node for default";
     assert stmt27.data.case_node.is_default == true, "Expected default case";
 
     println "\nTest 28: parse_statement_helper with member access assignment";
     mut tokens28: list(Token) = lex(str("obj.field = 42;"));
     mut ctx28: ParserContext;
-    ctx28.tokens = addr_of(tokens28);
+    ctx28.tokens = addr(tokens28);
     ctx28.pos = 0;
     ctx28.is_axec = false;
-    mut stmt28: ASTNode = parse_statement_helper(addr_of(ctx28), addr_of(ctx28.current_scope));
+    mut stmt28: ASTNode = parse_statement_helper(addr(ctx28), addr(ctx28.current_scope));
     assert equals_c(stmt28.node_type, "MemberAccess"), "Expected MemberAccess node";
     assert equals_c(stmt28.data.member_access.object_name, "obj"), "Expected object name 'obj'";
     assert equals_c(stmt28.data.member_access.member_name, "field"), "Expected member name 'field'";
@@ -4299,10 +4299,10 @@ test {
     println "\nTest 29: parse_statement_helper with member access read";
     mut tokens29: list(Token) = lex(str("obj.field;"));
     mut ctx29: ParserContext;
-    ctx29.tokens = addr_of(tokens29);
+    ctx29.tokens = addr(tokens29);
     ctx29.pos = 0;
     ctx29.is_axec = false;
-    mut stmt29: ASTNode = parse_statement_helper(addr_of(ctx29), addr_of(ctx29.current_scope));
+    mut stmt29: ASTNode = parse_statement_helper(addr(ctx29), addr(ctx29.current_scope));
     assert equals_c(stmt29.node_type, "MemberAccess"), "Expected MemberAccess node";
     assert equals_c(stmt29.data.member_access.object_name, "obj"), "Expected object name 'obj'";
     assert equals_c(stmt29.data.member_access.member_name, "field"), "Expected member name 'field'";
@@ -4311,10 +4311,10 @@ test {
     println "\nTest 30: parse_statement_helper with array access";
     mut tokens30: list(Token) = lex(str("arr[5];"));
     mut ctx30: ParserContext;
-    ctx30.tokens = addr_of(tokens30);
+    ctx30.tokens = addr(tokens30);
     ctx30.pos = 0;
     ctx30.is_axec = false;
-    mut stmt30: ASTNode = parse_statement_helper(addr_of(ctx30), addr_of(ctx30.current_scope));
+    mut stmt30: ASTNode = parse_statement_helper(addr(ctx30), addr(ctx30.current_scope));
     assert equals_c(stmt30.node_type, "ArrayAccess"), "Expected ArrayAccess node";
     assert equals_c(stmt30.data.array_access.array_name, "arr"), "Expected array name 'arr'";
     assert str_contains_c(stmt30.data.array_access.index, "5"), "Expected index to contain '5'";
@@ -4322,10 +4322,10 @@ test {
     println "\nTest 31: parse_statement_helper with array assignment";
     mut tokens31: list(Token) = lex(str("arr[i] = 42;"));
     mut ctx31: ParserContext;
-    ctx31.tokens = addr_of(tokens31);
+    ctx31.tokens = addr(tokens31);
     ctx31.pos = 0;
     ctx31.is_axec = false;
-    mut stmt31: ASTNode = parse_statement_helper(addr_of(ctx31), addr_of(ctx31.current_scope));
+    mut stmt31: ASTNode = parse_statement_helper(addr(ctx31), addr(ctx31.current_scope));
     assert equals_c(stmt31.node_type, "ArrayAssign"), "Expected ArrayAssign node";
     assert equals_c(stmt31.data.array_assign.array_name, "arr"), "Expected array name 'arr'";
     assert str_contains_c(stmt31.data.array_assign.index, "i"), "Expected index to contain 'i'";
@@ -4334,10 +4334,10 @@ test {
     println "\nTest 32: parse_statement_helper with 2D array access";
     mut tokens32: list(Token) = lex(str("matrix[i][j];"));
     mut ctx32: ParserContext;
-    ctx32.tokens = addr_of(tokens32);
+    ctx32.tokens = addr(tokens32);
     ctx32.pos = 0;
     ctx32.is_axec = false;
-    mut stmt32: ASTNode = parse_statement_helper(addr_of(ctx32), addr_of(ctx32.current_scope));
+    mut stmt32: ASTNode = parse_statement_helper(addr(ctx32), addr(ctx32.current_scope));
     assert equals_c(stmt32.node_type, "ArrayAccess"), "Expected ArrayAccess node for 2D array";
     assert equals_c(stmt32.data.array_access.array_name, "matrix"), "Expected array name 'matrix'";
     assert str_contains_c(stmt32.data.array_access.index, "i"), "Expected first index to contain 'i'";
@@ -4346,10 +4346,10 @@ test {
     println "\nTest 33: parse_statement_helper with increment";
     mut tokens33: list(Token) = lex(str("x++;"));
     mut ctx33: ParserContext;
-    ctx33.tokens = addr_of(tokens33);
+    ctx33.tokens = addr(tokens33);
     ctx33.pos = 0;
     ctx33.is_axec = false;
-    mut stmt33: ASTNode = parse_statement_helper(addr_of(ctx33), addr_of(ctx33.current_scope));
+    mut stmt33: ASTNode = parse_statement_helper(addr(ctx33), addr(ctx33.current_scope));
     assert equals_c(stmt33.node_type, "IncDec"), "Expected IncDec node";
     assert equals_c(stmt33.data.inc_dec.variable, "x"), "Expected variable name 'x'";
     assert stmt33.data.inc_dec.is_increment == true, "Expected is_increment to be true";
@@ -4357,10 +4357,10 @@ test {
     println "\nTest 34: parse_statement_helper with decrement";
     mut tokens34: list(Token) = lex(str("x--;"));
     mut ctx34: ParserContext;
-    ctx34.tokens = addr_of(tokens34);
+    ctx34.tokens = addr(tokens34);
     ctx34.pos = 0;
     ctx34.is_axec = false;
-    mut stmt34: ASTNode = parse_statement_helper(addr_of(ctx34), addr_of(ctx34.current_scope));
+    mut stmt34: ASTNode = parse_statement_helper(addr(ctx34), addr(ctx34.current_scope));
     assert equals_c(stmt34.node_type, "IncDec"), "Expected IncDec node";
     assert equals_c(stmt34.data.inc_dec.variable, "x"), "Expected variable name 'x'";
     assert stmt34.data.inc_dec.is_increment == false, "Expected is_increment to be false";
@@ -4368,10 +4368,10 @@ test {
     println "\nTest 35: parse_statement_helper with member increment";
     mut tokens35: list(Token) = lex(str("obj.count++;"));
     mut ctx35: ParserContext;
-    ctx35.tokens = addr_of(tokens35);
+    ctx35.tokens = addr(tokens35);
     ctx35.pos = 0;
     ctx35.is_axec = false;
-    mut stmt35: ASTNode = parse_statement_helper(addr_of(ctx35), addr_of(ctx35.current_scope));
+    mut stmt35: ASTNode = parse_statement_helper(addr(ctx35), addr(ctx35.current_scope));
     assert equals_c(stmt35.node_type, "MemberIncDec"), "Expected MemberIncDec node";
     assert equals_c(stmt35.data.member_inc_dec.object_name, "obj"), "Expected object name 'obj'";
     assert equals_c(stmt35.data.member_inc_dec.member_name, "count"), "Expected member name 'count'";
@@ -4380,10 +4380,10 @@ test {
     println "\nTest 36: parse_statement_helper with member decrement";
     mut tokens36: list(Token) = lex(str("obj.count--;"));
     mut ctx36: ParserContext;
-    ctx36.tokens = addr_of(tokens36);
+    ctx36.tokens = addr(tokens36);
     ctx36.pos = 0;
     ctx36.is_axec = false;
-    mut stmt36: ASTNode = parse_statement_helper(addr_of(ctx36), addr_of(ctx36.current_scope));
+    mut stmt36: ASTNode = parse_statement_helper(addr(ctx36), addr(ctx36.current_scope));
     assert equals_c(stmt36.node_type, "MemberIncDec"), "Expected MemberIncDec node";
     assert equals_c(stmt36.data.member_inc_dec.object_name, "obj"), "Expected object name 'obj'";
     assert equals_c(stmt36.data.member_inc_dec.member_name, "count"), "Expected member name 'count'";
@@ -4411,11 +4411,11 @@ test {
     
     mut ctx37: ParserContext;
 
-    ctx37.tokens = addr_of(tokens37);
+    ctx37.tokens = addr(tokens37);
     ctx37.pos = 0;
     ctx37.is_axec = false;
 
-    mut stmt37: ASTNode = parse_statement_helper(addr_of(ctx37), addr_of(ctx37.current_scope));
+    mut stmt37: ASTNode = parse_statement_helper(addr(ctx37), addr(ctx37.current_scope));
     
     assert equals_c(stmt37.node_type, "Use"), "Expected Use node as first statement in program";
     assert equals_c(stmt37.data.use_node.module_name, "std.io"), "Expected module name 'std.io'";

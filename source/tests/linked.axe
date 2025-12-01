@@ -64,14 +64,14 @@ def main() {
     mut arena: Arena = Arena.create(65536);
     mut head: ref Node = nil;
 
-    head = list_push_front(head, ref_of(arena), 10);
-    head = list_push_front(head, ref_of(arena), 5);
-    head = list_push_back(head, ref_of(arena), 20);
-    head = list_push_back(head, ref_of(arena), 25);
+    head = list_push_front(head, addr(arena), 10);
+    head = list_push_front(head, addr(arena), 5);
+    head = list_push_back(head, addr(arena), 20);
+    head = list_push_back(head, addr(arena), 25);
 
     println "List contents:";
     list_print(head);
 
-    Arena.destroy(ref_of(arena));
+    Arena.destroy(addr(arena));
     println "Arena destroyed.";
 }

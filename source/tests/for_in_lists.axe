@@ -8,13 +8,13 @@ use std.lists (
 
 def main() {
     mut arena: Arena = Arena.create(65536);
-    mut my_list: ref IntList = IntList.create(ref_of(arena), 4);
+    mut my_list: ref IntList = IntList.create(addr(arena), 4);
 
-    IntList.push(my_list, ref_of(arena), 10);
-    IntList.push(my_list, ref_of(arena), 20);
-    IntList.push(my_list, ref_of(arena), 30);
-    IntList.push(my_list, ref_of(arena), 40);
-    IntList.push(my_list, ref_of(arena), 50);
+    IntList.push(my_list, addr(arena), 10);
+    IntList.push(my_list, addr(arena), 20);
+    IntList.push(my_list, addr(arena), 30);
+    IntList.push(my_list, addr(arena), 40);
+    IntList.push(my_list, addr(arena), 50);
 
     println "Iterating with for-in syntax:";
     

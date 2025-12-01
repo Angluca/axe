@@ -118,7 +118,7 @@ def add_row(doc: ref CsvDocument, row: CsvRow) {
 /// Get a row from a CSV document by index
 def get_row(doc: ref CsvDocument, index: usize): ref CsvRow {
     if doc != nil and index < doc.row_count {
-        return ref_of(doc.rows[index]);
+        return addr(doc.rows[index]);
     }
     return nil;
 }
@@ -185,7 +185,7 @@ def parse(csv_data: string, options: CsvOptions, arena: ref Arena): CsvDocument 
                 field_copy.data = field_copy_data;
                 field_copy.len = field_pos;
                 field_copy.cap = field_pos + 1;
-                add_field(ref_of(current_row), field_copy, arena);
+                add_field(addr(current_row), field_copy, arena);
             }
             
             field_pos = 0;
@@ -206,11 +206,11 @@ def parse(csv_data: string, options: CsvOptions, arena: ref Arena): CsvDocument 
                 field_copy.data = field_copy_data;
                 field_copy.len = field_pos;
                 field_copy.cap = field_pos + 1;
-                add_field(ref_of(current_row), field_copy, arena);
+                add_field(addr(current_row), field_copy, arena);
             }
             
             if current_row.field_count > 0 {
-                add_row(ref_of(doc), current_row);
+                add_row(addr(doc), current_row);
                 current_row = create_row();
             }
             
@@ -245,11 +245,11 @@ def parse(csv_data: string, options: CsvOptions, arena: ref Arena): CsvDocument 
             field_copy.data = field_copy_data;
             field_copy.len = field_pos;
             field_copy.cap = field_pos + 1;
-            add_field(ref_of(current_row), field_copy, arena);
+            add_field(addr(current_row), field_copy, arena);
         }
         
         if current_row.field_count > 0 {
-            add_row(ref_of(doc), current_row);
+            add_row(addr(doc), current_row);
         }
     }
     
@@ -283,7 +283,7 @@ def to_string(doc: ref CsvDocument, options: CsvOptions): string {
     mut pos: usize = 0;
     
     for mut i = 0 to doc.row_count {
-        mut row: ref CsvRow = ref_of(doc.rows[i]);
+        mut row: ref CsvRow = addr(doc.rows[i]);
         
         for mut j = 0 to row.field_count {
             mut field: string = row.fields.data[j];
@@ -362,18 +362,18 @@ test {
     mut arena: Arena = Arena.create(65536);
     
     mut csv_str: string = string.create("name,age,city\nJohn,30,NYC\nJane,25,LA\n");
-    mut doc: CsvDocument = parse_simple(csv_str, ref_of(arena));
+    mut doc: CsvDocument = parse_simple(csv_str, addr(arena));
     
     assert doc.row_count == 3, "Should parse 3 rows";
     
-    mut row0: ref CsvRow = get_row(ref_of(doc), 0);
+    mut row0: ref CsvRow = get_row(addr(doc), 0);
     assert row0 != nil, "Should get first row";
     assert row0.field_count == 3, "First row should have 3 fields";
     
     mut field0: string = get_field(row0, 0);
     assert field0.len == 4, "First field should be 'name'";
     
-    mut row1: ref CsvRow = get_row(ref_of(doc), 1);
+    mut row1: ref CsvRow = get_row(addr(doc), 1);
     assert row1 != nil, "Should get second row";
     assert row1.field_count == 3, "Second row should have 3 fields";
     
@@ -384,17 +384,17 @@ test {
     assert age.len == 2, "Age should be '30'";
     
     mut quoted_csv: string = string.create("\"Smith, John\",30,\"New York, NY\"\n");
-    mut quoted_doc: CsvDocument = parse_simple(quoted_csv, ref_of(arena));
+    mut quoted_doc: CsvDocument = parse_simple(quoted_csv, addr(arena));
     
     assert quoted_doc.row_count == 1, "Should parse 1 row with quoted fields";
     
-    mut quoted_row: ref CsvRow = get_row(ref_of(quoted_doc), 0);
+    mut quoted_row: ref CsvRow = get_row(addr(quoted_doc), 0);
     assert quoted_row != nil, "Should get quoted row";
     assert quoted_row.field_count == 3, "Should have 3 fields despite internal commas";
     
     mut opts: CsvOptions = default_options();
-    mut regenerated: string = to_string(ref_of(doc), opts);
+    mut regenerated: string = to_string(addr(doc), opts);
     assert regenerated.len > 0, "Should generate CSV string";
     
-    Arena.destroy(ref_of(arena));
+    Arena.destroy(addr(arena));
 }

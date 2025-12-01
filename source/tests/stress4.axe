@@ -86,10 +86,10 @@ def main() {
 
     println "";
     print "Arena remaining: ";
-    print arena_get_remaining(ref_of(arena));
+    print arena_get_remaining(addr(arena));
     println "";
 
-    arena_destroy(ref_of(arena));
+    arena_destroy(addr(arena));
     println "Arena destroyed — memory freed!";
     println "=== END ===";
 }

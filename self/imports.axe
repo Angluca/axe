@@ -22,11 +22,11 @@ mut g_processed_modules: StringBoolMap;
 
 pub def reset_processed_modules() {
     mut arena: Arena = Arena.create(1024 * 16);
-    g_processed_modules = deref(StringBoolMap.create(addr_of(arena), 128));
+    g_processed_modules = deref(StringBoolMap.create(addr(arena), 128));
 }
 
 pub def has_imported_module(name: string): bool {
-    if StringBoolMap.contains(addr_of(g_processed_modules), name) {
+    if StringBoolMap.contains(addr(g_processed_modules), name) {
         return true;
     }
     return false;
@@ -34,11 +34,11 @@ pub def has_imported_module(name: string): bool {
 
 def add_processed_module(path: string) {
     mut arena: Arena = Arena.create(1024);
-    StringBoolMap.set(addr_of(g_processed_modules), addr_of(arena), path, true);
+    StringBoolMap.set(addr(g_processed_modules), addr(arena), path, true);
 }
 
 def is_module_processed(path: string): bool {
-    return StringBoolMap.contains(addr_of(g_processed_modules), path);
+    return StringBoolMap.contains(addr(g_processed_modules), path);
 }
 
 def get_module_prefix(module_name: string): string {
@@ -172,7 +172,7 @@ def append_child(program: ref ASTNode, child: ASTNode) {
             val sz: usize = C.sizeof(list(ASTNode));
             val heap_lst: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(sz));
             if heap_lst != nil {
-                C.memcpy(heap_lst, addr_of(lst), sz);
+                C.memcpy(heap_lst, addr(lst), sz);
                 program.children = heap_lst;
             }
         }
@@ -182,9 +182,9 @@ def append_child(program: ref ASTNode, child: ASTNode) {
         unsafe {
             mut tmp: list(ASTNode);
             val sz2: usize = C.sizeof(list(ASTNode));
-            C.memcpy(addr_of(tmp), program.children, sz2);
+            C.memcpy(addr(tmp), program.children, sz2);
             append(tmp, child);
-            C.memcpy(program.children, addr_of(tmp), sz2);
+            C.memcpy(program.children, addr(tmp), sz2);
         }
     }
 }
@@ -279,7 +279,7 @@ def prefix_enum_node(node: ref ASTNode, module_prefix: string) {
 
 def build_exported_name_map(imported: ref ASTNode): StringBoolMap {
     mut arena: Arena = Arena.create(1024);
-    mut m: StringBoolMap = deref(StringBoolMap.create(addr_of(arena), 128));
+    mut m: StringBoolMap = deref(StringBoolMap.create(addr(arena), 128));
     if imported.children == nil {
         return m;
     }
@@ -292,11 +292,11 @@ def build_exported_name_map(imported: ref ASTNode): StringBoolMap {
         }
         val child: ASTNode = children.data[i];
         if equals_c(child.node_type, "Function") {
-            StringBoolMap.set(addr_of(m), addr_of(arena), child.data.function.name, true);
+            StringBoolMap.set(addr(m), addr(arena), child.data.function.name, true);
         } elif equals_c(child.node_type, "Model") {
-            StringBoolMap.set(addr_of(m), addr_of(arena), child.data.model_node.name, true);
+            StringBoolMap.set(addr(m), addr(arena), child.data.model_node.name, true);
         } elif equals_c(child.node_type, "Enum") {
-            StringBoolMap.set(addr_of(m), addr_of(arena), child.data.enum_node.name, true);
+            StringBoolMap.set(addr(m), addr(arena), child.data.enum_node.name, true);
         }
         i++;
     }
@@ -485,7 +485,7 @@ def prefix_types_in_node(node: ref ASTNode, module_prefix: string, exported: ref
             if ii >= len(deref(children)) {
                 break;
             }
-            prefix_types_in_node(addr_of(children.data[ii]), module_prefix, exported);
+            prefix_types_in_node(addr(children.data[ii]), module_prefix, exported);
             ii = ii + 1;
         }
     }
@@ -514,13 +514,13 @@ def merge_imported_module(program: ref ASTNode, imported: ref ASTNode, use_modul
         }
 
         if equals_c(child.node_type, "Function") {
-            prefix_function_node(addr_of(child), module_prefix);
-            prefix_types_in_node(addr_of(child), module_prefix, addr_of(exported));
+            prefix_function_node(addr(child), module_prefix);
+            prefix_types_in_node(addr(child), module_prefix, addr(exported));
         } elif equals_c(child.node_type, "Model") {
-            prefix_model_node(addr_of(child), module_prefix);
-            prefix_types_in_node(addr_of(child), module_prefix, addr_of(exported));
+            prefix_model_node(addr(child), module_prefix);
+            prefix_types_in_node(addr(child), module_prefix, addr(exported));
         } elif equals_c(child.node_type, "Enum") {
-            prefix_enum_node(addr_of(child), module_prefix);
+            prefix_enum_node(addr(child), module_prefix);
         }
 
         append_child(program, child);
@@ -580,13 +580,13 @@ pub def process_imports(ast: ref ASTNode, base_dir: string, is_axec: bool, curre
                 }
             }
 
-            mut import_ast: ASTNode = parse(addr_of(toks), import_is_axec, false, use_mod);
+            mut import_ast: ASTNode = parse(addr(toks), import_is_axec, false, use_mod);
 
             val import_base: string = get_dir_from_path(module_path);
 
-            import_ast = process_imports(addr_of(import_ast), import_base, import_is_axec, module_path, false, use_mod);
+            import_ast = process_imports(addr(import_ast), import_base, import_is_axec, module_path, false, use_mod);
 
-            merge_imported_module(ast, addr_of(import_ast), use_mod);
+            merge_imported_module(ast, addr(import_ast), use_mod);
         }
 
         idx++;
@@ -604,7 +604,7 @@ test {
     fn.data.function.name = str("test_fn");
     fn.data.function.return_type = str("string");
 
-    append_child(addr_of(prog), fn);
+    append_child(addr(prog), fn);
 
     mut im: ASTNode;
     im.node_type = str("Program");
@@ -612,9 +612,9 @@ test {
     mut model_node: ASTNode;
     model_node.node_type = str("Model");
     model_node.data.model_node.name = str("string");
-    append_child(addr_of(im), model_node);
+    append_child(addr(im), model_node);
 
-    merge_imported_module(addr_of(prog), addr_of(im), str("std.string"));
+    merge_imported_module(addr(prog), addr(im), str("std.string"));
 
     val children: ref list(ASTNode) = prog.children;
     assert len(deref(children)) >= 2, "Expected at least 2 children after import merge";

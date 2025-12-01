@@ -138,13 +138,13 @@ def main() {
     }
 
     // allocate a text buffer in arena to exercise arena_alloc usage
-    val buf_ptr: long = arena_alloc(ref_of(arena), 1024);
+    val buf_ptr: long = arena_alloc(addr(arena), 1024);
     // we won't dereference the numeric pointer here (std rules), but this ensures arena works under load
     print "Arena remaining after allocations: ";
-    print arena_get_remaining(ref_of(arena));
+    print arena_get_remaining(addr(arena));
     println "";
 
-    arena_destroy(ref_of(arena));
+    arena_destroy(addr(arena));
 
     println "Arena destroyed - memory freed!";
     println "=== END TEST ===";

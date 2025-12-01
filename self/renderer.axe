@@ -49,36 +49,36 @@ mut g_list_elements: ref StringList;
 pub def initialize_renderer() {
     mut arena: Arena = Arena.create(1024 * 1024 * 100);
     
-    g_type_mappings = deref(StringStringMap.create(addr_of(arena), 128));
-    g_ref_depths = deref(StringIntMap.create(addr_of(arena), 128));
-    g_is_mutable = deref(StringBoolMap.create(addr_of(arena), 128));
-    g_function_prefixes = deref(StringStringMap.create(addr_of(arena), 128));
-    g_model_names = deref(StringStringMap.create(addr_of(arena), 128));
-    g_enum_names = deref(StringBoolMap.create(addr_of(arena), 128));
-    g_generated_typedefs = deref(StringBoolMap.create(addr_of(arena), 128));
-    g_generated_functions = deref(StringBoolMap.create(addr_of(arena), 128));
-    g_field_types = deref(StringStringMap.create(addr_of(arena), 128));
-    g_var_types = deref(StringStringMap.create(addr_of(arena), 128));
-    g_list_element_types = deref(StringBoolMap.create(addr_of(arena), 128));
-    g_list_elements = StringList.create(addr_of(arena), 64);
+    g_type_mappings = deref(StringStringMap.create(addr(arena), 128));
+    g_ref_depths = deref(StringIntMap.create(addr(arena), 128));
+    g_is_mutable = deref(StringBoolMap.create(addr(arena), 128));
+    g_function_prefixes = deref(StringStringMap.create(addr(arena), 128));
+    g_model_names = deref(StringStringMap.create(addr(arena), 128));
+    g_enum_names = deref(StringBoolMap.create(addr(arena), 128));
+    g_generated_typedefs = deref(StringBoolMap.create(addr(arena), 128));
+    g_generated_functions = deref(StringBoolMap.create(addr(arena), 128));
+    g_field_types = deref(StringStringMap.create(addr(arena), 128));
+    g_var_types = deref(StringStringMap.create(addr(arena), 128));
+    g_list_element_types = deref(StringBoolMap.create(addr(arena), 128));
+    g_list_elements = StringList.create(addr(arena), 64);
     
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("i8"), str("int8_t"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("u8"), str("uint8_t"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("i16"), str("int16_t"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("u16"), str("uint16_t"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("i32"), str("int32_t"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("u32"), str("uint32_t"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("i64"), str("int64_t"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("u64"), str("uint64_t"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("isize"), str("intptr_t"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("usize"), str("uintptr_t"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("f32"), str("float"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("f64"), str("double"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("bool"), str("bool"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("char"), str("char"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("rchar"), str("char*"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("byte"), str("uint8_t"));
-    StringStringMap.set(addr_of(g_type_mappings), addr_of(arena), str("ptrdiff"), str("isize"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("i8"), str("int8_t"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("u8"), str("uint8_t"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("i16"), str("int16_t"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("u16"), str("uint16_t"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("i32"), str("int32_t"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("u32"), str("uint32_t"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("i64"), str("int64_t"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("u64"), str("uint64_t"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("isize"), str("intptr_t"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("usize"), str("uintptr_t"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("f32"), str("float"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("f64"), str("double"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("bool"), str("bool"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("char"), str("char"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("rchar"), str("char*"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("byte"), str("uint8_t"));
+    StringStringMap.set(addr(g_type_mappings), addr(arena), str("ptrdiff"), str("isize"));
 }
 
 /// Rewrite member access on pointer-typed variables...
@@ -163,8 +163,8 @@ def rewrite_pointer_member_accesses(expr: string): string {
                     val trimmed_base: string = strip(base);
                     mut is_pointer: bool = false;
 
-                    if StringStringMap.contains(addr_of(g_var_types), trimmed_base) {
-                        val raw_type: string = StringStringMap.get(addr_of(g_var_types), trimmed_base);
+                    if StringStringMap.contains(addr(g_var_types), trimmed_base) {
+                        val raw_type: string = StringStringMap.get(addr(g_var_types), trimmed_base);
                         mut t: string = strip(raw_type);
 
                         if has_prefix(t, str("mut ")) {
@@ -206,7 +206,7 @@ def rewrite_pointer_member_accesses(expr: string): string {
 }
 
 def build_function_prefixes(ast: ref ASTNode) {
-    StringStringMap.clear(addr_of(g_function_prefixes));
+    StringStringMap.clear(addr(g_function_prefixes));
 
     if ast == nil or ast.children == nil {
         return;
@@ -218,7 +218,7 @@ def build_function_prefixes(ast: ref ASTNode) {
         if i >= len(deref(children)) {
             break;
         }
-        val child: ref ASTNode = addr_of(children.data[i]);
+        val child: ref ASTNode = addr(children.data[i]);
         if equals_c(child.node_type, "Function") {
             val full_name: string = child.data.function.name;
 
@@ -241,9 +241,9 @@ def build_function_prefixes(ast: ref ASTNode) {
                 val short_name: string = substring_se(full_name, last_sep + 2, n);
 
                 if str_len(short_name) > 0 {
-                    if !StringStringMap.contains(addr_of(g_function_prefixes), short_name) {
+                    if !StringStringMap.contains(addr(g_function_prefixes), short_name) {
                         mut arena: Arena = Arena.create(1256);
-                        StringStringMap.set(addr_of(g_function_prefixes), addr_of(arena), short_name, full_name);
+                        StringStringMap.set(addr(g_function_prefixes), addr(arena), short_name, full_name);
                     }
                 }
             }
@@ -255,8 +255,8 @@ def build_function_prefixes(ast: ref ASTNode) {
 
 /// Map Axe type to C type
 def map_type(axe_type: string): string {
-    if StringStringMap.contains(addr_of(g_type_mappings), axe_type) {
-        return StringStringMap.get(addr_of(g_type_mappings), axe_type);
+    if StringStringMap.contains(addr(g_type_mappings), axe_type) {
+        return StringStringMap.get(addr(g_type_mappings), axe_type);
     }
     return axe_type;
 }
@@ -266,8 +266,8 @@ def canonical_model_c_name(name: string): string {
     println "\n[DBG-MODEL] canonical_model_c_name lookup:";
     println name;
 
-    if StringStringMap.contains(addr_of(g_model_names), name) {
-        val mapped: string = StringStringMap.get(addr_of(g_model_names), name);
+    if StringStringMap.contains(addr(g_model_names), name) {
+        val mapped: string = StringStringMap.get(addr(g_model_names), name);
         println "\n[DBG-MODEL]   found canonical name:";
         println mapped;
         return mapped;
@@ -335,13 +335,13 @@ def map_axe_type_to_c(axe_type: string): string {
     }
     
     // Check type mappings
-    if StringStringMap.contains(addr_of(g_type_mappings), result) {
-        return StringStringMap.get(addr_of(g_type_mappings), result);
+    if StringStringMap.contains(addr(g_type_mappings), result) {
+        return StringStringMap.get(addr(g_type_mappings), result);
     }
     
     // Check model names
-    if StringStringMap.contains(addr_of(g_model_names), result) {
-        return StringStringMap.get(addr_of(g_model_names), result);
+    if StringStringMap.contains(addr(g_model_names), result) {
+        return StringStringMap.get(addr(g_model_names), result);
     }
     
     return result;
@@ -819,12 +819,12 @@ def add_list_element(c_elem: string) {
         return;
     }
 
-    if StringBoolMap.contains(addr_of(g_list_element_types), c_elem) {
+    if StringBoolMap.contains(addr(g_list_element_types), c_elem) {
         return;
     }
 
     mut arena: Arena = Arena.create(256);
-    StringBoolMap.set(addr_of(g_list_element_types), addr_of(arena), c_elem, true);
+    StringBoolMap.set(addr(g_list_element_types), addr(arena), c_elem, true);
 
     if g_list_elements != nil {
         val listref: ref StringList = g_list_elements;
@@ -839,7 +839,7 @@ def add_list_element(c_elem: string) {
             }
             i = i + 1;
         }
-        StringList.push(g_list_elements, addr_of(arena), c_elem);
+        StringList.push(g_list_elements, addr(arena), c_elem);
     }
 }
 
@@ -874,7 +874,7 @@ def scan_for_list_types(node: ref ASTNode) {
             if idx >= len(deref(chs)) {
                 break;
             }
-            scan_for_list_types(addr_of(chs.data[idx]));
+            scan_for_list_types(addr(chs.data[idx]));
             idx = idx + 1;
         }
     }
@@ -915,7 +915,7 @@ def format_model_field_type(field_type: string): string {
     
     val model_name: string = canonical_model_c_name(trimmed);
     if str_len(model_name) > 0 {
-        if StringBoolMap.contains(addr_of(g_enum_names), model_name) {
+        if StringBoolMap.contains(addr(g_enum_names), model_name) {
             trimmed = model_name;
         } else {
             trimmed = concat(str("struct "), model_name);
@@ -1257,8 +1257,8 @@ def rewrite_function_calls(expr: string): string {
 
             mut replaced_ident: string = ident;
             if k < str_len(expr) and get_char(expr, k) == '(' {
-                if StringStringMap.contains(addr_of(g_function_prefixes), ident) {
-                    replaced_ident = StringStringMap.get(addr_of(g_function_prefixes), ident);
+                if StringStringMap.contains(addr(g_function_prefixes), ident) {
+                    replaced_ident = StringStringMap.get(addr(g_function_prefixes), ident);
                 }
             }
 
@@ -1615,8 +1615,8 @@ def generate_function_prototype(ast: ref ASTNode): string {
         }
     }
 
-    if StringStringMap.contains(addr_of(g_function_prefixes), func_name) {
-        func_name = StringStringMap.get(addr_of(g_function_prefixes), func_name);
+    if StringStringMap.contains(addr(g_function_prefixes), func_name) {
+        func_name = StringStringMap.get(addr(g_function_prefixes), func_name);
     }
     mut return_type: string = ast.data.function.return_type;
 
@@ -1757,7 +1757,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if mi >= len(deref(children_for_models)) {
                     break;
                 }
-                val mchild: ref ASTNode = addr_of(children_for_models.data[mi]);
+                val mchild: ref ASTNode = addr(children_for_models.data[mi]);
                 if equals_c(mchild.node_type, "Model") or equals_c(mchild.node_type, "Enum") {
                     mut cname: string = str("");
                     if equals_c(mchild.node_type, "Model") {
@@ -1788,23 +1788,23 @@ pub def generate_c(ast: ref ASTNode): string {
                     mut arena_local: Arena = Arena.create(256);
 
                     if str_len(base) > 0 {
-                        StringStringMap.set(addr_of(g_model_names), addr_of(arena_local), base, cname);
+                        StringStringMap.set(addr(g_model_names), addr(arena_local), base, cname);
                     }
-                    StringStringMap.set(addr_of(g_model_names), addr_of(arena_local), cname, cname);
+                    StringStringMap.set(addr(g_model_names), addr(arena_local), cname, cname);
                 }
                 mi++;
             }
 
             val children: ref list(ASTNode) = ast.children;
 
-            StringBoolMap.clear(addr_of(g_list_element_types));
+            StringBoolMap.clear(addr(g_list_element_types));
 
             mut i_scan: i32 = 0;
             loop {
                 if i_scan >= len(deref(children)) {
                     break;
                 }
-                scan_for_list_types(addr_of(children.data[i_scan]));
+                scan_for_list_types(addr(children.data[i_scan]));
                 i_scan++;
             }
 
@@ -1813,7 +1813,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i_more >= len(deref(children)) {
                     break;
                 }
-                val cnode: ref ASTNode = addr_of(children.data[i_more]);
+                val cnode: ref ASTNode = addr(children.data[i_more]);
                 if equals_c(cnode.node_type, "Function") {
                     val ret_type: string = cnode.data.function.return_type;
                     val br: i32 = find_char_from(ret_type, '[', 0);
@@ -1856,11 +1856,11 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i_models2 >= len(deref(children)) {
                     break;
                 }
-                val m_child: ref ASTNode = addr_of(children.data[i_models2]);
+                val m_child: ref ASTNode = addr(children.data[i_models2]);
                 if equals_c(m_child.node_type, "Model") {
                     mut name: string = str("");
                     name = m_child.data.model_node.name;
-                    if !StringBoolMap.contains(addr_of(g_generated_typedefs), name) {
+                    if !StringBoolMap.contains(addr(g_generated_typedefs), name) {
                         result = concat(result, str("struct "));
                         result = concat(result, name);
                         result = concat(result, str(";\n"));
@@ -1874,11 +1874,11 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i_models3 >= len(deref(children)) {
                     break;
                 }
-                val m_child: ref ASTNode = addr_of(children.data[i_models3]);
+                val m_child: ref ASTNode = addr(children.data[i_models3]);
                 if equals_c(m_child.node_type, "Model") {
                     mut name2: string = str("");
                     name2 = m_child.data.model_node.name;
-                    if !StringBoolMap.contains(addr_of(g_generated_typedefs), name2) {
+                    if !StringBoolMap.contains(addr(g_generated_typedefs), name2) {
                         result = concat(result, str("typedef struct "));
                         result = concat(result, name2);
                         result = concat(result, str(" "));
@@ -1912,7 +1912,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i_models_fd >= len(deref(children)) {
                     break;
                 }
-                val m_child_fd: ref ASTNode = addr_of(children.data[i_models_fd]);
+                val m_child_fd: ref ASTNode = addr(children.data[i_models_fd]);
                 if equals_c(m_child_fd.node_type, "Model") or equals_c(m_child_fd.node_type, "Enum") {
                     val m_code: string = generate_c(m_child_fd);
                     result = concat(result, m_code);
@@ -1988,7 +1988,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i_globals >= len(deref(children)) {
                     break;
                 }
-                val g_child: ref ASTNode = addr_of(children.data[i_globals]);
+                val g_child: ref ASTNode = addr(children.data[i_globals]);
                 if equals_c(g_child.node_type, "Declaration") {
                     val g_code: string = generate_c(g_child);
                     if str_len(g_code) > 0 {
@@ -2003,7 +2003,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i_proto >= len(deref(children)) {
                     break;
                 }
-                val proto_child: ref ASTNode = addr_of(children.data[i_proto]);
+                val proto_child: ref ASTNode = addr(children.data[i_proto]);
                 if equals_c(proto_child.node_type, "Function") {
                     val proto_code: string = generate_function_prototype(proto_child);
                     if str_len(proto_code) > 0 {
@@ -2019,7 +2019,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i >= len(deref(children)) {
                     break;
                 }
-                val child: ref ASTNode = addr_of(children.data[i]);
+                val child: ref ASTNode = addr(children.data[i]);
                 if equals_c(child.node_type, "Overload") {
                     val ov_code: string = generate_c(child);
                     result = concat(result, ov_code);
@@ -2033,7 +2033,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i >= len(deref(children)) {
                     break;
                 }
-                val fn_child: ref ASTNode = addr_of(children.data[i]);
+                val fn_child: ref ASTNode = addr(children.data[i]);
                 if equals_c(fn_child.node_type, "Function") {
                     val fn_name: string = fn_child.data.function.name;
                     if !equals_c(fn_name, "main") {
@@ -2049,7 +2049,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i_main_idx >= len(deref(children)) {
                     break;
                 }
-                val fnn: ref ASTNode = addr_of(children.data[i_main_idx]);
+                val fnn: ref ASTNode = addr(children.data[i_main_idx]);
                 if equals_c(fnn.node_type, "Function") {
                     val namecheck: string = fnn.data.function.name;
                     if equals_c(namecheck, "main") {
@@ -2066,7 +2066,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i >= len(deref(children)) {
                     break;
                 }
-                val child2: ref ASTNode = addr_of(children.data[i]);
+                val child2: ref ASTNode = addr(children.data[i]);
                 if !equals_c(child2.node_type, "Overload") and !equals_c(child2.node_type, "Function") and !equals_c(child2.node_type, "Model") and !equals_c(child2.node_type, "Enum") and !equals_c(child2.node_type, "Declaration") {
                     val child_code: string = generate_c(child2);
                     result = concat(result, child_code);
@@ -2251,7 +2251,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     break;
                 }
 
-                val child: ref ASTNode = addr_of(children.data[i_test]);
+                val child: ref ASTNode = addr(children.data[i_test]);
 
                 if equals_c(child.node_type, "Assert") {
                     val cond_raw: string = strip(child.data.assert_node.condition);
@@ -2403,17 +2403,17 @@ pub def generate_c(ast: ref ASTNode): string {
                 }
             }
 
-            if StringStringMap.contains(addr_of(g_function_prefixes), func_name) {
-                func_name = StringStringMap.get(addr_of(g_function_prefixes), func_name);
+            if StringStringMap.contains(addr(g_function_prefixes), func_name) {
+                func_name = StringStringMap.get(addr(g_function_prefixes), func_name);
             }
         }
         
-        if StringBoolMap.contains(addr_of(g_generated_functions), func_name) {
+        if StringBoolMap.contains(addr(g_generated_functions), func_name) {
             return str("");
         }
         
         mut arena: Arena = Arena.create(1024);
-        StringBoolMap.set(addr_of(g_generated_functions), addr_of(arena), func_name, true);
+        StringBoolMap.set(addr(g_generated_functions), addr(arena), func_name, true);
         
         if equals_c(func_name, "main") {
             result = concat(result, str("int main(int argc, char** argv) {\n"));
@@ -2425,7 +2425,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     if i >= len(deref(children)) {
                         break;
                     }
-                    val child_code: string = generate_c(addr_of(children.data[i]));
+                    val child_code: string = generate_c(addr(children.data[i]));
                     result = concat(result, child_code);
                     i++;
                 }
@@ -2487,7 +2487,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i >= len(deref(children)) {
                     break;
                 }
-                val child_code: string = generate_c(addr_of(children.data[i]));
+                val child_code: string = generate_c(addr(children.data[i]));
                 result = concat(result, child_code);
                 i++;
             }
@@ -2507,8 +2507,8 @@ pub def generate_c(ast: ref ASTNode): string {
         val paren_pos_ret: i32 = find_char_from(trimmed_ret, '(', 0);
         if paren_pos_ret > 0 {
             val call_name_ret: string = strip(substring_se(trimmed_ret, 0, paren_pos_ret));
-            if StringStringMap.contains(addr_of(g_function_prefixes), call_name_ret) {
-                val full_name_ret: string = StringStringMap.get(addr_of(g_function_prefixes), call_name_ret);
+            if StringStringMap.contains(addr(g_function_prefixes), call_name_ret) {
+                val full_name_ret: string = StringStringMap.get(addr(g_function_prefixes), call_name_ret);
                 val rest_ret: string = substring_se(trimmed_ret, paren_pos_ret, str_len(trimmed_ret));
                 trimmed_ret = concat(full_name_ret, rest_ret);
                 expr = trimmed_ret;
@@ -2577,11 +2577,11 @@ pub def generate_c(ast: ref ASTNode): string {
         // use '.' or '->' in generated C.
         if str_len(var_name) > 0 and str_len(type_name) > 0 {
             mut arena: Arena = Arena.create(256);
-            StringStringMap.set(addr_of(g_var_types), addr_of(arena), var_name, type_name);
+            StringStringMap.set(addr(g_var_types), addr(arena), var_name, type_name);
         }
 
         val enum_model_name: string = canonical_model_c_name(type_name);
-        if str_len(enum_model_name) > 0 and StringBoolMap.contains(addr_of(g_enum_names), enum_model_name) {
+        if str_len(enum_model_name) > 0 and StringBoolMap.contains(addr(g_enum_names), enum_model_name) {
             mapped_type = enum_model_name;
         }
 
@@ -2706,8 +2706,8 @@ pub def generate_c(ast: ref ASTNode): string {
                 val paren_pos: i32 = find_char_from(trimmed, '(', 0);
                 if paren_pos > 0 {
                     val call_name_raw: string = strip(substring_se(trimmed, 0, paren_pos));
-                    if StringStringMap.contains(addr_of(g_function_prefixes), call_name_raw) {
-                        val full_name: string = StringStringMap.get(addr_of(g_function_prefixes), call_name_raw);
+                    if StringStringMap.contains(addr(g_function_prefixes), call_name_raw) {
+                        val full_name: string = StringStringMap.get(addr(g_function_prefixes), call_name_raw);
                         val rest: string = substring_se(trimmed, paren_pos, str_len(trimmed));
                         trimmed = concat(full_name, rest);
                     }
@@ -2922,8 +2922,8 @@ pub def generate_c(ast: ref ASTNode): string {
         if arrow_pos >= 0 and find_char_from(trimmed_obj, '>', arrow_pos) >= 0 {
             is_pointer = true;
         } else {
-            if StringStringMap.contains(addr_of(g_var_types), trimmed_obj) {
-                val raw_type: string = StringStringMap.get(addr_of(g_var_types), trimmed_obj);
+            if StringStringMap.contains(addr(g_var_types), trimmed_obj) {
+                val raw_type: string = StringStringMap.get(addr(g_var_types), trimmed_obj);
                 mut t: string = strip(raw_type);
 
                 if has_prefix(t, str("mut ")) {
@@ -2962,8 +2962,8 @@ pub def generate_c(ast: ref ASTNode): string {
         val func_name: string = ast.data.func_call.function_name;
 
         mut emitted_name: string = func_name;
-        if StringStringMap.contains(addr_of(g_function_prefixes), func_name) {
-            emitted_name = StringStringMap.get(addr_of(g_function_prefixes), func_name);
+        if StringStringMap.contains(addr(g_function_prefixes), func_name) {
+            emitted_name = StringStringMap.get(addr(g_function_prefixes), func_name);
         }
 
         result = concat(result, emitted_name);
@@ -3027,7 +3027,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i >= len(deref(children)) {
                     break;
                 }
-                val child_code: string = generate_c(addr_of(children.data[i]));
+                val child_code: string = generate_c(addr(children.data[i]));
                 result = concat(result, child_code);
                 i++;
             }
@@ -3074,7 +3074,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i_for >= len(deref(children)) {
                     break;
                 }
-                val child_code: string = generate_c(addr_of(children.data[i_for]));
+                val child_code: string = generate_c(addr(children.data[i_for]));
                 result = concat(result, child_code);
                 i_for = i_for + 1;
             }
@@ -3101,7 +3101,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i >= len(deref(children)) {
                     break;
                 }
-                val child_ref: ref ASTNode = addr_of(children.data[i]);
+                val child_ref: ref ASTNode = addr(children.data[i]);
                 if equals_c(child_ref.node_type, "ElseMarker") {
                     break;
                 }
@@ -3120,7 +3120,7 @@ pub def generate_c(ast: ref ASTNode): string {
                         if i >= len(deref(children)) {
                             break;
                         }
-                        val else_child: ref ASTNode = addr_of(children.data[i]);
+                        val else_child: ref ASTNode = addr(children.data[i]);
                         val else_code: string = generate_c(else_child);
                         result = concat(result, else_code);
                         i = i + 1;
@@ -3145,7 +3145,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 if i_unsafe >= len(deref(body)) {
                     break;
                 }
-                val child_code: string = generate_c(addr_of(body.data[i_unsafe]));
+                val child_code: string = generate_c(addr(body.data[i_unsafe]));
                 result = concat(result, child_code);
                 i_unsafe = i_unsafe + 1;
             }
@@ -3171,12 +3171,12 @@ pub def generate_c(ast: ref ASTNode): string {
         val union_names: ref list(string) = ast.data.model_node.union_member_names;
         val union_types: ref list(string) = ast.data.model_node.union_member_types;
 
-        if StringBoolMap.contains(addr_of(g_generated_typedefs), model_name) {
+        if StringBoolMap.contains(addr(g_generated_typedefs), model_name) {
             return str("");
         }
 
         mut arena: Arena = Arena.create(1024);
-        StringBoolMap.set(addr_of(g_generated_typedefs), addr_of(arena), model_name, true);
+        StringBoolMap.set(addr(g_generated_typedefs), addr(arena), model_name, true);
 
         result = concat(result, str("typedef struct "));
         result = concat(result, model_name);
@@ -3195,7 +3195,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 mut field_key: string = model_name;
                 field_key = concat(field_key, str("."));
                 field_key = concat(field_key, field_name);
-                StringStringMap.set(addr_of(g_field_types), addr_of(arena), field_key, field_type);
+                StringStringMap.set(addr(g_field_types), addr(arena), field_key, field_type);
 
                 if str_len(field_type) == 5 and equals_c(field_type, "union") and union_parents != nil and union_names != nil and union_types != nil {
                     result = concat(result, str("    union {\n"));
@@ -3244,7 +3244,7 @@ pub def generate_c(ast: ref ASTNode): string {
 
                                         val c_nested_model_name: string = canonical_model_c_name(mapped_nested_type);
                                         if str_len(c_nested_model_name) > 0 {
-                                            if StringBoolMap.contains(addr_of(g_enum_names), c_nested_model_name) {
+                                            if StringBoolMap.contains(addr(g_enum_names), c_nested_model_name) {
                                                 mapped_nested_type = c_nested_model_name;
                                             } else {
                                                 mapped_nested_type = concat(str("struct "), c_nested_model_name);
@@ -3281,7 +3281,7 @@ pub def generate_c(ast: ref ASTNode): string {
 
                                 val c_member_model_name: string = canonical_model_c_name(mapped_member_type);
                                 if str_len(c_member_model_name) > 0 {
-                                    if StringBoolMap.contains(addr_of(g_enum_names), c_member_model_name) {
+                                    if StringBoolMap.contains(addr(g_enum_names), c_member_model_name) {
                                         mapped_member_type = c_member_model_name;
                                     } else {
                                         mapped_member_type = concat(str("struct "), c_member_model_name);
@@ -3319,7 +3319,7 @@ pub def generate_c(ast: ref ASTNode): string {
 
                     val c_model_name: string = canonical_model_c_name(mapped_type);
                     if str_len(c_model_name) > 0 {
-                        if StringBoolMap.contains(addr_of(g_enum_names), c_model_name) {
+                        if StringBoolMap.contains(addr(g_enum_names), c_model_name) {
                             mapped_type = c_model_name;
                         } else {
                             mapped_type = concat(str("struct "), c_model_name);
@@ -3348,13 +3348,13 @@ pub def generate_c(ast: ref ASTNode): string {
         val enum_name: string = ast.data.enum_node.name;
         val enum_values: ref list(string) = ast.data.enum_node.values;
         
-        if StringBoolMap.contains(addr_of(g_generated_typedefs), enum_name) {
+        if StringBoolMap.contains(addr(g_generated_typedefs), enum_name) {
             return str("");
         }
         
         mut arena: Arena = Arena.create(1024);
-        StringBoolMap.set(addr_of(g_generated_typedefs), addr_of(arena), enum_name, true);
-        StringBoolMap.set(addr_of(g_enum_names), addr_of(arena), enum_name, true);
+        StringBoolMap.set(addr(g_generated_typedefs), addr(arena), enum_name, true);
+        StringBoolMap.set(addr(g_enum_names), addr(arena), enum_name, true);
         
         result = concat(result, str("typedef enum {\n"));
         
@@ -3397,7 +3397,7 @@ test {
     initialize_renderer();
     
     println "\nTest 1: Initialize renderer";
-    assert StringStringMap.contains(addr_of(g_type_mappings), str("i32")), "Expected i32 type mapping";
+    assert StringStringMap.contains(addr(g_type_mappings), str("i32")), "Expected i32 type mapping";
     assert equals_c(map_type(str("i32")), "int32_t"), "Expected i32 to map to int32_t";
     
     println "\nTest 2: Map types";
@@ -3409,7 +3409,7 @@ test {
     mut empty_ast: ASTNode;
     empty_ast.node_type = str("Program");
     empty_ast.children = nil;
-    val code: string = generate_c(addr_of(empty_ast));
+    val code: string = generate_c(addr(empty_ast));
     assert str_contains_c(code, "#include <stdio.h>"), "Expected stdio.h include";
     assert str_contains_c(code, "#include <stdint.h>"), "Expected stdint.h include";
     
@@ -3421,7 +3421,7 @@ test {
     func_ast.data.function.is_public = false;
     func_ast.data.function.params = nil;
     func_ast.children = nil;
-    val func_code: string = generate_c(addr_of(func_ast));
+    val func_code: string = generate_c(addr(func_ast));
     assert str_contains_c(func_code, "int main"), "Expected int main function";
     assert str_contains_c(func_code, "return 0;"), "Expected return 0 in main";
 
@@ -3435,7 +3435,7 @@ test {
     simple_func.data.function.is_public = false;
     simple_func.data.function.params = nil;
     simple_func.children = nil;
-    val simple_code: string = generate_c(addr_of(simple_func));
+    val simple_code: string = generate_c(addr(simple_func));
     assert str_contains_c(simple_code, "int32_t add"), "Expected int32_t add function";
     
     println "\nTest 6: Process parameter types";
@@ -3450,18 +3450,18 @@ test {
     model_ast.data.model_node.name = str("Point");
     model_ast.data.model_node.is_public = false;
     
-    val field_names_list: ref StringList = StringList.create(addr_of(model_arena), 10);
-    StringList.push(field_names_list, addr_of(model_arena), str("x"));
-    StringList.push(field_names_list, addr_of(model_arena), str("y"));
+    val field_names_list: ref StringList = StringList.create(addr(model_arena), 10);
+    StringList.push(field_names_list, addr(model_arena), str("x"));
+    StringList.push(field_names_list, addr(model_arena), str("y"));
     model_ast.data.model_node.field_names = field_names_list;
     
-    val field_types_list: ref StringList = StringList.create(addr_of(model_arena), 10);
-    StringList.push(field_types_list, addr_of(model_arena), str("i32"));
-    StringList.push(field_types_list, addr_of(model_arena), str("i32"));
+    val field_types_list: ref StringList = StringList.create(addr(model_arena), 10);
+    StringList.push(field_types_list, addr(model_arena), str("i32"));
+    StringList.push(field_types_list, addr(model_arena), str("i32"));
     model_ast.data.model_node.field_types = field_types_list;
     
     model_ast.children = nil;
-    val model_code: string = generate_c(addr_of(model_ast));
+    val model_code: string = generate_c(addr(model_ast));
     assert str_contains_c(model_code, "struct Point"), "Expected struct Point";
     assert str_contains_c(model_code, "int32_t x"), "Expected int32_t x field";
     assert str_contains_c(model_code, "int32_t y"), "Expected int32_t y field";
@@ -3472,20 +3472,20 @@ test {
     model2_ast.data.model_node.name = str("Person");
     model2_ast.data.model_node.is_public = true;
     
-    val field_names2: ref StringList = StringList.create(addr_of(model_arena), 10);
-    StringList.push(field_names2, addr_of(model_arena), str("age"));
-    StringList.push(field_names2, addr_of(model_arena), str("height"));
-    StringList.push(field_names2, addr_of(model_arena), str("active"));
+    val field_names2: ref StringList = StringList.create(addr(model_arena), 10);
+    StringList.push(field_names2, addr(model_arena), str("age"));
+    StringList.push(field_names2, addr(model_arena), str("height"));
+    StringList.push(field_names2, addr(model_arena), str("active"));
     model2_ast.data.model_node.field_names = field_names2;
     
-    val field_types2: ref StringList = StringList.create(addr_of(model_arena), 10);
-    StringList.push(field_types2, addr_of(model_arena), str("i32"));
-    StringList.push(field_types2, addr_of(model_arena), str("f32"));
-    StringList.push(field_types2, addr_of(model_arena), str("bool"));
+    val field_types2: ref StringList = StringList.create(addr(model_arena), 10);
+    StringList.push(field_types2, addr(model_arena), str("i32"));
+    StringList.push(field_types2, addr(model_arena), str("f32"));
+    StringList.push(field_types2, addr(model_arena), str("bool"));
     model2_ast.data.model_node.field_types = field_types2;
     
     model2_ast.children = nil;
-    val model2_code: string = generate_c(addr_of(model2_ast));
+    val model2_code: string = generate_c(addr(model2_ast));
     assert str_contains_c(model2_code, "struct Person"), "Expected struct Person";
     assert str_contains_c(model2_code, "int32_t age"), "Expected int32_t age field";
     assert str_contains_c(model2_code, "float height"), "Expected float height field";
@@ -3497,16 +3497,16 @@ test {
     model3_ast.data.model_node.name = str("Buffer");
     model3_ast.data.model_node.is_public = false;
     
-    val field_names3: ref StringList = StringList.create(addr_of(model_arena), 10);
-    StringList.push(field_names3, addr_of(model_arena), str("data"));
+    val field_names3: ref StringList = StringList.create(addr(model_arena), 10);
+    StringList.push(field_names3, addr(model_arena), str("data"));
     model3_ast.data.model_node.field_names = field_names3;
     
-    val field_types3: ref StringList = StringList.create(addr_of(model_arena), 10);
-    StringList.push(field_types3, addr_of(model_arena), str("i32[100]"));
+    val field_types3: ref StringList = StringList.create(addr(model_arena), 10);
+    StringList.push(field_types3, addr(model_arena), str("i32[100]"));
     model3_ast.data.model_node.field_types = field_types3;
     
     model3_ast.children = nil;
-    val model3_code: string = generate_c(addr_of(model3_ast));
+    val model3_code: string = generate_c(addr(model3_ast));
     assert str_contains_c(model3_code, "struct Buffer"), "Expected struct Buffer";
     assert str_contains_c(model3_code, "int32_t data[100]"), "Expected array field";
     
@@ -3516,18 +3516,18 @@ test {
     model4_ast.data.model_node.name = str("Node");
     model4_ast.data.model_node.is_public = false;
     
-    val field_names4: ref StringList = StringList.create(addr_of(model_arena), 10);
-    StringList.push(field_names4, addr_of(model_arena), str("value"));
-    StringList.push(field_names4, addr_of(model_arena), str("next"));
+    val field_names4: ref StringList = StringList.create(addr(model_arena), 10);
+    StringList.push(field_names4, addr(model_arena), str("value"));
+    StringList.push(field_names4, addr(model_arena), str("next"));
     model4_ast.data.model_node.field_names = field_names4;
     
-    val field_types4: ref StringList = StringList.create(addr_of(model_arena), 10);
-    StringList.push(field_types4, addr_of(model_arena), str("i32"));
-    StringList.push(field_types4, addr_of(model_arena), str("ref Node"));
+    val field_types4: ref StringList = StringList.create(addr(model_arena), 10);
+    StringList.push(field_types4, addr(model_arena), str("i32"));
+    StringList.push(field_types4, addr(model_arena), str("ref Node"));
     model4_ast.data.model_node.field_types = field_types4;
     
     model4_ast.children = nil;
-    val model4_code: string = generate_c(addr_of(model4_ast));
+    val model4_code: string = generate_c(addr(model4_ast));
     assert str_contains_c(model4_code, "struct Node"), "Expected struct Node";
     assert str_contains_c(model4_code, "int32_t value"), "Expected value field";
     assert str_contains_c(model4_code, "Node* next"), "Expected pointer field";
@@ -3542,14 +3542,14 @@ test {
     enum_ast.node_type = str("Enum");
     enum_ast.data.enum_node.name = str("Color");
     
-    val enum_values: ref StringList = StringList.create(addr_of(model_arena), 10);
-    StringList.push(enum_values, addr_of(model_arena), str("Red"));
-    StringList.push(enum_values, addr_of(model_arena), str("Green"));
-    StringList.push(enum_values, addr_of(model_arena), str("Blue"));
+    val enum_values: ref StringList = StringList.create(addr(model_arena), 10);
+    StringList.push(enum_values, addr(model_arena), str("Red"));
+    StringList.push(enum_values, addr(model_arena), str("Green"));
+    StringList.push(enum_values, addr(model_arena), str("Blue"));
     enum_ast.data.enum_node.values = enum_values;
     
     enum_ast.children = nil;
-    val enum_code: string = generate_c(addr_of(enum_ast));
+    val enum_code: string = generate_c(addr(enum_ast));
     assert str_contains_c(enum_code, "typedef enum"), "Expected typedef enum";
     assert str_contains_c(enum_code, "Color_Red"), "Expected Color_Red value";
     assert str_contains_c(enum_code, "Color_Green"), "Expected Color_Green value";
@@ -3589,7 +3589,7 @@ test {
     member_assign_ast.data.member_access.object_name = str("obj");
     member_assign_ast.data.member_access.member_name = str("field");
     member_assign_ast.data.member_access.value = str("42");
-    val member_assign_code: string = generate_c(addr_of(member_assign_ast));
+    val member_assign_code: string = generate_c(addr(member_assign_ast));
     assert str_contains_c(member_assign_code, "obj.field = 42;"), "Expected obj.field = 42;";
 
     println "\nTest 14: MemberAccess read";
@@ -3598,6 +3598,6 @@ test {
     member_read_ast.data.member_access.object_name = str("obj");
     member_read_ast.data.member_access.member_name = str("field");
     member_read_ast.data.member_access.value = str("");
-    val member_read_code: string = generate_c(addr_of(member_read_ast));
+    val member_read_code: string = generate_c(addr(member_read_ast));
     assert str_contains_c(member_read_code, "obj.field;"), "Expected obj.field; for read";
 }

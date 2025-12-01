@@ -68,7 +68,7 @@ def prefix_root_enums(node: ref ASTNode, mprefix: string) {
             if ci >= len(deref(chs)) {
                 break;
             }
-            prefix_root_enums(addr_of(chs.data[ci]), mprefix);
+            prefix_root_enums(addr(chs.data[ci]), mprefix);
             ci = ci + 1;
         }
     }
@@ -94,7 +94,7 @@ def compile_file(filename: string, is_axec: bool): bool {
     
     println "3 | Parse";
     initialize_all();
-    mut ast: ASTNode = parse(addr_of(tokens), is_axec, true, str(""));
+    mut ast: ASTNode = parse(addr(tokens), is_axec, true, str(""));
     if len(ast.children) == 0 {
         println "Error: Failed to parse";
         return false;
@@ -120,7 +120,7 @@ def compile_file(filename: string, is_axec: bool): bool {
     }
 
     val module_name: string = str("");
-    ast = process_imports(addr_of(ast), base_dir, is_axec, filename, true, module_name);
+    ast = process_imports(addr(ast), base_dir, is_axec, filename, true, module_name);
 
     println "5 | Collect Decls (TODO)";
     println "6 | Collect Models (TODO)";
@@ -197,11 +197,11 @@ def compile_file(filename: string, is_axec: bool): bool {
         module_prefix = file_stem;
     }
 
-    prefix_root_enums(addr_of(ast), module_prefix);
+    prefix_root_enums(addr(ast), module_prefix);
 
     initialize_renderer();
     
-    val c_code: string = generate_c(addr_of(ast));
+    val c_code: string = generate_c(addr(ast));
     if str_len(c_code) == 0 {
         println str("Error: Failed to generate C code");
         return false;
@@ -214,7 +214,7 @@ def compile_file(filename: string, is_axec: bool): bool {
     println "\n9 | Last compilation pass";
 
     val exe_filename: string = replace_extension(filename, str(".exe"));
-    val needs_omp: bool = should_link_openmp(addr_of(ast), filename);
+    val needs_omp: bool = should_link_openmp(addr(ast), filename);
     mut compile_cmd: string = str("clang ");
     
     compile_cmd = concat(compile_cmd, c_filename);
@@ -291,7 +291,7 @@ def should_link_openmp(ast: ref ASTNode, filename: string): bool {
             if i >= len(deref(children)) {
                 break;
             }
-            if should_link_openmp(addr_of(children.data[i]), filename) {
+            if should_link_openmp(addr(children.data[i]), filename) {
                 return true;
             }
             i++;
@@ -329,7 +329,7 @@ def has_parallel_blocks(ast: ref ASTNode): bool {
                 break;
             }
             
-            if has_parallel_blocks(addr_of(children.data[i])) {
+            if has_parallel_blocks(addr(children.data[i])) {
                 return true;
             }
             
@@ -361,7 +361,7 @@ def collect_model_names(ast: ref ASTNode) {
                 break;
             }
             
-            collect_model_names(addr_of(children.data[i]));
+            collect_model_names(addr(children.data[i]));
             i++;
         }
     }
@@ -389,7 +389,7 @@ def collect_declared_functions(ast: ref ASTNode) {
                 break;
             }
             
-            collect_declared_functions(addr_of(children.data[i]));
+            collect_declared_functions(addr(children.data[i]));
             i++;
         }
     }
@@ -407,7 +407,7 @@ test {
     simple_ast.node_type = str("Program");
     simple_ast.children = nil;
 
-    assert !has_parallel_blocks(addr_of(simple_ast)), "Expected no parallel blocks";
+    assert !has_parallel_blocks(addr(simple_ast)), "Expected no parallel blocks";
     
     println "\nTest 3: Collect model names";
     mut model_ast: ASTNode;
@@ -415,5 +415,5 @@ test {
     model_ast.data.model_node.name = str("TestModel");
     model_ast.children = nil;
 
-    collect_model_names(addr_of(model_ast));
+    collect_model_names(addr(model_ast));
 }

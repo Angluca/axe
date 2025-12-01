@@ -4044,18 +4044,26 @@ string processExpression(string expr, string context = "")
 
     import std.regex : regex, replaceAll;
 
-    while (expr.canFind("ref_of"))
+    // Rewrite unified addr(...) syntax into C address-of operations.
+    // Handles both simple variables and more complex expressions:
+    //   addr(x)       -> &x
+    //   addr(a[i].x)  -> &(a[i].x)
+    while (expr.canFind("addr"))
     {
-        auto startIdx = expr.indexOf("ref_of");
+        auto startIdx = expr.indexOf("addr");
         if (startIdx == -1)
             break;
 
-        size_t pos = startIdx + 6;
+        size_t pos = startIdx + 4; // skip "addr"
         while (pos < expr.length && (expr[pos] == ' ' || expr[pos] == '\t'))
             pos++;
 
         if (pos >= expr.length || expr[pos] != '(')
+        {
+            // Not a function-style addr(...), e.g. part of 'addr_int';
+            // leave it for other passes (like addr_int handler) and stop.
             break;
+        }
 
         auto parenStart = pos + 1; // After "("
 
@@ -4071,50 +4079,24 @@ string processExpression(string expr, string context = "")
                 parenEnd++;
         }
 
+        if (depth != 0)
+        {
+            // Unbalanced parentheses; bail out to avoid corrupting the string.
+            break;
+        }
+
         string varName = expr[parenStart .. parenEnd].strip();
-        debugWriteln("DEBUG ref_of: varName = '", varName, "', parenEnd = ", parenEnd, ", expr.length = ", expr
+        debugWriteln("DEBUG addr: varName = '", varName, "', parenEnd = ", parenEnd, ", expr.length = ", expr
                 .length);
-        debugWriteln("DEBUG ref_of: suffix = '", expr[parenEnd + 1 .. $], "'");
         if (varName.canFind("[") || varName.canFind("."))
         {
             expr = expr[0 .. startIdx] ~ "&(" ~ varName ~ ")" ~ expr[parenEnd + 1 .. $];
-            debugWriteln("DEBUG ref_of: wrapped expression = '", expr, "'");
+            debugWriteln("DEBUG addr: wrapped expression = '", expr, "'");
         }
         else
         {
             expr = expr[0 .. startIdx] ~ "&" ~ varName ~ expr[parenEnd + 1 .. $];
         }
-    }
-
-    while (expr.canFind("addr_of"))
-    {
-        auto startIdx = expr.indexOf("addr_of");
-        if (startIdx == -1)
-            break;
-
-        size_t pos = startIdx + 7;
-        while (pos < expr.length && (expr[pos] == ' ' || expr[pos] == '\t'))
-            pos++;
-
-        if (pos >= expr.length || expr[pos] != '(')
-            break;
-
-        auto parenStart = pos + 1; // After "("
-
-        int depth = 1;
-        size_t parenEnd = parenStart;
-        while (parenEnd < expr.length && depth > 0)
-        {
-            if (expr[parenEnd] == '(')
-                depth++;
-            else if (expr[parenEnd] == ')')
-                depth--;
-            if (depth > 0)
-                parenEnd++;
-        }
-
-        string varName = expr[parenStart .. parenEnd].strip();
-        expr = expr[0 .. startIdx] ~ "&" ~ varName ~ expr[parenEnd + 1 .. $];
     }
 
     while (expr.canFind("addr_int"))
@@ -5680,7 +5662,7 @@ unittest
     }
 
     {
-        auto tokens = lex("def main() { val x: i32 = 10; val y: ref i32 = ref_of(x); }");
+        auto tokens = lex("def main() { val x: i32 = 10; val y: ref i32 = addr(x); }");
         auto ast = parse(tokens);
         auto cCode = generateC(ast);
 
@@ -5800,7 +5782,7 @@ unittest
         writeln(cCode);
 
         assert(cCode.canFind("void destroy(int64_t ptr)"), "Should have destroy function");
-        assert(cCode.canFind("destroy(thing_of(x))"), "Should have nested function call with ref_of(x)");
+        assert(cCode.canFind("destroy(thing_of(x))"), "Should have nested function call with addr(x)");
     }
 
     {
@@ -6423,9 +6405,9 @@ def main() {
     parallel local(mut arena: Arena) {
         arena = Arena.create(1024);
         val tid: i32 = Parallel.thread_id();
-        val result: i32 = worker(ref_of(arena), tid);
+        val result: i32 = worker(addr(arena), tid);
         println $"Thread {tid} computed {result}";
-        Arena.destroy(ref_of(arena));
+        Arena.destroy(addr(arena));
     }
 
     println "Done.";
