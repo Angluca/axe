@@ -259,9 +259,14 @@ def collapse_duplicate_segments(s: string): string {
 }
 
 /// Rewrite method-style calls of the form `Base.method(...)` into a single
-/// C identifier using the canonical model name when available. For example:
+/// C identifier using the canonical model name when available. 
+/// 
+/// For example:
+///
 ///   Arena.alloc_array(arena, ...)
-/// becomes:
+///
+/// Becomes:
+///
 ///   std__arena__Arena_Arena__alloc_array(arena, ...)
 def rewrite_method_calls(expr: string): string {
     mut out: string = str("");
