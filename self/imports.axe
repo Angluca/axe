@@ -450,6 +450,26 @@ def prefix_types_in_node(node: ref ASTNode, module_prefix: string, exported: ref
                 iov = iov + 1;
             }
         }
+        
+        mut target_funcs_ref: ref list(string) = node.data.overload_node.target_functions;
+        if target_funcs_ref != nil {
+            mut itf: i32 = 0;
+            loop {
+                if itf >= len(deref(target_funcs_ref)) {
+                    break;
+                }
+                val target_name: string = target_funcs_ref.data[itf];
+                val fixed_name: string = replace_all(target_name, str("__"), str("_"));
+
+                if !has_prefix(fixed_name, concat(module_prefix, str("__"))) {
+                    target_funcs_ref.data[itf] = concat(concat(module_prefix, str("__")), fixed_name);
+                } else {
+                    target_funcs_ref.data[itf] = fixed_name;
+                }
+                
+                itf = itf + 1;
+            }
+        }
     } elif equals_c(nt, "Opaque") {
         mut tnames: ref list(string) = node.data.opaque_node.type_names;
         if tnames != nil {
@@ -521,6 +541,8 @@ def merge_imported_module(program: ref ASTNode, imported: ref ASTNode, use_modul
             prefix_types_in_node(addr(child), module_prefix, addr(exported));
         } elif equals_c(child.node_type, "Enum") {
             prefix_enum_node(addr(child), module_prefix);
+        } elif equals_c(child.node_type, "Overload") {
+            prefix_types_in_node(addr(child), module_prefix, addr(exported));
         }
 
         append_child(program, child);
