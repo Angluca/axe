@@ -41,18 +41,16 @@ pub model string {
     /// Creates a new empty string with specified capacity using arena allocation.
     pub def create_with_capacity(arena: ref Arena, capacity: i32): string {
         mut result: string = str("");
-        raw {
-            result.data = NULL;
-            result.len  = 0;
-            result.cap  = 0;
-            
-            if (capacity > 0) {
-                result.data = (char*)std__arena__Arena__alloc(arena, capacity + 1);
-                if (result.data != NULL) {
-                    result.data[0] = '\0';
-                    result.len = 0;
-                    result.cap = capacity + 1;
-                }
+        result.data = nil;
+        result.len = 0;
+        result.cap = 0;
+
+        if capacity > 0 {
+            result.data = cast[char*](Arena.alloc(arena, capacity + 1));
+            if result.data != nil {
+                result.data[0] = '\0';
+                result.len = 0;
+                result.cap = capacity + 1;
             }
         }
         return result;
@@ -564,6 +562,41 @@ pub def find_char_from(s: string, c: char, start: usize): i32 {
     return index;
 }
 
+/// Returns the index of the first occurrence of `substr` inside `s`, or -1 if not found.
+pub def find_substr(s: string, substr: string): i32 {
+    if substr.len == 0 {
+        return 0;
+    }
+
+    if substr.len > s.len {
+        return -1;
+    }
+
+    mut i: usize = 0;
+    loop {
+        if i + substr.len > s.len {
+            break;
+        }
+        mut j: usize = 0;
+        mut match_found: bool = true;
+        loop {
+            if j >= substr.len {
+                break;
+            }
+            if s.data[i + j] != substr.data[j] {
+                match_found = false;
+                break;
+            }
+            j++;
+        }
+        if match_found {
+            return cast[i32](i);
+        }
+        i++;
+    }
+    return -1;
+}
+
 /// Returns a substring of `s` starting at `start` with the given `length`.
 /// If `start` is beyond the end of the string or `length` is zero, an empty string is returned.
 /// The function clamps the requested range to the bounds of the source string.
@@ -859,5 +892,11 @@ test {
 
     val y = 10;
     
+    assert(find_substr(string.create("hello world"), string.create("world")) == 6, "find_substr should find 'world' at index 6");
+    assert(find_substr(string.create("hello world"), string.create("hello")) == 0, "find_substr should find 'hello' at index 0");
+    assert(find_substr(string.create("abc"), string.create("")) == 0, "find_substr of empty substring should return 0");
+    assert(find_substr(string.create("aaaa"), string.create("aa")) == 0, "find_substr should find the first occurrence");
+    assert(find_substr(string.create("abc"), string.create("x")) == -1, "find_substr should return -1 when not found");
+
     print_str(str($"This should be 10 dollars: $ {y}"));
 }

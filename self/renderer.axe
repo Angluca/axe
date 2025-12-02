@@ -1614,6 +1614,76 @@ def rewrite_enum_member_refs(s: string): string {
     return repl;
 }
 
+/// Rewrite addr(...) to &(...) or &var for C address-of operations
+def rewrite_adr(expr: string): string {
+    mut result: string = expr;
+    
+    loop {
+        val start_idx: i32 = find_substr(result, str("addr"));
+        if start_idx < 0 {
+            break;
+        }
+        
+        mut pos: i32 = start_idx + 4;
+        loop {
+            if pos >= str_len(result) {
+                break;
+            }
+            val ws: char = get_char(result, pos);
+            if ws != ' ' and ws != '\t' {
+                break;
+            }
+            pos = pos + 1;
+        }
+        
+        if pos >= str_len(result) or get_char(result, pos) != '(' {
+            break;
+        }
+        
+        val paren_start: i32 = pos + 1;
+        mut depth: i32 = 1;
+        mut paren_end: i32 = paren_start;
+        
+        loop {
+            if paren_end >= str_len(result) or depth == 0 {
+                break;
+            }
+            val ch: char = get_char(result, paren_end);
+            if ch == '(' {
+                depth = depth + 1;
+            } elif ch == ')' {
+                depth = depth - 1;
+            }
+            if depth > 0 {
+                paren_end = paren_end + 1;
+            }
+        }
+        
+        if depth != 0 {
+            break;
+        }
+        
+        val var_name: string = strip(substring_se(result, paren_start, paren_end));
+        val has_bracket: bool = find_char_from(var_name, '[', 0) >= 0;
+        val has_dot: bool = find_char_from(var_name, '.', 0) >= 0;
+        mut replacement: string = str("");
+
+        if has_bracket or has_dot {
+            replacement = concat(str("&("), var_name);
+            replacement = concat(replacement, str(")"));
+        } else {
+            replacement = concat(str("&"), var_name);
+        }
+        
+        val before: string = substring_se(result, 0, start_idx);
+        val after: string = substring_se(result, paren_end + 1, str_len(result));
+        result = concat(before, replacement);
+        result = concat(result, after);
+    }
+    
+    return result;
+}
+
 def rewrite_function_calls(expr: string): string {
     mut out: string = str("");
     mut i: i32 = 0;
@@ -1777,7 +1847,8 @@ def process_expression(expr: string): string {
 
         val single_quote_pos: i32 = find_char_from(trimmed, '\'', 0);
         if single_quote_pos >= 0 {
-            val calls_fixed_chars: string = rewrite_function_calls(trimmed);
+            val addr_fixed_chars: string = rewrite_adr(trimmed);
+            val calls_fixed_chars: string = rewrite_function_calls(addr_fixed_chars);
             val enum_fixed_chars: string = rewrite_enum_member_refs(calls_fixed_chars);
             return strip(enum_fixed_chars);
         }
@@ -1863,7 +1934,8 @@ def process_expression(expr: string): string {
         debug_print_raw "\n[DBG-EXPR] no-sugar final:";
         println norm_no_sugar;
 
-        val methods_fixed: string = rewrite_method_calls(norm_no_sugar);
+        val addr_fixed: string = rewrite_adr(norm_no_sugar);
+        val methods_fixed: string = rewrite_method_calls(addr_fixed);
         val sizeof_fixed: string = rewrite_sizeof_types(methods_fixed);
         val calls_fixed_no_sugar: string = rewrite_function_calls(sizeof_fixed);
         val enum_fixed_no_sugar: string = rewrite_enum_member_refs(calls_fixed_no_sugar);
@@ -2001,7 +2073,8 @@ def process_expression(expr: string): string {
     println "\nFIXED:";
     println fixed;
 
-    val methods_fixed2: string = rewrite_method_calls(fixed);
+    val addr_fixed2: string = rewrite_adr(fixed);
+    val methods_fixed2: string = rewrite_method_calls(addr_fixed2);
     val sizeof_fixed2: string = rewrite_sizeof_types(methods_fixed2);
     val calls_fixed: string = rewrite_function_calls(sizeof_fixed2);
     val enum_fixed: string = rewrite_enum_member_refs(calls_fixed);
