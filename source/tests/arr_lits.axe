@@ -7,7 +7,7 @@ def arr_length(a: i32[]): usize {
 }
 
 def func_that_takes_arr_literal(a: i32[]) {
-    for mut val i = 0; i < arr_length(a); i++ {
+    for mut i = 0; i < arr_length(a); i++ {
         print_i32(a[i]);
         print " ";
     }
