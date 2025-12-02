@@ -1,11 +1,11 @@
 def print_matrix(m: int[rows][cols], rows: int, cols: int) {
-    mut val r: int = 0;
+    mut r: int = 0;
     loop {
         if r >= rows {
             break;
         }
 
-        mut val c: int = 0;
+        mut c: int = 0;
         loop {
             if c >= cols {
                 break;
@@ -26,21 +26,21 @@ def matmul(a: int[n][m], b: int[m][p], result: int[n][p], n: int, m: int, p: int
     // b: m × p
     // result: n × p
 
-    mut val r: int = 0;
+    mut r: int = 0;
     loop {
         if r >= n {
             break;
         }
 
-        mut val c: int = 0;
+        mut c: int = 0;
         loop {
             if c >= p {
                 break;
             }
 
-            mut val sum: int = 0;
+            mut sum: int = 0;
 
-            mut val k: int = 0;
+            mut k: int = 0;
             loop {
                 if k >= m {
                     break;
