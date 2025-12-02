@@ -47,7 +47,7 @@ pub model string {
             result.cap  = 0;
             
             if (capacity > 0) {
-                result.data = (char*)std__arena__Arena_alloc(arena, capacity + 1);
+                result.data = (char*)std__arena__Arena__alloc(arena, capacity + 1);
                 if (result.data != NULL) {
                     result.data[0] = '\0';
                     result.len = 0;

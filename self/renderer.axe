@@ -293,6 +293,30 @@ def build_function_prefixes(ast: ref ASTNode) {
                         StringStringMap.set(addr(g_function_prefixes), addr(arena), short_name, full_name);
                     }
                 }
+                
+                mut second_last_sep: i32 = -1;
+                mut k: i32 = 0;
+                loop {
+                    if k >= last_sep {
+                        break;
+                    }
+                    val c1b: char = get_char(full_name, k);
+                    val c2b: char = get_char(full_name, k + 1);
+                    if c1b == '_' and c2b == '_' {
+                        second_last_sep = k;
+                    }
+                    k = k + 1;
+                }
+                
+                if second_last_sep >= 0 and second_last_sep + 2 < n {
+                    val partial_name: string = substring_se(full_name, second_last_sep + 2, n);
+                    if str_len(partial_name) > 0 {
+                        if !StringStringMap.contains(addr(g_function_prefixes), partial_name) {
+                            mut arena2: Arena = Arena.create(1256);
+                            StringStringMap.set(addr(g_function_prefixes), addr(arena2), partial_name, full_name);
+                        }
+                    }
+                }
             }
         }
 
@@ -588,6 +612,76 @@ def rewrite_method_calls(expr: string): string {
             }
 
             out = concat(out, base);
+            i = j;
+            continue;
+        }
+
+        out = concat_chr(out, ch);
+        i = i + 1;
+    }
+
+    return out;
+}
+
+/// Rewrite function calls to use their full module-prefixed names.
+/// For example, `Arena__alloc(...)` becomes `std__arena__Arena__alloc(...)`
+/// using the g_function_prefixes map.
+def rewrite_function_prefixes(expr: string): string {
+    mut out: string = str("");
+    mut i: i32 = 0;
+    mut in_string: bool = false;
+
+    loop {
+        if i >= str_len(expr) {
+            break;
+        }
+
+        val ch: char = get_char(expr, i);
+
+        if ch == '"' and (i == 0 or get_char(expr, i - 1) != '\\') {
+            in_string = !in_string;
+            out = concat_chr(out, ch);
+            i = i + 1;
+            continue;
+        }
+
+        if !in_string and is_ident_start(ch) {
+            mut func_name: string = str("");
+            mut j: i32 = i;
+            loop {
+                if j >= str_len(expr) {
+                    break;
+                }
+                val cj: char = get_char(expr, j);
+                if !is_token_char(cj) {
+                    break;
+                }
+                func_name = concat_chr(func_name, cj);
+                j = j + 1;
+            }
+
+            mut k: i32 = j;
+            loop {
+                if k >= str_len(expr) {
+                    break;
+                }
+                val ws: char = get_char(expr, k);
+                if ws != ' ' and ws != '\t' and ws != '\n' {
+                    break;
+                }
+                k = k + 1;
+            }
+
+            if k < str_len(expr) and get_char(expr, k) == '(' {
+                if StringStringMap.contains(addr(g_function_prefixes), func_name) {
+                    val full_name: string = StringStringMap.get(addr(g_function_prefixes), func_name);
+                    out = concat(out, full_name);
+                    i = j;
+                    continue;
+                }
+            }
+
+            out = concat(out, func_name);
             i = j;
             continue;
         }
@@ -2616,6 +2710,7 @@ pub def generate_c(ast: ref ASTNode): string {
         result = replace_all(result, str("C."), str(""));
         result = collapse_duplicate_segments(result);
         result = rewrite_method_calls(result);
+        result = rewrite_function_prefixes(result);
         result = rewrite_pointer_member_accesses(result);
         result = normalize_numeric_dots(result);
     }
