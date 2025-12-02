@@ -68,9 +68,9 @@ def main() {
     val m: int = 3;
     val p: int = 2;
 
-    mut val A: int[2][3];
-    mut val B: int[3][2];
-    mut val R: int[2][2];
+    mut A: int[2][3];
+    mut B: int[3][2];
+    mut R: int[2][2];
 
     // Fill A
     A[0][0] = 1; A[0][1] = 2; A[0][2] = 3;
