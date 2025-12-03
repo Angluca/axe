@@ -501,7 +501,7 @@ bool handleMachineArgs(string[] args)
         writeln("3 | Parse");
         auto ast = parse(tokens, isAxec, true, moduleName);
 
-        writeln("4 | Parse");
+        writeln("4 | Reset Modules");
         resetProcessedModules();
 
         writeln("5 | Imports");
