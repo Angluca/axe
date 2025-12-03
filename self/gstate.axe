@@ -1,6 +1,7 @@
 use std.io;
 
 pub mut loud_logger: bool = false;
+pub mut is_release_build: bool = false;
 
 /// Print a debug message
 overload debug_print(x: generic) {
@@ -12,6 +13,11 @@ overload debug_print(x: generic) {
 /// Enable verbose logging
 pub def set_loud_logger(v: bool) {
     loud_logger = v;
+}
+
+/// Set release build mode
+pub def set_release_build(v: bool) {
+    is_release_build = v;
 }
 
 /// Ditto.

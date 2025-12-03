@@ -19,6 +19,7 @@ use imports (
     process_imports
 );
 
+use gstate;
 use renderer;
 use std.io;
 use std.os;
@@ -234,6 +235,15 @@ def compile_file(filename: string, is_axec: bool): bool {
     compile_cmd = concat(compile_cmd, c_filename);
     if needs_omp {
         compile_cmd = concat(compile_cmd, str(" -fopenmp"));
+    }
+    
+    if !::is_release_build {
+        platform windows {
+            compile_cmd = concat_c(compile_cmd, " -gcodeview -fuse-ld=lld -Xlinker /debug");
+        }
+        platform posix {
+            compile_cmd = concat_c(compile_cmd, " -g");
+        }
     }
     
     compile_cmd = concat(compile_cmd, str(" -Wno-everything -O0 -o "));

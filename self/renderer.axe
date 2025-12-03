@@ -2376,6 +2376,93 @@ def process_expression(expr: string): string {
     return strip(enum_fixed);
 }
 
+/// Generate stack trace headers for segfault handlers (Windows and POSIX versions)
+def generate_stack_trace_headers(): string {
+    mut code: string = str("");
+    
+    platform windows {
+        code = concat_c(code, "#include <dbghelp.h>\n");
+    }
+    
+    platform posix {
+        code = concat_c(code, "#include <execinfo.h>\n");
+        code = concat_c(code, "#include <signal.h>\n");
+        code = concat_c(code, "#include <unistd.h>\n");
+    }
+    
+    code = concat_c(code, "\n");
+    
+    platform windows {
+        code = concat_c(code, "static void axe_win_print_backtrace(void) {\n");
+        code = concat_c(code, "    HANDLE process = GetCurrentProcess();\n");
+        code = concat_c(code, "    SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_UNDNAME | SYMOPT_LOAD_LINES);\n");
+        code = concat_c(code, "    SymInitialize(process, NULL, TRUE);\n");
+        code = concat_c(code, "\n");
+        code = concat_c(code, "    void* stack[64];\n");
+        code = concat_c(code, "    USHORT frames = CaptureStackBackTrace(0, 64, stack, NULL);\n");
+        code = concat_c(code, "    fprintf(stderr, \"Backtrace (%u frames):\\\\n\", (unsigned)frames);\n");
+        code = concat_c(code, "\n");
+        code = concat_c(code, "    SYMBOL_INFO* symbol = (SYMBOL_INFO*)malloc(sizeof(SYMBOL_INFO) + 256);\n");
+        code = concat_c(code, "    if (!symbol) return;\n");
+        code = concat_c(code, "    memset(symbol, 0, sizeof(SYMBOL_INFO) + 256);\n");
+        code = concat_c(code, "    symbol->MaxNameLen = 255;\n");
+        code = concat_c(code, "    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);\n");
+        code = concat_c(code, "\n");
+        code = concat_c(code, "    for (USHORT i = 0; i < frames; i++) {\n");
+        code = concat_c(code, "        DWORD64 address = (DWORD64)(stack[i]);\n");
+        code = concat_c(code, "        if (SymFromAddr(process, address, 0, symbol)) {\n");
+        code = concat_c(code, "            fprintf(stderr, \"  #%02u 0x%llx %s\\\\n\", (unsigned)i, (unsigned long long)address, symbol->Name);\n");
+        code = concat_c(code, "        } else {\n");
+        code = concat_c(code, "            fprintf(stderr, \"  #%02u 0x%llx <unknown>\\\\n\", (unsigned)i, (unsigned long long)address);\n");
+        code = concat_c(code, "        }\n");
+        code = concat_c(code, "    }\n");
+        code = concat_c(code, "    free(symbol);\n");
+        code = concat_c(code, "}\n");
+        code = concat_c(code, "\n");
+        code = concat_c(code, "static LONG WINAPI axe_unhandled_exception_filter(EXCEPTION_POINTERS* info) {\n");
+        code = concat_c(code, "    (void)info;\n");
+        code = concat_c(code, "    fprintf(stderr, \"Fatal: Unhandled exception.\\\\n\");\n");
+        code = concat_c(code, "    axe_win_print_backtrace();\n");
+        code = concat_c(code, "    fflush(stderr);\n");
+        code = concat_c(code, "    ExitProcess(1);\n");
+        code = concat_c(code, "    return EXCEPTION_EXECUTE_HANDLER;\n");
+        code = concat_c(code, "}\n");
+    }
+    
+    platform posix {
+        code = concat_c(code, "static void axe_segv_handler(int sig) {\n");
+        code = concat_c(code, "    const char* name = (sig == SIGSEGV ? \"SIGSEGV\" : (sig == SIGABRT ? \"SIGABRT\" : \"SIGNAL\"));\n");
+        code = concat_c(code, "    fprintf(stderr, \"Fatal: %s received.\\\\n\", name);\n");
+        code = concat_c(code, "    void* frames[64];\n");
+        code = concat_c(code, "    int n = backtrace(frames, 64);\n");
+        code = concat_c(code, "    if (n > 0) {\n");
+        code = concat_c(code, "        fprintf(stderr, \"Backtrace (%d frames):\\\\n\", n);\n");
+        code = concat_c(code, "        backtrace_symbols_fd(frames, n, fileno(stderr));\n");
+        code = concat_c(code, "    }\n");
+        code = concat_c(code, "    fflush(stderr);\n");
+        code = concat_c(code, "    _exit(139);\n");
+        code = concat_c(code, "}\n");
+    }
+    
+    return code;
+}
+
+/// Generate stack trace setup code for main function
+def generate_stack_trace_setup(): string {
+    mut code: string = str("");
+    
+    platform windows {
+        code = concat_c(code, "    SetUnhandledExceptionFilter(axe_unhandled_exception_filter);\n");
+    }
+    
+    platform posix {
+        code = concat_c(code, "    signal(SIGSEGV, axe_segv_handler);\n");
+        code = concat_c(code, "    signal(SIGABRT, axe_segv_handler);\n");
+    }
+    
+    return code;
+}
+
 /// Generate a C function prototype from a Function AST node
 def generate_function_prototype(ast: ref ASTNode): string {
     if ast == nil {
@@ -2632,6 +2719,10 @@ pub def generate_c(ast: ref ASTNode): string {
             }
             StringBuilder.append_c(addr(sb), "#endif\n");
         }
+
+        // Add stack trace headers for segfault handling
+        val stack_headers: string = generate_stack_trace_headers();
+        StringBuilder.append(addr(sb), stack_headers);
 
         StringBuilder.append_c(addr(sb), "\nint __axe_argc = 0;\nchar** __axe_argv = NULL;\n\n");
         
@@ -3557,7 +3648,9 @@ pub def generate_c(ast: ref ASTNode): string {
     }
 
     if equals_c(node_type, "Test") {
-        result = concat_c(result, "int main(int argc, char** argv) {\n__axe_argc = argc;\n__axe_argv = argv;\n    int passed = 0;\n    int failed = 0;\n\n");
+        result = concat_c(result, "int main(int argc, char** argv) {\n__axe_argc = argc;\n__axe_argv = argv;\n");
+        result = concat(result, generate_stack_trace_setup());
+        result = concat_c(result, "    int passed = 0;\n    int failed = 0;\n\n");
 
         if ast.children != nil {
             val children: ref list(ASTNode) = ast.children;
@@ -3765,6 +3858,7 @@ pub def generate_c(ast: ref ASTNode): string {
         
         if equals_c(func_name, "main") {
             result = concat_c(result, "int main(int argc, char** argv) {\n__axe_argc = argc;\n__axe_argv = argv;\n");
+            result = concat(result, generate_stack_trace_setup());
             
             if ast.children != nil {
                 val children: ref list(ASTNode) = ast.children;
