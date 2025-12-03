@@ -453,6 +453,91 @@ def collapse_duplicate_segments(s: string): string {
     }
 }
 
+/// Rewrite member access operators from `.` to `->` when the base identifier
+/// is known to be a pointer type (ref or pointer) according to g_var_types.
+/// For example, if `lst` has type `ref IntList`, then `lst.len` becomes `lst->len`.
+def rewrite_ref_member_access(expr: string): string {
+    mut out: string = str("");
+    mut i: i32 = 0;
+    mut in_string: bool = false;
+
+    loop {
+        if i >= str_len(expr) {
+            break;
+        }
+
+        val ch: char = get_char(expr, i);
+
+        if ch == '"' and (i == 0 or get_char(expr, i - 1) != '\\') {
+            in_string = !in_string;
+            out = concat_chr(out, ch);
+            i = i + 1;
+            continue;
+        }
+
+        if !in_string and is_ident_start(ch) {
+            mut ident: string = str("");
+            mut j: i32 = i;
+            loop {
+                if j >= str_len(expr) {
+                    break;
+                }
+                val cj: char = get_char(expr, j);
+                if !is_token_char(cj) {
+                    break;
+                }
+                ident = concat_chr(ident, cj);
+                j = j + 1;
+            }
+
+            mut k: i32 = j;
+            loop {
+                if k >= str_len(expr) {
+                    break;
+                }
+                val ws: char = get_char(expr, k);
+                if ws != ' ' and ws != '\t' and ws != '\n' {
+                    break;
+                }
+                k = k + 1;
+            }
+
+            if k < str_len(expr) and get_char(expr, k) == '.' {
+                mut is_arrow: bool = false;
+                if k + 1 < str_len(expr) and get_char(expr, k + 1) == '>' {
+                    is_arrow = true;
+                }
+
+                if !is_arrow {
+                    mut is_ptr_type: bool = false;
+                    if StringStringMap.contains(addr(g_var_types), ident) {
+                        val var_type: string = StringStringMap.get(addr(g_var_types), ident);
+                        if has_prefix(var_type, str("ref ")) or has_suffix(var_type, str("*")) {
+                            is_ptr_type = true;
+                        }
+                    }
+
+                    if is_ptr_type {
+                        out = concat(out, ident);
+                        out = concat(out, str("->"));
+                        i = k + 1;
+                        continue;
+                    }
+                }
+            }
+
+            out = concat(out, ident);
+            i = j;
+            continue;
+        }
+
+        out = concat_chr(out, ch);
+        i = i + 1;
+    }
+
+    return out;
+}
+
 /// Rewrite method-style calls of the form `Base.method(...)` into a single
 /// C identifier using the canonical model name when available. 
 /// 
@@ -2009,7 +2094,8 @@ def process_expression(expr: string): string {
         debug_print_str norm_no_sugar;
 
         val addr_fixed: string = rewrite_adr(norm_no_sugar);
-        val methods_fixed: string = rewrite_method_calls(addr_fixed);
+        val ptr_fixed: string = rewrite_ref_member_access(addr_fixed);
+        val methods_fixed: string = rewrite_method_calls(ptr_fixed);
         val sizeof_fixed: string = rewrite_sizeof_types(methods_fixed);
         val calls_fixed_no_sugar: string = rewrite_function_calls(sizeof_fixed);
         val enum_fixed_no_sugar: string = rewrite_enum_member_refs(calls_fixed_no_sugar);
@@ -2148,7 +2234,8 @@ def process_expression(expr: string): string {
     debug_print_str fixed;
 
     val addr_fixed2: string = rewrite_adr(fixed);
-    val methods_fixed2: string = rewrite_method_calls(addr_fixed2);
+    val ptr_fixed2: string = rewrite_ref_member_access(addr_fixed2);
+    val methods_fixed2: string = rewrite_method_calls(ptr_fixed2);
     val sizeof_fixed2: string = rewrite_sizeof_types(methods_fixed2);
     val calls_fixed: string = rewrite_function_calls(sizeof_fixed2);
     val enum_fixed: string = rewrite_enum_member_refs(calls_fixed);
@@ -3089,6 +3176,27 @@ pub def generate_c(ast: ref ASTNode): string {
         
         mut arena: Arena = Arena.create(1024);
         StringBoolMap.set(addr(g_generated_functions), addr(arena), func_name, true);
+        StringStringMap.clear(addr(g_var_types));
+        
+        val fn_params: ref list(string) = ast.data.function.params;
+        if fn_params != nil {
+            mut pi: i32 = 0;
+            loop {
+                if pi >= len(deref(fn_params)) {
+                    break;
+                }
+                val p: string = fn_params.data[pi];
+                val cp: i32 = find_char_from(p, ':', 0);
+                if cp >= 0 {
+                    val pname: string = strip(substring_se(p, 0, cp));
+                    val ptype: string = strip(substr(p, cp + 1, str_len(p) - cp - 1));
+                    if str_len(pname) > 0 and str_len(ptype) > 0 {
+                        StringStringMap.set(addr(g_var_types), addr(arena), pname, ptype);
+                    }
+                }
+                pi = pi + 1;
+            }
+        }
         
         if equals_c(func_name, "main") {
             result = concat(result, str("int main(int argc, char** argv) {\n"));
@@ -4021,7 +4129,20 @@ pub def generate_c(ast: ref ASTNode): string {
         mut index_var: string = str("_i_");
         index_var = concat(index_var, var_name);
         
-        val accessor: string = str("->");
+        mut accessor: string = str(".");
+        val trimmed_coll: string = strip(array_name_raw);
+        if StringStringMap.contains(addr(g_var_types), trimmed_coll) {
+            val coll_type: string = StringStringMap.get(addr(g_var_types), trimmed_coll);
+            mut t: string = strip(coll_type);
+            if has_prefix(t, str("mut ")) {
+                t = strip(substr(t, 4, str_len(t) - 4));
+            }
+            if has_prefix(t, str("ref ")) or has_suffix(t, str("*")) {
+                accessor = str("->");
+            }
+        } else {
+            accessor = str("->");
+        }
         
         result = concat(result, str("for (int32_t "));
         result = concat(result, index_var);
