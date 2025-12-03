@@ -3,6 +3,7 @@
 // 
 // Handles the rendering process.
 
+use gstate;
 use structs     (ASTNode);
 use std.lists   (StringList);
 use std.string;
@@ -4119,7 +4120,7 @@ pub def generate_c(ast: ref ASTNode): string {
 
                 field_key = concat(field_key, str("."));
                 field_key = concat(field_key, field_name);
-                
+
                 StringStringMap.set(addr(g_field_types), addr(arena), field_key, field_type);
 
                 if str_len(field_type) == 5 and equals_c(field_type, "union") and union_parents != nil and union_names != nil and union_types != nil {
