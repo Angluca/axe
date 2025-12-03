@@ -690,14 +690,7 @@ def rewrite_function_prefixes(expr: string): string {
         }
 
         out = concat_chr(out, ch);
-        if ch >= 'A' and ch <= 'Z' {
-            debug_print_raw "\n[DBG-RFXP-SKIP] Skipping uppercase char code ";
-            print_i32(cast[i32](ch));
-            print " (";
-            print_char(ch);
-            println ")";
-        }
-        i = i + 1;
+        i++;
     }
 
     return out;
