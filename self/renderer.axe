@@ -4145,12 +4145,10 @@ pub def generate_c(ast: ref ASTNode): string {
                 val element_type: string = strip(substr(type_name, 5, paren_pos - 5));
                 mut list_arena: Arena = Arena.create(256);
                 StringStringMap.set(addr(g_list_of_types), addr(list_arena), var_name, element_type);
-                println concat(concat(concat(str("[DECL-LIST] Added (list(T)): "), var_name), str(" -> ")), element_type);
             } elif has_suffix(type_name, str("[999]")) {
                 val element_type: string = strip(substring_se(type_name, 0, str_len(type_name) - 5));
                 mut list_arena: Arena = Arena.create(256);
                 StringStringMap.set(addr(g_list_of_types), addr(list_arena), var_name, element_type);
-                println concat(concat(concat(str("[DECL-LIST] Added ([999]): "), var_name), str(" -> ")), element_type);
             }
         }
 
