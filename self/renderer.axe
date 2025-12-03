@@ -2441,8 +2441,7 @@ pub def generate_c(ast: ref ASTNode): string {
             result = concat(result, str("#define WIN32_LEAN_AND_MEAN\n"));
         }
 
-        result = concat(result, str("\n"));
-        result = concat(result, str("int __axe_argc = 0;\n"));
+        result = concat(result, str("\nint __axe_argc = 0;\n"));
         result = concat(result, str("char** __axe_argv = NULL;\n\n"));
         
         build_function_prefixes(ast);
