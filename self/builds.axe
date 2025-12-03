@@ -212,7 +212,7 @@ def compile_file(filename: string, is_axec: bool): bool {
     
     initialize_renderer();
 
-    println "15| PFCCG VII (Render)";
+    println "15| GEN";
 
     val c_code: string = generate_c(addr(ast));
 
