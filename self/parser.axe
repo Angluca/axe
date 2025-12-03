@@ -1925,8 +1925,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 expr = concat(expr, str("\""));
                 expr = concat(expr, t.value);
                 expr = concat(expr, str("\" "));
+            } elif t.token_type == TokenType.CHAR {
+                expr = concat(expr, str("'"));
+                expr = concat(expr, t.value);
+                expr = concat(expr, str("' "));
             } elif t.token_type == TokenType.WHITESPACE or t.token_type == TokenType.NEWLINE {
-                // Skip whitespace
             } else {
                 if (t.token_type == TokenType.IDENTIFIER and compare(t.value, str("and")) == 0)
                    or t.token_type == TokenType.AND {
@@ -2156,7 +2159,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         mut final_else_children: list(ASTNode);
 
         skip_whitespace(ctx);
-        
+
         loop {
             if ctx.pos >= len(ctx.tokens) {
                 break;
@@ -3085,6 +3088,10 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                             value_expr = concat(value_expr, str("\""));
                             value_expr = concat(value_expr, t.value);
                             value_expr = concat(value_expr, str("\" "));
+                        } elif t.token_type == TokenType.CHAR {
+                            value_expr = concat(value_expr, str("'"));
+                            value_expr = concat(value_expr, t.value);
+                            value_expr = concat(value_expr, str("' "));
                         } elif t.token_type == TokenType.WHITESPACE or t.token_type == TokenType.NEWLINE {
                         } else {
                             value_expr = concat(value_expr, t.value);

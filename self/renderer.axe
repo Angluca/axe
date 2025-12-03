@@ -1570,48 +1570,129 @@ def strip_all_c_prefixes(s: string): string {
     return cleaned;
 }
 
+/// Rewrite all enum member references (EnumName.MEMBER) within a string to the
+/// proper C prefixed form (EnumName_MEMBER). This scans the entire expression
+/// and transforms all occurrences, not just simple standalone patterns.
 def rewrite_enum_member_refs(s: string): string {
-    mut trimmed: string = strip(s);
+    mut result: string = str("");
+    mut i: i32 = 0;
+    mut in_string: bool = false;
 
     debug_print_raw "\n[DBG-ENUM] rewrite_enum_member_refs input:";
-    println trimmed;
+    println s;
 
-    if str_len(trimmed) == 0 {
-        return s;
+    loop {
+        if i >= str_len(s) {
+            break;
+        }
+
+        val ch: char = get_char(s, i);
+
+        // Track string literals to avoid modifying contents
+        if ch == '"' and (i == 0 or get_char(s, i - 1) != '\\') {
+            in_string = !in_string;
+            result = concat_chr(result, ch);
+            i = i + 1;
+            continue;
+        }
+
+        if in_string {
+            result = concat_chr(result, ch);
+            i = i + 1;
+            continue;
+        }
+
+        // Look for identifier followed by '.' and another identifier
+        if is_ident_start(ch) {
+            mut ident: string = str("");
+            mut j: i32 = i;
+            loop {
+                if j >= str_len(s) {
+                    break;
+                }
+                val cj: char = get_char(s, j);
+                if !is_token_char(cj) {
+                    break;
+                }
+                ident = concat_chr(ident, cj);
+                j = j + 1;
+            }
+
+            // Skip any whitespace after identifier
+            mut k: i32 = j;
+            loop {
+                if k >= str_len(s) {
+                    break;
+                }
+                val ws: char = get_char(s, k);
+                if ws != ' ' and ws != '\t' and ws != '\n' {
+                    break;
+                }
+                k = k + 1;
+            }
+
+            // Check for '.'
+            if k < str_len(s) and get_char(s, k) == '.' {
+                mut dot_pos: i32 = k;
+                k = k + 1;
+
+                // Skip whitespace after '.'
+                loop {
+                    if k >= str_len(s) {
+                        break;
+                    }
+                    val ws2: char = get_char(s, k);
+                    if ws2 != ' ' and ws2 != '\t' and ws2 != '\n' {
+                        break;
+                    }
+                    k = k + 1;
+                }
+
+                // Parse member name
+                if k < str_len(s) and is_ident_start(get_char(s, k)) {
+                    mut member: string = str("");
+                    mut m: i32 = k;
+                    loop {
+                        if m >= str_len(s) {
+                            break;
+                        }
+                        val cm: char = get_char(s, m);
+                        if !is_token_char(cm) {
+                            break;
+                        }
+                        member = concat_chr(member, cm);
+                        m = m + 1;
+                    }
+
+                    if str_len(member) > 0 {
+                        // Check if this identifier is a known enum name
+                        val enum_c_name: string = canonical_model_c_name(ident);
+                        if str_len(enum_c_name) > 0 and StringBoolMap.contains(addr(g_enum_names), enum_c_name) {
+                            // This is an enum member access - emit EnumName_Member
+                            result = concat(result, enum_c_name);
+                            result = concat(result, str("_"));
+                            result = concat(result, member);
+                            i = m;
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            // Not an enum member access, emit the identifier as-is
+            result = concat(result, ident);
+            i = j;
+            continue;
+        }
+
+        result = concat_chr(result, ch);
+        i = i + 1;
     }
 
-    val dot_pos: i32 = find_char_from(trimmed, '.', 0);
-    if dot_pos <= 0 or dot_pos + 1 >= str_len(trimmed) {
-        debug_print_raw "\n[DBG-ENUM]   no dot pattern found";
-        return s;
-    }
+    debug_print_raw "\n[DBG-ENUM] rewrite_enum_member_refs output:";
+    println result;
 
-    val left_raw: string = strip(substring_se(trimmed, 0, dot_pos));
-    val right_raw: string = strip(substring_se(trimmed, dot_pos + 1, str_len(trimmed)));
-
-    if str_len(left_raw) == 0 or str_len(right_raw) == 0 {
-        debug_print_raw "\n[DBG-ENUM]   empty left/right after split";
-        return s;
-    }
-
-    debug_print_raw "\n[DBG-ENUM]   candidate enum/member:";
-    debug_print_str left_raw;
-    debug_print_str right_raw;
-
-    val enum_c_name: string = canonical_model_c_name(left_raw);
-    if str_len(enum_c_name) == 0 {
-        debug_print_raw "\n[DBG-ENUM]   canonical lookup failed";
-        return s;
-    }
-
-    mut repl: string = enum_c_name;
-    repl = concat(repl, str("_"));
-    repl = concat(repl, right_raw);
-
-    debug_print_raw "\n[DBG-ENUM]   rewritten to:";
-    debug_print_str repl;
-
-    return repl;
+    return result;
 }
 
 /// Rewrite addr(...) to &(...) or &var for C address-of operations
@@ -2324,6 +2405,13 @@ pub def generate_c(ast: ref ASTNode): string {
                         StringStringMap.set(addr(g_model_names), addr(arena_local), base, cname);
                     }
                     StringStringMap.set(addr(g_model_names), addr(arena_local), cname, cname);
+                    
+                    if equals_c(mchild.node_type, "Enum") {
+                        StringBoolMap.set(addr(g_enum_names), addr(arena_local), cname, true);
+                        if str_len(base) > 0 {
+                            StringBoolMap.set(addr(g_enum_names), addr(arena_local), base, true);
+                        }
+                    }
                 }
                 mi++;
             }
@@ -4215,6 +4303,7 @@ pub def generate_c(ast: ref ASTNode): string {
 
         if str_len(base_enum_name) > 0 {
             StringStringMap.set(addr(g_model_names), addr(arena), base_enum_name, enum_name);
+            StringBoolMap.set(addr(g_enum_names), addr(arena), base_enum_name, true);
         }
         
         result = concat(result, str("typedef enum {\n"));
