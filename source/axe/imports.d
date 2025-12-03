@@ -381,6 +381,10 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
             string[string] moduleModelMap;
             string[string] moduleMacroMap;
 
+            bool[string] importsSet;
+            foreach (imp; useNode.imports)
+                importsSet[imp] = true;
+
             debugWriteln("DEBUG: Processing ", importProgram.children.length, " children from imported module ", useNode
                     .moduleName);
             foreach (importChild; importProgram.children)
@@ -415,7 +419,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         if (pChild.nodeType == "Function")
                         {
                             auto funcNode = cast(FunctionNode) pChild;
-                            if (funcNode.isPublic && (useNode.importAll || useNode.imports.canFind(funcNode.name)
+                            if (funcNode.isPublic && (useNode.importAll || (
+                                    funcNode.name in importsSet)
                                     || funcNode.name.startsWith("std_")))
                             {
                                 string prefixedName = funcNode.name.startsWith("std_") ? funcNode.name
@@ -426,7 +431,8 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         else if (pChild.nodeType == "Model")
                         {
                             auto modelNode = cast(ModelNode) pChild;
-                            if (modelNode.isPublic && (useNode.importAll || useNode.imports.canFind(modelNode.name)
+                            if (modelNode.isPublic && (useNode.importAll || (
+                                    modelNode.name in importsSet)
                                     || modelNode.name.startsWith("std_")))
                             {
                                 string prefixedName = modelNode.name.startsWith("std_") ? modelNode.name
@@ -448,7 +454,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         else if (pChild.nodeType == "Enum")
                         {
                             auto enumNode = cast(EnumNode) pChild;
-                            if (useNode.importAll || useNode.imports.canFind(enumNode.name))
+                            if (useNode.importAll || (enumNode.name in importsSet))
                             {
                                 string prefixedName = enumNode.name.startsWith("std_") ? enumNode.name
                                     : (sanitizedModuleName ~ "__" ~ enumNode.name);
@@ -458,7 +464,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         else if (pChild.nodeType == "Macro")
                         {
                             auto macroNode = cast(MacroNode) pChild;
-                            if (useNode.importAll || useNode.imports.canFind(macroNode.name))
+                            if (useNode.importAll || (macroNode.name in importsSet))
                             {
                                 moduleMacroMap[macroNode.name] = macroNode.name;
                             }
@@ -466,7 +472,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         else if (pChild.nodeType == "Overload")
                         {
                             auto overloadNode = cast(OverloadNode) pChild;
-                            if (useNode.importAll || useNode.imports.canFind(overloadNode.name))
+                            if (useNode.importAll || (overloadNode.name in importsSet))
                             {
                                 moduleMacroMap[overloadNode.name] = overloadNode.name;
                             }
@@ -522,7 +528,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                             }
                         }
                     }
-                    else if (funcNode.isPublic && (useNode.importAll || useNode.imports.canFind(funcNode.name)
+                    else if (funcNode.isPublic && (useNode.importAll || (funcNode.name in importsSet)
                             || funcNode.name.startsWith("std__")))
                     {
                         string prefixedName = funcNode.name.startsWith("std_") ? funcNode.name
@@ -540,7 +546,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 else if (importChild.nodeType == "Model")
                 {
                     auto modelNode = cast(ModelNode) importChild;
-                    if (modelNode.isPublic && (useNode.importAll || useNode.imports.canFind(modelNode.name)
+                    if (modelNode.isPublic && (useNode.importAll || (modelNode.name in importsSet)
                             || modelNode.name.startsWith("std_")))
                     {
                         string prefixedName;
@@ -612,7 +618,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 else if (importChild.nodeType == "Enum")
                 {
                     auto enumNode = cast(EnumNode) importChild;
-                    if (useNode.importAll || useNode.imports.canFind(enumNode.name) || enumNode.name.startsWith(
+                    if (useNode.importAll || (enumNode.name in importsSet) || enumNode.name.startsWith(
                             "std_"))
                     {
                         string prefixedName = enumNode.name.startsWith("std_") ? enumNode.name
@@ -681,7 +687,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 else if (importChild.nodeType == "Macro")
                 {
                     auto macroNode = cast(MacroNode) importChild;
-                    if (useNode.importAll || useNode.imports.canFind(macroNode.name) ||
+                    if (useNode.importAll || (macroNode.name in importsSet) ||
                         macroNode.name.startsWith("std_"))
                     {
                         moduleMacroMap[macroNode.name] = macroNode.name;
@@ -690,7 +696,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 else if (importChild.nodeType == "Overload")
                 {
                     auto overloadNode = cast(OverloadNode) importChild;
-                    if (useNode.importAll || useNode.imports.canFind(overloadNode.name) ||
+                    if (useNode.importAll || (overloadNode.name in importsSet) ||
                         overloadNode.name.startsWith("std_"))
                     {
                         moduleMacroMap[overloadNode.name] = overloadNode.name;
@@ -749,12 +755,13 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
 
             if (useNode.importAll)
             {
-                import std.algorithm : canFind;
-
                 foreach (name; moduleMacroMap.keys)
                 {
-                    if (!useNode.imports.canFind(name))
+                    if (name !in importsSet)
+                    {
                         useNode.imports ~= name;
+                        importsSet[name] = true;
+                    }
                 }
             }
 
@@ -780,12 +787,10 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                             // because private functions may be dependencies of public functions
                             // that are imported. For .axec files, always include all platform functions
                             // as they are typically low-level helpers needed by other functions.
-                            bool isExplicitImport = useNode.importAll || useNode.imports.canFind(
-                                funcNode.name);
+                            bool isExplicitImport = useNode.importAll || (funcNode.name in importsSet);
 
                             // For .axec modules, include all platform functions regardless of explicit imports
-                            if (!importIsAxec && !useNode.importAll && !useNode.imports.canFind(
-                                    funcNode.name))
+                            if (!importIsAxec && !useNode.importAll && (funcNode.name !in importsSet))
                                 continue;
 
                             if (isExplicitImport)
@@ -829,12 +834,12 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                                 continue;
                             }
 
-                            if (useNode.importAll || useNode.imports.canFind(modelNode.name))
+                            if (useNode.importAll || (modelNode.name in importsSet))
                             {
                                 resolvedImports[modelNode.name] = true;
                             }
 
-                            if (useNode.importAll || useNode.imports.canFind(modelNode.name))
+                            if (useNode.importAll || (modelNode.name in importsSet))
                             {
                                 if (modelNode.name == "C")
                                 {
@@ -901,7 +906,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         else if (pChild.nodeType == "Enum")
                         {
                             auto enumNode = cast(EnumNode) pChild;
-                            if (useNode.importAll || useNode.imports.canFind(enumNode.name))
+                            if (useNode.importAll || (enumNode.name in importsSet))
                             {
                                 resolvedImports[enumNode.name] = true;
                                 enumNode.name = moduleModelMap[enumNode.name];
@@ -950,7 +955,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         else if (pChild.nodeType == "Macro")
                         {
                             auto macroNode = cast(MacroNode) pChild;
-                            if (useNode.importAll || useNode.imports.canFind(macroNode.name))
+                            if (useNode.importAll || (macroNode.name in importsSet))
                             {
                                 resolvedImports[macroNode.name] = true;
                                 macroNode.name = moduleMacroMap[macroNode.name];
@@ -968,7 +973,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         else if (pChild.nodeType == "Overload")
                         {
                             auto overloadNode = cast(OverloadNode) pChild;
-                            if (useNode.importAll || useNode.imports.canFind(overloadNode.name))
+                            if (useNode.importAll || (overloadNode.name in importsSet))
                             {
                                 resolvedImports[overloadNode.name] = true;
                                 overloadNode.name = moduleMacroMap[overloadNode.name];
@@ -1004,11 +1009,10 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                     // if (!funcNode.isPublic)
                     //     continue;
 
-                    if (funcNode.isPublic && (useNode.importAll || useNode.imports.canFind(
-                            funcNode.name)))
+                    if (funcNode.isPublic && (useNode.importAll || (funcNode.name in importsSet)))
                         resolvedImports[funcNode.name] = true;
 
-                    if (useNode.importAll || useNode.imports.canFind(funcNode.name) || (funcNode.isPublic &&
+                    if (useNode.importAll || (funcNode.name in importsSet) || (funcNode.isPublic &&
                             importIsAxec))
                     {
                         string originalName = funcNode.name;
@@ -1115,8 +1119,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                         }
                     }
 
-                    bool isExplicitlyImported = useNode.importAll || useNode.imports.canFind(
-                        baseName);
+                    bool isExplicitlyImported = useNode.importAll || (baseName in importsSet);
 
                     if (isExplicitlyImported)
                     {
@@ -1194,7 +1197,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 else if (importChild.nodeType == "Enum")
                 {
                     auto enumNode = cast(EnumNode) importChild;
-                    if (useNode.importAll || useNode.imports.canFind(enumNode.name))
+                    if (useNode.importAll || (enumNode.name in importsSet))
                     {
                         resolvedImports[enumNode.name] = true;
                         enumNode.name = moduleModelMap[enumNode.name];
@@ -1215,7 +1218,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 else if (importChild.nodeType == "Macro")
                 {
                     auto macroNode = cast(MacroNode) importChild;
-                    if (useNode.importAll || useNode.imports.canFind(macroNode.name))
+                    if (useNode.importAll || (macroNode.name in importsSet))
                     {
                         resolvedImports[macroNode.name] = true;
                         macroNode.name = moduleMacroMap[macroNode.name];
@@ -1233,7 +1236,7 @@ ASTNode processImports(ASTNode ast, string baseDir, bool isAxec, string currentF
                 else if (importChild.nodeType == "Overload")
                 {
                     auto overloadNode = cast(OverloadNode) importChild;
-                    if (useNode.importAll || useNode.imports.canFind(overloadNode.name))
+                    if (useNode.importAll || (overloadNode.name in importsSet))
                     {
                         resolvedImports[overloadNode.name] = true;
                         overloadNode.name = moduleMacroMap[overloadNode.name];
@@ -1550,12 +1553,59 @@ string fixDoublePrefix(string expr)
 }
 
 /**
+ * Pre-computed data for name mapping to avoid repeated string operations
+ */
+private struct NameMapData
+{
+    string[string] dotCallMap;
+    string[] underscoreNames;
+
+    static NameMapData create(string[string] nameMap)
+    {
+        NameMapData data;
+        foreach (oldName, newName; nameMap)
+        {
+            if (oldName.canFind("_"))
+            {
+                data.underscoreNames ~= oldName;
+                string dotCall = oldName.replace("_", ".") ~ "(";
+                data.dotCallMap[dotCall] = newName ~ "(";
+            }
+        }
+        return data;
+    }
+}
+
+private static NameMapData[size_t] g_nameMapDataCache;
+
+private NameMapData getNameMapData(string[string] nameMap)
+{
+    size_t key = cast(size_t) nameMap.length;
+    if (nameMap.length > 0)
+    {
+        foreach (k, v; nameMap)
+        {
+            key ^= hashOf(k) ^ hashOf(v);
+            break;
+        }
+    }
+
+    if (key !in g_nameMapDataCache)
+    {
+        g_nameMapDataCache[key] = NameMapData.create(nameMap);
+    }
+    return g_nameMapDataCache[key];
+}
+
+/**
  * Recursively rename function calls to use prefixed names
  */
 void renameFunctionCalls(ASTNode node, string[string] nameMap)
 {
     if (nameMap.length == 0)
         return;
+
+    auto mapData = getNameMapData(nameMap);
 
     if (node.nodeType == "FunctionCall")
     {
@@ -1569,18 +1619,15 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
             callNode.functionName = nameMap[callNode.functionName];
         else
         {
-            foreach (oldName, newName; nameMap)
+            foreach (oldName; mapData.underscoreNames)
             {
-                if (oldName.canFind("_"))
-                {
-                    import std.regex : matchFirst;
+                import std.regex : matchFirst;
 
-                    auto pattern = getModelMethodExactRegex(oldName);
-                    if (matchFirst(callNode.functionName, pattern))
-                    {
-                        callNode.functionName = newName;
-                        break;
-                    }
+                auto pattern = getModelMethodExactRegex(oldName);
+                if (matchFirst(callNode.functionName, pattern))
+                {
+                    callNode.functionName = nameMap[oldName];
+                    break;
                 }
             }
         }
@@ -1593,14 +1640,12 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
             foreach (oldName, newName; nameMap)
             {
                 arg = replaceStandaloneCall(arg, oldName, newName);
-
-                if (oldName.canFind("_"))
+            }
+            foreach (dotCall, replacement; mapData.dotCallMap)
+            {
+                if (arg.canFind(dotCall))
                 {
-                    string oldCallDot = oldName.replace("_", ".") ~ "(";
-                    if (arg.canFind(oldCallDot))
-                    {
-                        arg = arg.replace(oldCallDot, newName ~ "(");
-                    }
+                    arg = arg.replace(dotCall, replacement);
                 }
             }
         }
@@ -1616,14 +1661,12 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
                 foreach (oldName, newName; nameMap)
                 {
                     printNode.messages[i] = replaceStandaloneCall(printNode.messages[i], oldName, newName);
-
-                    if (oldName.canFind("_"))
-                    {
-                        string oldCallDot = oldName.replace("_", ".") ~ "(";
-                        printNode.messages[i] = printNode.messages[i].replace(oldCallDot, newName ~ "(");
-                    }
                 }
-                // FIX DOUBLE-PREFIXING in Print
+                foreach (dotCall, replacement; mapData.dotCallMap)
+                {
+                    if (printNode.messages[i].canFind(dotCall))
+                        printNode.messages[i] = printNode.messages[i].replace(dotCall, replacement);
+                }
                 printNode.messages[i] = fixDoublePrefix(printNode.messages[i]);
             }
         }
@@ -1638,13 +1681,12 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
                 foreach (oldName, newName; nameMap)
                 {
                     printlnNode.messages[i] = replaceStandaloneCall(printlnNode.messages[i], oldName, newName);
-                    if (oldName.canFind("_"))
-                    {
-                        string oldCallDot = oldName.replace("_", ".") ~ "(";
-                        printlnNode.messages[i] = printlnNode.messages[i].replace(oldCallDot, newName ~ "(");
-                    }
                 }
-                // FIX DOUBLE-PREFIXING in Println
+                foreach (dotCall, replacement; mapData.dotCallMap)
+                {
+                    if (printlnNode.messages[i].canFind(dotCall))
+                        printlnNode.messages[i] = printlnNode.messages[i].replace(dotCall, replacement);
+                }
                 printlnNode.messages[i] = fixDoublePrefix(printlnNode.messages[i]);
             }
         }
@@ -1661,25 +1703,27 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
             if (before != returnNode.expression)
                 debugWriteln("      DEBUG Return replaced '", oldName, "' -> '", newName, "': '", returnNode
                         .expression, "'");
+        }
 
-            if (oldName.canFind("_"))
+        foreach (dotCall, replacement; mapData.dotCallMap)
+        {
+            if (returnNode.expression.canFind(dotCall))
             {
-                string oldCallDot = oldName.replace("_", ".") ~ "(";
-                if (returnNode.expression.canFind(oldCallDot))
-                {
-                    before = returnNode.expression;
-                    returnNode.expression = returnNode.expression.replace(oldCallDot, newName ~ "(");
-                    debugWriteln("      DEBUG Return replaced dot call '", oldCallDot, "' -> '", newName, "(': '",
-                        returnNode.expression, "'");
-                }
+                string before = returnNode.expression;
+                returnNode.expression = returnNode.expression.replace(dotCall, replacement);
+                debugWriteln("      DEBUG Return replaced dot call '", dotCall, "' -> '", replacement, "': '",
+                    returnNode.expression, "'");
             }
+        }
 
-            import std.regex : replaceAll;
+        import std.regex : replaceAll;
 
-            if (returnNode.expression.canFind(".") && oldName.canFind("_"))
+        if (returnNode.expression.canFind("."))
+        {
+            foreach (oldName; mapData.underscoreNames)
             {
                 auto dotPattern = getModelMethodDotCallRegex(oldName);
-                string newExpr = replaceAll(returnNode.expression, dotPattern, newName ~ "(");
+                string newExpr = replaceAll(returnNode.expression, dotPattern, nameMap[oldName] ~ "(");
                 if (newExpr != returnNode.expression)
                 {
                     debugWriteln("      DEBUG Return regex replaced pattern: '", returnNode.expression, "' -> '",
@@ -1689,7 +1733,6 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
             }
         }
 
-        // FIX DOUBLE-PREFIXING: Apply post-processing fix
         returnNode.expression = fixDoublePrefix(returnNode.expression);
 
         debugWriteln("    DEBUG Return after processing: '", returnNode.expression, "'");
@@ -1699,48 +1742,47 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
         auto declNode = cast(DeclarationNode) node;
         debugWriteln("    DEBUG renameFunctionCalls Declaration: initializer='", declNode.initializer, "'");
 
-        // Skip processing if the initializer contains C_ function calls
         bool hasDirectCCall = declNode.initializer.canFind("C_");
 
-        foreach (oldName, newName; nameMap)
+        if (!hasDirectCCall)
         {
-            if (hasDirectCCall)
-                continue;
-
-            auto newInit = replaceStandaloneCall(declNode.initializer, oldName, newName);
-            if (newInit != declNode.initializer)
+            foreach (oldName, newName; nameMap)
             {
-                debugWriteln("    DEBUG renameFunctionCalls: Renamed call in declaration: '", oldName,
-                    "' -> '", newName, "'");
-                declNode.initializer = newInit;
-            }
-
-            if (oldName.canFind("_"))
-            {
-                string oldCallDot = oldName.replace("_", ".") ~ "(";
-                if (declNode.initializer.canFind(oldCallDot))
+                auto newInit = replaceStandaloneCall(declNode.initializer, oldName, newName);
+                if (newInit != declNode.initializer)
                 {
-                    debugWriteln("    DEBUG renameFunctionCalls: Renamed dot call in declaration: '",
-                        oldCallDot, "' -> '", newName, "(");
-                    declNode.initializer = declNode.initializer.replace(oldCallDot, newName ~ "(");
+                    debugWriteln("    DEBUG renameFunctionCalls: Renamed call in declaration: '", oldName,
+                        "' -> '", newName, "'");
+                    declNode.initializer = newInit;
                 }
             }
 
-            // Also check for dot notation with regex: Model.method( or Model . method(
-            // Use word boundary to ensure we don't match floating point literals like 0.5
+            foreach (dotCall, replacement; mapData.dotCallMap)
+            {
+                if (declNode.initializer.canFind(dotCall))
+                {
+                    debugWriteln("    DEBUG renameFunctionCalls: Renamed dot call in declaration: '",
+                        dotCall, "' -> '", replacement);
+                    declNode.initializer = declNode.initializer.replace(dotCall, replacement);
+                }
+            }
+
             import std.regex : replaceAll;
 
-            if (declNode.initializer.canFind(".") && oldName.canFind("_"))
+            if (declNode.initializer.canFind("."))
             {
-                auto dotPattern = getModelMethodDotCallRegex(oldName);
-                debugWriteln("    DEBUG: Trying cached regex pattern for '", oldName, "' on '",
-                    declNode.initializer, "'");
-                string regexInit = replaceAll(declNode.initializer, dotPattern, newName ~ "(");
-                if (regexInit != declNode.initializer)
+                foreach (oldName; mapData.underscoreNames)
                 {
-                    debugWriteln("    DEBUG: Regex matched! Replaced '", declNode.initializer,
-                        "' -> '", regexInit, "'");
-                    declNode.initializer = regexInit;
+                    auto dotPattern = getModelMethodDotCallRegex(oldName);
+                    debugWriteln("    DEBUG: Trying cached regex pattern for '", oldName, "' on '",
+                        declNode.initializer, "'");
+                    string regexInit = replaceAll(declNode.initializer, dotPattern, nameMap[oldName] ~ "(");
+                    if (regexInit != declNode.initializer)
+                    {
+                        debugWriteln("    DEBUG: Regex matched! Replaced '", declNode.initializer,
+                            "' -> '", regexInit, "'");
+                        declNode.initializer = regexInit;
+                    }
                 }
             }
         }
@@ -1752,22 +1794,24 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
         foreach (oldName, newName; nameMap)
         {
             assignNode.expression = replaceStandaloneCall(assignNode.expression, oldName, newName);
+        }
 
-            if (oldName.canFind("_"))
+        foreach (dotCall, replacement; mapData.dotCallMap)
+        {
+            if (assignNode.expression.canFind(dotCall))
             {
-                string oldCallDot = oldName.replace("_", ".") ~ "(";
-                if (assignNode.expression.canFind(oldCallDot))
-                {
-                    assignNode.expression = assignNode.expression.replace(oldCallDot, newName ~ "(");
-                }
+                assignNode.expression = assignNode.expression.replace(dotCall, replacement);
             }
+        }
 
-            import std.regex : replaceAll;
+        import std.regex : replaceAll;
 
-            if (assignNode.expression.canFind(".") && oldName.canFind("_"))
+        if (assignNode.expression.canFind("."))
+        {
+            foreach (oldName; mapData.underscoreNames)
             {
                 auto dotPattern = getModelMethodDotCallRegex(oldName);
-                string newExpr = replaceAll(assignNode.expression, dotPattern, newName ~ "(");
+                string newExpr = replaceAll(assignNode.expression, dotPattern, nameMap[oldName] ~ "(");
                 if (newExpr != assignNode.expression)
                 {
                     assignNode.expression = newExpr;
@@ -1804,19 +1848,15 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
                     "' -> '", newName, "'");
                 ifNode.condition = newCond;
             }
+        }
 
-            // For model methods with dot notation in conditions, reuse the
-            // underscore-based mapping. Guard on '_' to avoid substring
-            // issues for plain functions like 'strip' vs 'lstrip'.
-            if (oldName.canFind("_"))
+        foreach (dotCall, replacement; mapData.dotCallMap)
+        {
+            if (ifNode.condition.canFind(dotCall))
             {
-                string oldCallDot = oldName.replace("_", ".") ~ "(";
-                if (ifNode.condition.canFind(oldCallDot))
-                {
-                    debugWriteln("    DEBUG renameFunctionCalls: Renamed dot call in if condition: '",
-                        oldCallDot, "' -> '", newName, "(");
-                    ifNode.condition = ifNode.condition.replace(oldCallDot, newName ~ "(");
-                }
+                debugWriteln("    DEBUG renameFunctionCalls: Renamed dot call in if condition: '",
+                    dotCall, "' -> '", replacement);
+                ifNode.condition = ifNode.condition.replace(dotCall, replacement);
             }
         }
 
@@ -1840,22 +1880,24 @@ void renameFunctionCalls(ASTNode node, string[string] nameMap)
         foreach (oldName, newName; nameMap)
         {
             assertNode.condition = replaceStandaloneCall(assertNode.condition, oldName, newName);
+        }
 
-            if (oldName.canFind("_"))
+        foreach (dotCall, replacement; mapData.dotCallMap)
+        {
+            if (assertNode.condition.canFind(dotCall))
             {
-                string oldCallDot = oldName.replace("_", ".") ~ "(";
-                if (assertNode.condition.canFind(oldCallDot))
-                {
-                    assertNode.condition = assertNode.condition.replace(oldCallDot, newName ~ "(");
-                }
+                assertNode.condition = assertNode.condition.replace(dotCall, replacement);
             }
+        }
 
-            import std.regex : replaceAll;
+        import std.regex : replaceAll;
 
-            if (assertNode.condition.canFind(".") && oldName.canFind("_"))
+        if (assertNode.condition.canFind("."))
+        {
+            foreach (oldName; mapData.underscoreNames)
             {
                 auto dotPattern = getModelMethodDotCallRegex(oldName);
-                string newCond = replaceAll(assertNode.condition, dotPattern, newName ~ "(");
+                string newCond = replaceAll(assertNode.condition, dotPattern, nameMap[oldName] ~ "(");
                 if (newCond != assertNode.condition)
                 {
                     assertNode.condition = newCond;
