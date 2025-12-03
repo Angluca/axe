@@ -60,7 +60,7 @@ pub def read_file(path: string): string {
     raw {
         FILE *f = fopen(path.data, "rb");
         if (!f) {
-            std__errors__panic(std__errors__error_create("Failed to open file"));
+            std__errors__panic(std__errors__error__create("Failed to open file"));
         }
 
         fseek(f, 0, SEEK_END);
