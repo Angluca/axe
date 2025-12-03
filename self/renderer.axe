@@ -2525,13 +2525,13 @@ pub def generate_c(ast: ref ASTNode): string {
             return result;
         }
 
-        result = concat(result, str("#define "));
+        result = concat_c(result, "#define ");
         result = concat(result, name);
-        result = concat(result, str("("));
+        result = concat_c(result, "(");
         result = concat(result, param_name);
-        result = concat(result, str(") _Generic(("));
+        result = concat_c(result, ") _Generic((");
         result = concat(result, call_expr);
-        result = concat(result, str("), \\\n"));
+        result = concat_c(result, "), \\\n");
 
         mut i_ov: i32 = 0;
         loop {
@@ -2547,23 +2547,23 @@ pub def generate_c(ast: ref ASTNode): string {
                 target_name = StringStringMap.get(addr(g_function_prefixes), target_name);
             }
 
-            result = concat(result, str("    "));
+            result = concat_c(result, "    ");
             result = concat(result, mapped_type);
-            result = concat(result, str(": "));
+            result = concat_c(result, ": ");
             result = concat(result, target_name);
 
             if i_ov < count - 1 {
-                result = concat(result, str(", \\\n"));
+                result = concat_c(result, ", \\\n");
             } else {
-                result = concat(result, str(" \\\n"));
+                result = concat_c(result, " \\\n");
             }
 
             i_ov = i_ov + 1;
         }
 
-        result = concat(result, str("    )("));
+        result = concat_c(result, "    )(");
         result = concat(result, call_expr);
-        result = concat(result, str(")\n"));
+        result = concat_c(result, ")\n");
 
         return result;
     }
@@ -2575,18 +2575,11 @@ pub def generate_c(ast: ref ASTNode): string {
         StringList.clear(g_posix_external_headers);
         collect_external_imports(ast, str(""), addr(ext_arena));
         
-        result = concat(result, str("#define nil ((void*)0)\n"));
-        result = concat(result, str("#include <stdio.h>\n"));
-        result = concat(result, str("#include <stdbool.h>\n"));
-        result = concat(result, str("#include <stdlib.h>\n"));
-        result = concat(result, str("#include <string.h>\n"));
-        result = concat(result, str("#include <stdint.h>\n"));
+        // Batch standard headers into single concatenation
+        result = concat_c(result, "#define nil ((void*)0)\n#include <stdio.h>\n#include <stdbool.h>\n#include <stdlib.h>\n#include <string.h>\n#include <stdint.h>\n");
 
         platform windows {
-            result = concat(result, str("#include <windows.h>\n"));
-            result = concat(result, str("#define NOMINMAX\n"));
-            result = concat(result, str("#define NOGDI\n"));
-            result = concat(result, str("#define WIN32_LEAN_AND_MEAN\n"));
+            result = concat_c(result, "#include <windows.h>\n#define NOMINMAX\n#define NOGDI\n#define WIN32_LEAN_AND_MEAN\n");
         }
         
         mut ghi: i32 = 0;
@@ -2595,46 +2588,45 @@ pub def generate_c(ast: ref ASTNode): string {
                 break;
             }
             val gh: string = StringList.get(g_global_external_headers, ghi);
-            result = concat(result, str("#include <"));
+            result = concat_c(result, "#include <");
             result = concat(result, gh);
-            result = concat(result, str(">\n"));
+            result = concat_c(result, ">\n");
             ghi = ghi + 1;
         }
         
         if g_windows_external_headers*.len > 0 {
-            result = concat(result, str("#ifdef _WIN32\n"));
+            result = concat_c(result, "#ifdef _WIN32\n");
             mut whi: i32 = 0;
             loop {
                 if whi >= g_windows_external_headers*.len {
                     break;
                 }
                 val wh: string = StringList.get(g_windows_external_headers, whi);
-                result = concat(result, str("#include <"));
+                result = concat_c(result, "#include <");
                 result = concat(result, wh);
-                result = concat(result, str(">\n"));
+                result = concat_c(result, ">\n");
                 whi = whi + 1;
             }
-            result = concat(result, str("#endif\n"));
+            result = concat_c(result, "#endif\n");
         }
         
         if g_posix_external_headers*.len > 0 {
-            result = concat(result, str("#ifndef _WIN32\n"));
+            result = concat_c(result, "#ifndef _WIN32\n");
             mut phi: i32 = 0;
             loop {
                 if phi >= g_posix_external_headers*.len {
                     break;
                 }
                 val ph: string = StringList.get(g_posix_external_headers, phi);
-                result = concat(result, str("#include <"));
+                result = concat_c(result, "#include <");
                 result = concat(result, ph);
-                result = concat(result, str(">\n"));
+                result = concat_c(result, ">\n");
                 phi = phi + 1;
             }
-            result = concat(result, str("#endif\n"));
+            result = concat_c(result, "#endif\n");
         }
 
-        result = concat(result, str("\nint __axe_argc = 0;\n"));
-        result = concat(result, str("char** __axe_argv = NULL;\n\n"));
+        result = concat_c(result, "\nint __axe_argc = 0;\nchar** __axe_argv = NULL;\n\n");
         
         build_function_prefixes(ast);
 
@@ -2756,9 +2748,9 @@ pub def generate_c(ast: ref ASTNode): string {
                     mut name: string = str("");
                     name = m_child.data.model_node.name;
                     if !StringBoolMap.contains(addr(g_generated_typedefs), name) {
-                        result = concat(result, str("struct "));
+                        result = concat_c(result, "struct ");
                         result = concat(result, name);
-                        result = concat(result, str(";\n"));
+                        result = concat_c(result, ";\n");
                     }
                 }
                 i_models2++;
@@ -2774,11 +2766,11 @@ pub def generate_c(ast: ref ASTNode): string {
                     mut name2: string = str("");
                     name2 = m_child.data.model_node.name;
                     if !StringBoolMap.contains(addr(g_generated_typedefs), name2) {
-                        result = concat(result, str("typedef struct "));
+                        result = concat_c(result, "typedef struct ");
                         result = concat(result, name2);
-                        result = concat(result, str(" "));
+                        result = concat_c(result, " ");
                         result = concat(result, name2);
-                        result = concat(result, str(";\n"));
+                        result = concat_c(result, ";\n");
                     }
                 }
                 i_models3++;
@@ -2793,11 +2785,11 @@ pub def generate_c(ast: ref ASTNode): string {
                     }
                     val elemTypeStr: string = StringList.get(lst_ref, li);
                     val san: string = sanitize_list_element_name(elemTypeStr);
-                    result = concat(result, str("typedef struct __list_"));
+                    result = concat_c(result, "typedef struct __list_");
                     result = concat(result, san);
-                    result = concat(result, str("_t __list_"));
+                    result = concat_c(result, "_t __list_");
                     result = concat(result, san);
-                    result = concat(result, str("_t;\n"));
+                    result = concat_c(result, "_t;\n");
                     li = li + 1;
                 }
             }
@@ -3106,54 +3098,29 @@ pub def generate_c(ast: ref ASTNode): string {
                     val elementType: string = StringList.get(lst_ref2, jj);
                     val elemSan: string = sanitize_list_element_name(elementType);
 
-                    result = concat(result, str("typedef struct __list_"));
+                    result = concat_c(result, "typedef struct __list_");
+                    result = concat(concat(result, elemSan), concat_c(concat_c(concat_c(str("_t {\n    "), elementType.data), "* data;\n    int len;\n    int capacity;\n} __list_"), elemSan.data));
+                    result = concat_c(result, "_t;\n\n");
+                    result = concat_c(result, "static inline __list_");
                     result = concat(result, elemSan);
-                    result = concat(result, str("_t {\n"));
-                    result = concat(result, str("    "));
+                    result = concat_c(result, "_t __list_");
+                    result = concat(result, elemSan);
+                    result = concat_c(result, "_init(void) {\n    __list_");
+                    result = concat(result, elemSan);
+                    result = concat_c(result, "_t list;\n    list.data = NULL;\n    list.len = 0;\n    list.capacity = 0;\n    return list;\n}\n\n");
+                    result = concat_c(result, "static inline void __list_");
+                    result = concat(result, elemSan);
+                    result = concat_c(result, "_push(__list_");
+                    result = concat(result, elemSan);
+                    result = concat_c(result, "_t* list, ");
                     result = concat(result, elementType);
-                    result = concat(result, str("* data;\n"));
-                    result = concat(result, str("    int len;\n"));
-                    result = concat(result, str("    int capacity;\n"));
-                    result = concat(result, str("} __list_"));
-                    result = concat(result, elemSan);
-                    result = concat(result, str("_t;\n\n"));
-
-                    result = concat(result, str("static inline __list_"));
-                    result = concat(result, elemSan);
-                    result = concat(result, str("_t __list_"));
-                    result = concat(result, elemSan);
-                    result = concat(result, str("_init(void) {\n"));
-                    result = concat(result, str("    __list_"));
-                    result = concat(result, elemSan);
-                    result = concat(result, str("_t list;\n"));
-                    result = concat(result, str("    list.data = NULL;\n"));
-                    result = concat(result, str("    list.len = 0;\n"));
-                    result = concat(result, str("    list.capacity = 0;\n"));
-                    result = concat(result, str("    return list;\n"));
-                    result = concat(result, str("}\n\n"));
-
-                    result = concat(result, str("static inline void __list_"));
-                    result = concat(result, elemSan);
-                    result = concat(result, str("_push(__list_"));
-                    result = concat(result, elemSan);
-                    result = concat(result, str("_t* list, "));
+                    result = concat_c(result, " item) {\n    if (list->len >= list->capacity) {\n        int new_capacity = list->capacity == 0 ? 8 : list->capacity * 2;\n        ");
                     result = concat(result, elementType);
-                    result = concat(result, str(" item) {\n"));
-                    result = concat(result, str("    if (list->len >= list->capacity) {\n"));
-                    result = concat(result, str("        int new_capacity = list->capacity == 0 ? 8 : list->capacity * 2;\n"));
-                    result = concat(result, str("        "));
+                    result = concat_c(result, "* new_data = (");
                     result = concat(result, elementType);
-                    result = concat(result, str("* new_data = (") );
+                    result = concat_c(result, "*)realloc(list->data, new_capacity * sizeof(");
                     result = concat(result, elementType);
-                    result = concat(result, str("*)realloc(list->data, new_capacity * sizeof("));
-                    result = concat(result, elementType);
-                    result = concat(result, str("));\n"));
-                    result = concat(result, str("        if (new_data == NULL) { fprintf(stderr, \"Out of memory\\n\"); exit(1); }\n"));
-                    result = concat(result, str("        list->data = new_data;\n"));
-                    result = concat(result, str("        list->capacity = new_capacity;\n"));
-                    result = concat(result, str("    }\n"));
-                    result = concat(result, str("    list->data[list->len++] = item;\n"));
-                    result = concat(result, str("}\n\n"));
+                    result = concat_c(result, "));\n        if (new_data == NULL) { fprintf(stderr, \"Out of memory\\n\"); exit(1); }\n        list->data = new_data;\n        list->capacity = new_capacity;\n    }\n    list->data[list->len++] = item;\n}\n\n");
 
                     jj++;
                 }
@@ -3563,11 +3530,7 @@ pub def generate_c(ast: ref ASTNode): string {
     }
 
     if equals_c(node_type, "Test") {
-        result = concat(result, str("int main(int argc, char** argv) {\n"));
-        result = concat(result, str("__axe_argc = argc;\n"));
-        result = concat(result, str("__axe_argv = argv;\n"));
-        result = concat(result, str("    int passed = 0;\n"));
-        result = concat(result, str("    int failed = 0;\n\n"));
+        result = concat_c(result, "int main(int argc, char** argv) {\n__axe_argc = argc;\n__axe_argv = argv;\n    int passed = 0;\n    int failed = 0;\n\n");
 
         if ast.children != nil {
             val children: ref list(ASTNode) = ast.children;
@@ -3584,19 +3547,13 @@ pub def generate_c(ast: ref ASTNode): string {
                     val cond_norm: string = process_expression(cond_raw);
                     val msg: string = child.data.assert_node.message;
 
-                    result = concat(result, str("    if ("));
+                    result = concat_c(result, "    if (");
                     result = concat(result, cond_norm);
-                    result = concat(result, str(") {\n"));
-                    result = concat(result, str("        printf(\"PASSED: "));
+                    result = concat_c(result, ") {\n        printf(\"PASSED: ");
                     result = concat(result, msg);
-                    result = concat(result, str("\\n\");\n"));
-                    result = concat(result, str("        passed++;\n"));
-                    result = concat(result, str("    } else {\n"));
-                    result = concat(result, str("        printf(\"FAILED: "));
+                    result = concat_c(result, "\\n\");\n        passed++;\n    } else {\n        printf(\"FAILED: ");
                     result = concat(result, msg);
-                    result = concat(result, str("\\n\");\n"));
-                    result = concat(result, str("        failed++;\n"));
-                    result = concat(result, str("    }\n\n"));
+                    result = concat_c(result, "\\n\");\n        failed++;\n    }\n\n");
                 } elif equals_c(child.node_type, "Declaration") {
                     val var_name: string = child.data.declaration.name;
                     val type_name: string = child.data.declaration.type_name;
@@ -3666,9 +3623,9 @@ pub def generate_c(ast: ref ASTNode): string {
                             val ch: char = get_char(buf, idx);
                             if ch == '\n' {
                                 if str_len(line) > 0 {
-                                    result = concat(result, str("    "));
+                                    result = concat_c(result, "    ");
                                     result = concat(result, line);
-                                    result = concat(result, str("\n"));
+                                    result = concat_c(result, "\n");
                                     line = str("");
                                 }
                             } else {
@@ -3678,9 +3635,9 @@ pub def generate_c(ast: ref ASTNode): string {
                         }
 
                         if str_len(line) > 0 {
-                            result = concat(result, str("    "));
+                            result = concat_c(result, "    ");
                             result = concat(result, line);
-                            result = concat(result, str("\n"));
+                            result = concat_c(result, "\n");
                         }
                     }
                 }
@@ -3689,14 +3646,7 @@ pub def generate_c(ast: ref ASTNode): string {
             }
         }
 
-        result = concat(result, str("    printf(\"\\n\");\n"));
-        result = concat(result, str("    if (failed == 0) {\n"));
-        result = concat(result, str("        printf(\"All tests passed. (%d/%d)\\n\", passed, passed + failed);\n"));
-        result = concat(result, str("    } else {\n"));
-        result = concat(result, str("        printf(\"%d test(s) failed, %d passed\\n\", failed, passed);\n"));
-        result = concat(result, str("    }\n"));
-        result = concat(result, str("    return failed > 0 ? 1 : 0;\n"));
-        result = concat(result, str("}\n"));
+        result = concat_c(result, "    printf(\"\\n\");\n    if (failed == 0) {\n        printf(\"All tests passed. (%d/%d)\\n\", passed, passed + failed);\n    } else {\n        printf(\"%d test(s) failed, %d passed\\n\", failed, passed);\n    }\n    return failed > 0 ? 1 : 0;\n}\n");
 
         return result;
     }
@@ -3787,9 +3737,7 @@ pub def generate_c(ast: ref ASTNode): string {
         }
         
         if equals_c(func_name, "main") {
-            result = concat(result, str("int main(int argc, char** argv) {\n"));
-            result = concat(result, str("__axe_argc = argc;\n"));
-            result = concat(result, str("__axe_argv = argv;\n"));
+            result = concat_c(result, "int main(int argc, char** argv) {\n__axe_argc = argc;\n__axe_argv = argv;\n");
             
             if ast.children != nil {
                 val children: ref list(ASTNode) = ast.children;
@@ -3804,8 +3752,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 }
             }
             
-            result = concat(result, str("return 0;\n"));
-            result = concat(result, str("}\n\n"));
+            result = concat_c(result, "return 0;\n}\n\n");
             return result;
         }
         
@@ -3816,9 +3763,9 @@ pub def generate_c(ast: ref ASTNode): string {
         val mapped_return_type: string = map_axe_type_to_c(return_type);
         
         result = concat(result, mapped_return_type);
-        result = concat(result, str(" "));
+        result = concat_c(result, " ");
         result = concat(result, func_name);
-        result = concat(result, str("("));
+        result = concat_c(result, "(");
         
         val params: ref list(string) = ast.data.function.params;
         if params != nil {
@@ -3829,7 +3776,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 }
                 
                 if param_idx > 0 {
-                    result = concat(result, str(", "));
+                    result = concat_c(result, ", ");
                 }
                 
                 val param: string = params.data[param_idx];
@@ -3841,7 +3788,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     val processed_type: string = process_parameter_type(param_type);
                     
                     result = concat(result, processed_type);
-                    result = concat(result, str(" "));
+                    result = concat_c(result, " ");
                     result = concat(result, param_name);
                 } else {
                     result = concat(result, param);
@@ -3851,7 +3798,7 @@ pub def generate_c(ast: ref ASTNode): string {
             }
         }
         
-        result = concat(result, str(") {\n"));
+        result = concat_c(result, ") {\n");
         
         if ast.children != nil {
             val children: ref list(ASTNode) = ast.children;
@@ -3866,12 +3813,12 @@ pub def generate_c(ast: ref ASTNode): string {
             }
         }
         
-        result = concat(result, str("}\n\n"));
+        result = concat_c(result, "}\n\n");
         return result;
     }
     
     if equals_c(node_type, "Return") {
-        result = concat(result, str("return "));
+        result = concat_c(result, "return ");
         mut expr: string = ast.data.return_node.expression;
         debug_print_raw "\n[DEBUG] RENDERER raw return expr:";
         debug_print_str expr;
@@ -3985,17 +3932,17 @@ pub def generate_c(ast: ref ASTNode): string {
             processed = process_expression(expr);
         }
         result = concat(result, processed);
-        result = concat(result, str(";\n"));
+        result = concat_c(result, ";\n");
         return result;
     }
-    
+
     if equals_c(node_type, "Break") {
-        result = concat(result, str("break;\n"));
+        result = concat_c(result, "break;\n");
         return result;
     }
-    
+
     if equals_c(node_type, "Continue") {
-        result = concat(result, str("continue;\n"));
+        result = concat_c(result, "continue;\n");
         return result;
     }
     
@@ -4102,15 +4049,15 @@ pub def generate_c(ast: ref ASTNode): string {
 
         if is_mutable {
             result = concat(result, mapped_type);
-            result = concat(result, str(" "));
+            result = concat_c(result, " ");
             result = concat(result, var_name);
             if str_len(array_suffix) > 0 {
                 result = concat(result, array_suffix);
             }
         } else {
-            result = concat(result, str("const "));
+            result = concat_c(result, "const ");
             result = concat(result, mapped_type);
-            result = concat(result, str(" "));
+            result = concat_c(result, " ");
             result = concat(result, var_name);
             if str_len(array_suffix) > 0 {
                 result = concat(result, array_suffix);
@@ -4125,7 +4072,7 @@ pub def generate_c(ast: ref ASTNode): string {
 
                 val first_paren: i32 = find_char_from(trimmed, '(', 0);
                 if first_paren < 0 {
-                    result = concat(result, str(" = {0}"));
+                    result = concat_c(result, " = {0}");
                 } else {
                     mut last_paren: i32 = -1;
                     mut idx: i32 = str_len(trimmed) - 1;
@@ -4143,7 +4090,7 @@ pub def generate_c(ast: ref ASTNode): string {
 
                     if last_paren <= first_paren + 1 {
                         // No arguments
-                        result = concat(result, str(" = {0}"));
+                        result = concat_c(result, " = {0}");
                     } else {
                         val args_str: string = substring_se(trimmed, first_paren + 1, last_paren);
                         mut init_code: string = str(" = {");
@@ -4175,11 +4122,11 @@ pub def generate_c(ast: ref ASTNode): string {
                                         val value_expr: string = strip(substr(part, colon_pos + 1, str_len(part) - colon_pos - 1));
                                         if str_len(field_name) > 0 and str_len(value_expr) > 0 {
                                             if !first_field {
-                                                init_code = concat(init_code, str(", "));
+                                                init_code = concat_c(init_code, ", ");
                                             }
-                                            init_code = concat(init_code, str("."));
+                                            init_code = concat_c(init_code, ".");
                                             init_code = concat(init_code, field_name);
-                                            init_code = concat(init_code, str(" = "));
+                                            init_code = concat_c(init_code, " = ");
                                             init_code = concat(init_code, value_expr);
                                             first_field = false;
                                         }
@@ -4200,11 +4147,11 @@ pub def generate_c(ast: ref ASTNode): string {
                                 val value_expr_last: string = strip(substr(part_last, colon_pos_last + 1, str_len(part_last) - colon_pos_last - 1));
                                 if str_len(field_name_last) > 0 and str_len(value_expr_last) > 0 {
                                     if !first_field {
-                                        init_code = concat(init_code, str(", "));
+                                        init_code = concat_c(init_code, ", ");
                                     }
-                                    init_code = concat(init_code, str("."));
+                                    init_code = concat_c(init_code, ".");
                                     init_code = concat(init_code, field_name_last);
-                                    init_code = concat(init_code, str(" = "));
+                                    init_code = concat_c(init_code, " = ");
                                     init_code = concat(init_code, value_expr_last);
                                     first_field = false;
                                 }
@@ -4212,9 +4159,9 @@ pub def generate_c(ast: ref ASTNode): string {
                         }
 
                         if first_field {
-                            result = concat(result, str(" = {0}"));
+                            result = concat_c(result, " = {0}");
                         } else {
-                            init_code = concat(init_code, str("}"));
+                            init_code = concat_c(init_code, "}");
                             result = concat(result, init_code);
                         }
                     }
@@ -4255,11 +4202,11 @@ pub def generate_c(ast: ref ASTNode): string {
                                         val value_expr2: string = strip(substr(part2, colon_pos2 + 1, str_len(part2) - colon_pos2 - 1));
                                         if str_len(field_name2) > 0 and str_len(value_expr2) > 0 {
                                             if !first_field2 {
-                                                init_code2 = concat(init_code2, str(", "));
+                                                init_code2 = concat_c(init_code2, ", ");
                                             }
-                                            init_code2 = concat(init_code2, str("."));
+                                            init_code2 = concat_c(init_code2, ".");
                                             init_code2 = concat(init_code2, field_name2);
-                                            init_code2 = concat(init_code2, str(" = "));
+                                            init_code2 = concat_c(init_code2, " = ");
                                             init_code2 = concat(init_code2, value_expr2);
                                             first_field2 = false;
                                         }
@@ -4280,11 +4227,11 @@ pub def generate_c(ast: ref ASTNode): string {
                                 val value_expr_last2: string = strip(substr(part_last2, colon_pos_last2 + 1, str_len(part_last2) - colon_pos_last2 - 1));
                                 if str_len(field_name_last2) > 0 and str_len(value_expr_last2) > 0 {
                                     if !first_field2 {
-                                        init_code2 = concat(init_code2, str(", "));
+                                        init_code2 = concat_c(init_code2, ", ");
                                     }
-                                    init_code2 = concat(init_code2, str("."));
+                                    init_code2 = concat_c(init_code2, ".");
                                     init_code2 = concat(init_code2, field_name_last2);
-                                    init_code2 = concat(init_code2, str(" = "));
+                                    init_code2 = concat_c(init_code2, " = ");
                                     init_code2 = concat(init_code2, value_expr_last2);
                                     first_field2 = false;
                                 }
@@ -4292,14 +4239,14 @@ pub def generate_c(ast: ref ASTNode): string {
                         }
 
                         if first_field2 {
-                            result = concat(result, str(" = {0}"));
+                            result = concat_c(result, " = {0}");
                         } else {
-                            init_code2 = concat(init_code2, str("}"));
+                            init_code2 = concat_c(init_code2, "}");
                             result = concat(result, init_code2);
                         }
                     } else {
                         val processed_init2: string = process_expression(trimmed);
-                        result = concat(result, str(" = "));
+                        result = concat_c(result, " = ");
                         result = concat(result, processed_init2);
                     }
                 } else {
@@ -4314,13 +4261,13 @@ pub def generate_c(ast: ref ASTNode): string {
                     }
 
                     val processed_init: string = process_expression(trimmed);
-                    result = concat(result, str(" = "));
+                    result = concat_c(result, " = ");
                     result = concat(result, processed_init);
                 }
             }
         }
         
-        result = concat(result, str(";\n"));
+        result = concat_c(result, ";\n");
         return result;
     }
     
@@ -4498,9 +4445,9 @@ pub def generate_c(ast: ref ASTNode): string {
         }
 
         result = concat(result, out_lhs);
-        result = concat(result, str(" = "));
+        result = concat_c(result, " = ");
         result = concat(result, out_rhs);
-        result = concat(result, str(";\n"));
+        result = concat_c(result, ";\n");
         return result;
     }
     
@@ -4553,11 +4500,11 @@ pub def generate_c(ast: ref ASTNode): string {
             val processed_value: string = process_expression(trimmed_value);
             debug_print_raw "\n[DEBUG]   processed value:";
             debug_print_str processed_value;
-            result = concat(result, str(" = "));
+            result = concat_c(result, " = ");
             result = concat(result, processed_value);
         }
 
-        result = concat(result, str(";\n"));
+        result = concat_c(result, ";\n");
         return result;
     }
     
@@ -4580,20 +4527,20 @@ pub def generate_c(ast: ref ASTNode): string {
         val processed_value: string = process_expression(value_expr);
         
         result = concat(result, processed_array);
-        result = concat(result, str("["));
+        result = concat_c(result, "[");
         result = concat(result, processed_index);
-        result = concat(result, str("]"));
+        result = concat_c(result, "]");
         
         if str_len(index2_expr) > 0 {
             val processed_index2: string = process_expression(index2_expr);
-            result = concat(result, str("["));
+            result = concat_c(result, "[");
             result = concat(result, processed_index2);
-            result = concat(result, str("]"));
+            result = concat_c(result, "]");
         }
         
-        result = concat(result, str(" = "));
+        result = concat_c(result, " = ");
         result = concat(result, processed_value);
-        result = concat(result, str(";\n"));
+        result = concat_c(result, ";\n");
         return result;
     }
     
@@ -4660,13 +4607,13 @@ pub def generate_c(ast: ref ASTNode): string {
                     val sanitized_element: string = sanitize_list_element_name(c_element_type);
                     val processed_value: string = process_expression(value);
 
-                    result = concat(result, str("__list_"));
+                    result = concat_c(result, "__list_");
                     result = concat(result, sanitized_element);
-                    result = concat(result, str("_push(&"));
+                    result = concat_c(result, "_push(&");
                     result = concat(result, var_name);
-                    result = concat(result, str(", "));
+                    result = concat_c(result, ", ");
                     result = concat(result, processed_value);
-                    result = concat(result, str(");\n"));
+                    result = concat_c(result, ");\n");
 
                     debug_print_raw "\n[DEBUG] Generated append code for '";
                     debug_print_str var_name;
@@ -4705,13 +4652,13 @@ pub def generate_c(ast: ref ASTNode): string {
                         val sanitized_element: string = sanitize_list_element_name(c_element_type);
                         val processed_value: string = process_expression(value);
 
-                        result = concat(result, str("__list_"));
+                        result = concat_c(result, "__list_");
                         result = concat(result, sanitized_element);
-                        result = concat(result, str("_push(&"));
+                        result = concat_c(result, "_push(&");
                         result = concat(result, var_name);
-                        result = concat(result, str(", "));
+                        result = concat_c(result, ", ");
                         result = concat(result, processed_value);
-                        result = concat(result, str(");\n"));
+                        result = concat_c(result, ");\n");
 
                         debug_print_raw "\n[DEBUG] Generated append code for '";
                         debug_print_str var_name;
@@ -4732,7 +4679,7 @@ pub def generate_c(ast: ref ASTNode): string {
         }
 
         result = concat(result, emitted_name);
-        result = concat(result, str("("));
+        result = concat_c(result, "(");
 
         val args: ref list(string) = ast.data.func_call.args;
         if args != nil {
@@ -4743,7 +4690,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 }
 
                 if arg_idx > 0 {
-                    result = concat(result, str(", "));
+                    result = concat_c(result, ", ");
                 }
 
                 val raw_arg: string = args.data[arg_idx];
@@ -4753,7 +4700,7 @@ pub def generate_c(ast: ref ASTNode): string {
             }
         }
 
-        result = concat(result, str(");\n"));
+        result = concat_c(result, ");\n");
         return result;
     }
     
@@ -4773,9 +4720,9 @@ pub def generate_c(ast: ref ASTNode): string {
         }
 
         if len(messages) == 1 and len(flags) == 1 and !flags.data[0] {
-            result = concat(result, str("printf(\""));
+            result = concat_c(result, "printf(\"");
             result = concat(result, messages.data[0]);
-            result = concat(result, str("\");\n"));
+            result = concat_c(result, "\");\n");
             return result;
         }
 
@@ -4784,7 +4731,7 @@ pub def generate_c(ast: ref ASTNode): string {
     }
     
     if equals_c(node_type, "Loop") {
-        result = concat(result, str("while (1) {\n"));
+        result = concat_c(result, "while (1) {\n");
         
         if ast.children != nil {
             val children: ref list(ASTNode) = ast.children;
@@ -4798,7 +4745,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 i++;
             }
         }
-        result = concat(result, str("}\n"));
+        result = concat_c(result, "}\n");
         return result;
     }
 
@@ -4806,9 +4753,9 @@ pub def generate_c(ast: ref ASTNode): string {
         val platform_name: string = ast.data.platform_node.platform_name;
 
         if equals_c(platform_name, "windows") {
-            result = concat(result, str("#ifdef _WIN32\n"));
+            result = concat_c(result, "#ifdef _WIN32\n");
         } elif equals_c(platform_name, "posix") {
-            result = concat(result, str("#ifndef _WIN32\n"));
+            result = concat_c(result, "#ifndef _WIN32\n");
         }
 
         if ast.children != nil {
@@ -4824,7 +4771,7 @@ pub def generate_c(ast: ref ASTNode): string {
             }
         }
 
-        result = concat(result, str("#endif\n"));
+        result = concat_c(result, "#endif\n");
         return result;
     }
     
@@ -4843,9 +4790,9 @@ pub def generate_c(ast: ref ASTNode): string {
 
         mut header: string = str("int32_t ");
         header = concat(header, init);
-        header = concat(header, str("; "));
+        header = concat_c(header, "; ");
         header = concat(header, cond);
-        header = concat(header, str("; "));
+        header = concat_c(header, "; ");
         header = concat(header, incr);
 
         header = replace_all(header, str("+ ="), str("+="));
@@ -4855,9 +4802,9 @@ pub def generate_c(ast: ref ASTNode): string {
 
         val header_norm: string = process_expression(header);
 
-        result = concat(result, str("for ("));
+        result = concat_c(result, "for (");
         result = concat(result, header_norm);
-        result = concat(result, str(") {\n"));
+        result = concat_c(result, ") {\n");
 
         if ast.children != nil {
             val children: ref list(ASTNode) = ast.children;
@@ -4872,7 +4819,7 @@ pub def generate_c(ast: ref ASTNode): string {
             }
         }
 
-        result = concat(result, str("}\n"));
+        result = concat_c(result, "}\n");
         return result;
     }
     
@@ -4907,28 +4854,28 @@ pub def generate_c(ast: ref ASTNode): string {
             accessor = str("->");
         }
         
-        result = concat(result, str("for (int32_t "));
+        result = concat_c(result, "for (int32_t ");
         result = concat(result, index_var);
-        result = concat(result, str(" = 0; "));
+        result = concat_c(result, " = 0; ");
         result = concat(result, index_var);
-        result = concat(result, str(" < "));
+        result = concat_c(result, " < ");
         result = concat(result, array_name);
         result = concat(result, accessor);
-        result = concat(result, str("len; "));
+        result = concat_c(result, "len; ");
         result = concat(result, index_var);
-        result = concat(result, str("++) {\n"));
+        result = concat_c(result, "++) {\n");
         
-        result = concat(result, str("typeof("));
+        result = concat_c(result, "typeof(");
         result = concat(result, array_name);
         result = concat(result, accessor);
-        result = concat(result, str("data[0]) "));
+        result = concat_c(result, "data[0]) ");
         result = concat(result, var_name);
-        result = concat(result, str(" = "));
+        result = concat_c(result, " = ");
         result = concat(result, array_name);
         result = concat(result, accessor);
-        result = concat(result, str("data["));
+        result = concat_c(result, "data[");
         result = concat(result, index_var);
-        result = concat(result, str("];\n"));
+        result = concat_c(result, "];\n");
         
         if ast.children != nil {
             val children: ref list(ASTNode) = ast.children;
@@ -4943,7 +4890,7 @@ pub def generate_c(ast: ref ASTNode): string {
             }
         }
         
-        result = concat(result, str("}\n"));
+        result = concat_c(result, "}\n");
         return result;
     }
     
@@ -4961,12 +4908,12 @@ pub def generate_c(ast: ref ASTNode): string {
             trimmed_cond = process_expression(trimmed_cond);
 
             if is_first {
-                result = concat(result, str("if ("));
+                result = concat_c(result, "if (");
             } else {
-                result = concat(result, str("else if ("));
+                result = concat_c(result, "else if (");
             }
             result = concat(result, trimmed_cond);
-            result = concat(result, str(") {\n"));
+            result = concat_c(result, ") {\n");
             is_first = false;
 
             mut else_marker_idx: i32 = -1;
@@ -4988,7 +4935,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 }
             }
 
-            result = concat(result, str("}\n"));
+            result = concat_c(result, "}\n");
 
             if current_if.children != nil and else_marker_idx >= 0 {
                 val children: ref list(ASTNode) = current_if.children;
@@ -5001,7 +4948,7 @@ pub def generate_c(ast: ref ASTNode): string {
                         current_if = first_else_child;
                         continue;
                     } else {
-                        result = concat(result, str("else {\n"));
+                        result = concat_c(result, "else {\n");
                         mut j: i32 = else_marker_idx + 1;
                         loop {
                             if j >= child_count {
@@ -5012,7 +4959,7 @@ pub def generate_c(ast: ref ASTNode): string {
                             result = concat(result, else_code);
                             j = j + 1;
                         }
-                        result = concat(result, str("}\n"));
+                        result = concat_c(result, "}\n");
                         break;
                     }
                 } else {
