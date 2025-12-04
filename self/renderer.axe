@@ -2344,6 +2344,7 @@ def rewrite_adr(expr: string): string {
         
         val before: string = substring_se(result, 0, start_idx);
         val after: string = substring_se(result, paren_end + 1, str_len(result));
+
         result = concat(before, replacement);
         result = concat(result, after);
     }
@@ -2370,7 +2371,7 @@ def rewrite_dereference(expr: string): string {
             if ws != ' ' and ws != '\t' {
                 break;
             }
-            pos = pos + 1;
+            pos++;
         }
         
         if pos >= str_len(result) or get_char(result, pos) != '(' {
@@ -2387,12 +2388,12 @@ def rewrite_dereference(expr: string): string {
             }
             val ch: char = get_char(result, paren_end);
             if ch == '(' {
-                depth = depth + 1;
+                depth++;
             } elif ch == cast[char](41) {
-                depth = depth - 1;
+                depth--;
             }
             if depth > 0 {
-                paren_end = paren_end + 1;
+                paren_end++;
             }
         }
         
@@ -2533,11 +2534,13 @@ def rewrite_len_calls(expr: string): string {
             if last_dot >= 0 {
                 mut field_name: string = strip(substring_se(len_arg, last_dot + 1, len_arg_len));
                 val bracket_pos: i32 = find_char_from(field_name, '[', 0);
+
                 if bracket_pos >= 0 {
                     field_name = strip(substring_se(field_name, 0, bracket_pos));
                 }
                 
                 val first_dot: i32 = find_char_from(len_arg, '.', 0);
+
                 if first_dot >= 0 {
                     val base_var: string = strip(substring_se(len_arg, 0, first_dot));
                     
@@ -2561,6 +2564,7 @@ def rewrite_len_calls(expr: string): string {
         } else {
             mut base_var: string = len_arg;
             val bracket_pos: i32 = find_char_from(base_var, '[', 0);
+
             if bracket_pos >= 0 {
                 base_var = strip(substring_se(base_var, 0, bracket_pos));
             }
@@ -2574,15 +2578,18 @@ def rewrite_len_calls(expr: string): string {
         }
         
         mut replacement: string = str("");
+
         if is_pointer {
             replacement = concat(str("len_ptr("), len_arg);
         } else {
             replacement = concat(str("len_v("), len_arg);
         }
+
         replacement = concat_c(replacement, ")");
         
         val before: string = substring_se(result, 0, start_idx);
         val after: string = substring_se(result, paren_end + 1, str_len(result));
+        
         result = concat(before, replacement);
         result = concat(result, after);
     }
