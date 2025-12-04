@@ -20,9 +20,31 @@ use std.os;
 
 mut g_processed_modules: StringBoolMap;
 
+/// Global map tracking model short names to their prefixed C names
+/// e.g., "string" -> "std__string__string", "Token" -> "lexer__Token"
+mut g_import_model_names: StringStringMap;
+
+/// Global arena for model name storage
+mut g_model_names_arena: Arena;
+
 pub def reset_processed_modules() {
     mut arena: Arena = Arena.create(1024 * 16);
     g_processed_modules = deref(StringBoolMap.create(addr(arena), 128));
+    g_model_names_arena = Arena.create(1024 * 16);
+    g_import_model_names = deref(StringStringMap.create(addr(g_model_names_arena), 128));
+}
+
+/// Register a model name mapping (short name -> prefixed name)
+def register_model_name(short_name: string, prefixed_name: string) {
+    StringStringMap.set(addr(g_import_model_names), addr(g_model_names_arena), short_name, prefixed_name);
+}
+
+/// Look up a model's prefixed name by its short name
+def lookup_model_name(short_name: string): string {
+    if StringStringMap.contains(addr(g_import_model_names), short_name) {
+        return StringStringMap.get(addr(g_import_model_names), short_name);
+    }
+    return str("");
 }
 
 pub def has_imported_module(name: string): bool {
@@ -363,6 +385,11 @@ def prefix_type_name(type_name: string, module_prefix: string, exported: ref Str
         }
     }
 
+    val known_prefixed: string = lookup_model_name(t);
+    if str_len(known_prefixed) > 0 {
+        return known_prefixed;
+    }
+
     return type_name;
 }
 
@@ -549,7 +576,10 @@ def merge_imported_module(program: ref ASTNode, imported: ref ASTNode, use_modul
             prefix_function_node(addr(child), module_prefix, addr(exported));
             prefix_types_in_node(addr(child), module_prefix, addr(exported));
         } elif equals_c(child.node_type, "Model") {
+            val original_name: string = child.data.model_node.name;
             prefix_model_node(addr(child), module_prefix);
+            val prefixed_name: string = child.data.model_node.name;
+            register_model_name(original_name, prefixed_name);
             prefix_types_in_node(addr(child), module_prefix, addr(exported));
         } elif equals_c(child.node_type, "Enum") {
             prefix_enum_node(addr(child), module_prefix);

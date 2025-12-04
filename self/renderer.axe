@@ -3190,6 +3190,7 @@ pub def generate_c(ast: ref ASTNode): string {
 
         if ast.children != nil {
             val children_for_models: ref list(ASTNode) = ast.children;
+            mut model_name_arena: Arena = Arena.create(1024 * 64);
             mut mi: i32 = 0;
             loop {
                 if mi >= len(deref(children_for_models)) {
@@ -3223,17 +3224,15 @@ pub def generate_c(ast: ref ASTNode): string {
                         base = substring_se(cname, last_sep + 2, nlen);
                     }
 
-                    mut arena_local: Arena = Arena.create(256);
-
                     if str_len(base) > 0 {
-                        StringStringMap.set(addr(g_model_names), addr(arena_local), base, cname);
+                        StringStringMap.set(addr(g_model_names), addr(model_name_arena), base, cname);
                     }
-                    StringStringMap.set(addr(g_model_names), addr(arena_local), cname, cname);
+                    StringStringMap.set(addr(g_model_names), addr(model_name_arena), cname, cname);
                     
                     if equals_c(mchild.node_type, "Enum") {
-                        StringBoolMap.set(addr(g_enum_names), addr(arena_local), cname, true);
+                        StringBoolMap.set(addr(g_enum_names), addr(model_name_arena), cname, true);
                         if str_len(base) > 0 {
-                            StringBoolMap.set(addr(g_enum_names), addr(arena_local), base, true);
+                            StringBoolMap.set(addr(g_enum_names), addr(model_name_arena), base, true);
                         }
                     }
                 }
@@ -3459,8 +3458,12 @@ pub def generate_c(ast: ref ASTNode): string {
                 val collect_child: ref ASTNode = addr(children.data[collect_idx]);
                 if equals_c(collect_child.node_type, "Model") {
                     val mname: string = collect_child.data.model_node.name;
-                    StringList.push(model_names_list, addr(model_arena), mname);
-                    StringIntMap.set(addr(model_indices), addr(model_arena), mname, model_names_list.len - 1);
+                    mut cname: string = canonical_model_c_name(mname);
+                    if str_len(cname) == 0 {
+                        cname = mname;
+                    }
+                    StringList.push(model_names_list, addr(model_arena), cname);
+                    StringIntMap.set(addr(model_indices), addr(model_arena), cname, model_names_list.len - 1);
                 }
                 collect_idx = collect_idx + 1;
             }
@@ -3486,7 +3489,11 @@ pub def generate_c(ast: ref ASTNode): string {
                 }
                 val bdep_child: ref ASTNode = addr(children.data[build_deps_idx]);
                 if equals_c(bdep_child.node_type, "Model") {
-                    val this_model_name: string = bdep_child.data.model_node.name;
+                    val raw_model_name: string = bdep_child.data.model_node.name;
+                    mut this_model_name: string = canonical_model_c_name(raw_model_name);
+                    if str_len(this_model_name) == 0 {
+                        this_model_name = raw_model_name;
+                    }
                     val this_model_idx: i32 = StringIntMap.get(addr(model_indices), this_model_name);
                     val ftypes: ref list(string) = bdep_child.data.model_node.field_types;
 
