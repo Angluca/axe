@@ -1011,21 +1011,31 @@ def rewrite_sizeof_types(expr: string): string {
                     }
 
                     mut end_type: i32 = start_type;
+                    mut paren_depth: i32 = 0;
                     loop {
                         if end_type >= expr_len {
                             break;
                         }
                         val ct: char = get_char(expr, end_type);
-                        if ct == ')' {
-                            break;
+                        if ct == '(' {
+                            paren_depth = paren_depth + 1;
+                        } elif ct == cast[char](41) {
+                            if paren_depth == 0 {
+                                break;
+                            }
+                            paren_depth--;
                         }
-                        end_type = end_type + 1;
+                        end_type++;
                     }
 
                     if end_type <= expr_len {
                         val raw_type: string = strip(substring_se(expr, start_type, end_type));
                         if str_len(raw_type) > 0 {
-                            val mapped: string = map_axe_type_to_c(raw_type);
+                            mut normalized_type: string = replace_all(raw_type, str("( "), str("("));
+                            normalized_type = replace_all(normalized_type, str(" )"), str(")"));
+                            normalized_type = replace_all(normalized_type, str(" ("), str("("));
+                            normalized_type = replace_all(normalized_type, str(") "), str(")"));
+                            val mapped: string = map_axe_type_to_c(normalized_type);
                             StringBuilder.append(addr(sb), mapped);
                         }
 
@@ -1160,7 +1170,7 @@ def rewrite_casts(expr: string): string {
                                 if !in_str_paren {
                                     if cp == '(' {
                                         depth = depth + 1;
-                                    } elif cp == ')' {
+                                    } elif cp == cast[char](41) {
                                         depth = depth - 1;
                                         if depth == 0 {
                                             end_paren = q;
@@ -1172,10 +1182,14 @@ def rewrite_casts(expr: string): string {
                             }
 
                             if end_paren >= 0 {
-                                val mapped_type: string = map_axe_type_to_c(type_raw);
+                                mut normalized_type: string = replace_all(type_raw, str("( "), str("("));
+                                normalized_type = replace_all(normalized_type, str(" )"), str(")"));
+                                normalized_type = replace_all(normalized_type, str(" ("), str("("));
+                                normalized_type = replace_all(normalized_type, str(") "), str(")"));
+                                val mapped_type: string = map_axe_type_to_c(normalized_type);
                                 StringBuilder.append_char(addr(sb), '(');
                                 StringBuilder.append(addr(sb), mapped_type);
-                                StringBuilder.append_char(addr(sb), ')');
+                                StringBuilder.append_char(addr(sb), cast[char](41));
 
                                 val inner_full: string = substring_se(expr, a, end_paren + 1);
                                 StringBuilder.append(addr(sb), inner_full);
@@ -2024,6 +2038,68 @@ def rewrite_adr(expr: string): string {
     return result;
 }
 
+/// Rewrite deref(expr) to (*expr) for pointer dereference.
+def rewrite_dereference(expr: string): string {
+    mut result: string = expr;
+    
+    loop {
+        val start_idx: i32 = find_substr(result, str("deref"));
+        if start_idx < 0 {
+            break;
+        }
+        
+        mut pos: i32 = start_idx + 5;
+        loop {
+            if pos >= str_len(result) {
+                break;
+            }
+            val ws: char = get_char(result, pos);
+            if ws != ' ' and ws != '\t' {
+                break;
+            }
+            pos = pos + 1;
+        }
+        
+        if pos >= str_len(result) or get_char(result, pos) != '(' {
+            break;
+        }
+        
+        val paren_start: i32 = pos + 1;
+        mut depth: i32 = 1;
+        mut paren_end: i32 = paren_start;
+        
+        loop {
+            if paren_end >= str_len(result) or depth == 0 {
+                break;
+            }
+            val ch: char = get_char(result, paren_end);
+            if ch == '(' {
+                depth = depth + 1;
+            } elif ch == cast[char](41) {
+                depth = depth - 1;
+            }
+            if depth > 0 {
+                paren_end = paren_end + 1;
+            }
+        }
+        
+        if depth != 0 {
+            break;
+        }
+        
+        val var_name: string = strip(substring_se(result, paren_start, paren_end));
+        mut replacement: string = concat(str("(*"), var_name);
+        replacement = concat_c(replacement, ")");
+        
+        val before: string = substring_se(result, 0, start_idx);
+        val after: string = substring_se(result, paren_end + 1, str_len(result));
+        result = concat(before, replacement);
+        result = concat(result, after);
+    }
+    
+    return result;
+}
+
 def rewrite_function_calls(expr: string): string {
     mut sb: StringBuilder = StringBuilder.init(str_len(expr) + 64);
     mut i: i32 = 0;
@@ -2191,7 +2267,8 @@ def process_expression(expr: string): string {
         val single_quote_pos: i32 = find_char_from(trimmed, '\'', 0);
         if single_quote_pos >= 0 {
             val addr_fixed_chars: string = rewrite_adr(trimmed);
-            val calls_fixed_chars: string = rewrite_function_calls(addr_fixed_chars);
+            val deref_fixed_chars: string = rewrite_dereference(addr_fixed_chars);
+            val calls_fixed_chars: string = rewrite_function_calls(deref_fixed_chars);
             val enum_fixed_chars: string = rewrite_enum_member_refs(calls_fixed_chars);
             return strip(enum_fixed_chars);
         }
@@ -2281,7 +2358,8 @@ def process_expression(expr: string): string {
         debug_print_str norm_no_sugar;
 
         val addr_fixed: string = rewrite_adr(norm_no_sugar);
-        val ptr_fixed: string = rewrite_ref_member_access(addr_fixed);
+        val deref_fixed: string = rewrite_dereference(addr_fixed);
+        val ptr_fixed: string = rewrite_ref_member_access(deref_fixed);
         val methods_fixed: string = rewrite_method_calls(ptr_fixed);
         val sizeof_fixed: string = rewrite_sizeof_types(methods_fixed);
         val calls_fixed_no_sugar: string = rewrite_function_calls(sizeof_fixed);
@@ -2426,7 +2504,8 @@ def process_expression(expr: string): string {
     debug_print_str fixed;
 
     val addr_fixed2: string = rewrite_adr(fixed);
-    val ptr_fixed2: string = rewrite_ref_member_access(addr_fixed2);
+    val deref_fixed2: string = rewrite_dereference(addr_fixed2);
+    val ptr_fixed2: string = rewrite_ref_member_access(deref_fixed2);
     val methods_fixed2: string = rewrite_method_calls(ptr_fixed2);
     val sizeof_fixed2: string = rewrite_sizeof_types(methods_fixed2);
     val calls_fixed: string = rewrite_function_calls(sizeof_fixed2);
@@ -4476,16 +4555,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 }
             }
         } else {
-            if StringStringMap.contains(addr(g_list_of_types), var_name) {
-                val element_type: string = StringStringMap.get(addr(g_list_of_types), var_name);
-                val elem_mapped: string = map_axe_type_to_c(element_type);
-                val san_elem: string = sanitize_list_element_name(elem_mapped);
-                result = concat_c(result, " = __list_");
-                result = concat(result, san_elem);
-                result = concat_c(result, "_init()");
-            } else {
-                result = concat_c(result, " = {0}");
-            }
+            result = concat_c(result, " = {0}");
         }
         
         result = concat_c(result, ";\n");
