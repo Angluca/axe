@@ -87,9 +87,24 @@ pub model StringBuilder {
     }
 
     /// Appends a single character to the StringBuilder.
+    /// Inlined capacity check for performance.
     pub def append_char(sb: ref StringBuilder, c: char): void {
-        StringBuilder.ensure_capacity(sb, 1);
         unsafe {
+            val needed: usize = sb*.len + 2;
+            if needed > sb*.cap {
+                mut new_cap: usize = sb*.cap;
+                loop {
+                    if new_cap >= needed {
+                        break;
+                    }
+                    new_cap = new_cap * 2;
+                }
+                val new_data: char* = C.realloc(sb*.data, new_cap);
+                if new_data != nil {
+                    sb*.data = new_data;
+                    sb*.cap = new_cap;
+                }
+            }
             sb*.data[sb*.len] = c;
             sb*.len = sb*.len + 1;
             sb*.data[sb*.len] = '\0';
@@ -188,12 +203,13 @@ pub model string {
 }
 
 /// Replace all non-overlapping occurrences of `from` in `s` with `to`.
+/// Optimized to use StringBuilder instead of O(n²) repeated concatenations.
 pub def replace_all(s: string, from: string, dest: string): string {
     if str_len(from) == 0 {
         return substring_se(s, 0, str_len(s));
     }
 
-    mut result: string = str("");
+    mut sb: StringBuilder = StringBuilder.init(s.len + 64);
     mut i: i32 = 0;
     mut n: i32 = cast[i32](str_len(s));
     mut from_len: i32 = cast[i32](str_len(from));
@@ -223,14 +239,16 @@ pub def replace_all(s: string, from: string, dest: string): string {
         }
 
         if match {
-            result = concat(result, dest);
+            StringBuilder.append(addr(sb), dest);
             i = i + from_len;
         } else {
-            result = concat_chr(result, get_char(s, i));
+            StringBuilder.append_char(addr(sb), get_char(s, i));
             i = i + 1;
         }
     }
 
+    val result: string = StringBuilder.to_string(addr(sb));
+    StringBuilder.destroy(addr(sb));
     return result;
 }
 
@@ -250,26 +268,32 @@ pub def str_len(s: string): usize {
 
 /// Convert some string to titlecase.
 pub def to_title_case(s: string): string {
-    mut result: string = str("");
-    raw {
-        result.data = NULL;
-        result.len  = 0;
-        result.cap  = 0;
+    mut result: string;
+    unsafe {
+        result.data = nil;
+        result.len = 0;
+        result.cap = 0;
 
-        uintptr_t len = (uintptr_t)s.len;
-        result.data = (char*)malloc(len + 1);
+        val len: usize = s.len;
+        result.data = C.malloc(len + 1);
 
-        if (result.data != NULL) {
-            for (uintptr_t i = 0; i < len; i++) {
-                if (i == 0 || isalpha((int)s.data[i - 1]) == 0) {
-                    result.data[i] = (char)toupper((int)s.data[i]);
-                } else {
-                    result.data[i] = (char)tolower((int)s.data[i]);
+        if result.data != nil {
+            mut i: usize = 0;
+            loop {
+                if i >= len {
+                    break;
                 }
+                val ch: i32 = cast[i32](s.data[i]);
+                if i == 0 or C.isalpha(cast[i32](s.data[i - 1])) == 0 {
+                    result.data[i] = cast[char](C.toupper(ch));
+                } else {
+                    result.data[i] = cast[char](C.tolower(ch));
+                }
+                i++;
             }
             result.data[len] = '\0';
             result.len = len;
-            result.cap = len;
+            result.cap = len + 1;
         }
     }
     return result;
@@ -277,22 +301,28 @@ pub def to_title_case(s: string): string {
 
 /// Converts string to uppercase.
 pub def to_upper(s: string): string {
-    mut result: string = str("");
-    raw {
-        result.data = NULL;
-        result.len  = 0;
-        result.cap  = 0;
+    mut result: string;
+    unsafe {
+        result.data = nil;
+        result.len = 0;
+        result.cap = 0;
 
-        uintptr_t len = (uintptr_t)s.len;
-        result.data = (char*)malloc(len + 1);
+        val len: usize = s.len;
+        result.data = C.malloc(len + 1);
 
-        if (result.data != NULL) {
-            for (uintptr_t i = 0; i < len; i++) {
-                result.data[i] = (char)toupper((int)s.data[i]);
+        if result.data != nil {
+            mut i: usize = 0;
+            loop {
+                if i >= len {
+                    break;
+                }
+                val ch: i32 = cast[i32](s.data[i]);
+                result.data[i] = cast[char](C.toupper(ch));
+                i++;
             }
             result.data[len] = '\0';
             result.len = len;
-            result.cap = len;
+            result.cap = len + 1;
         }
     }
     return result;
@@ -300,22 +330,28 @@ pub def to_upper(s: string): string {
 
 /// Converts string to lowercase.
 pub def to_lower(s: string): string {
-    mut result: string = str("");
-    raw {
-        result.data = NULL;
-        result.len  = 0;
-        result.cap  = 0;
+    mut result: string;
+    unsafe {
+        result.data = nil;
+        result.len = 0;
+        result.cap = 0;
 
-        uintptr_t len = (uintptr_t)s.len;
-        result.data = (char*)malloc(len + 1);
+        val len: usize = s.len;
+        result.data = C.malloc(len + 1);
 
-        if (result.data != NULL) {
-            for (uintptr_t i = 0; i < len; i++) {
-                result.data[i] = (char)tolower((int)s.data[i]);
+        if result.data != nil {
+            mut i: usize = 0;
+            loop {
+                if i >= len {
+                    break;
+                }
+                val ch: i32 = cast[i32](s.data[i]);
+                result.data[i] = cast[char](C.tolower(ch));
+                i++;
             }
             result.data[len] = '\0';
             result.len = len;
-            result.cap = len;
+            result.cap = len + 1;
         }
     }
     return result;
@@ -350,15 +386,35 @@ def concat_chr(a: mut string, b: char): string {
 }
 
 /// Returns a substring from start to end (exclusive).
+/// Optimized to use direct memory allocation instead of O(n²) concat_chr calls.
 pub def substring_se(s: string, start: i32, end: i32): string {
-    mut result: string = str("");
-    mut i: i32 = start;
-    loop {
-        if i >= end {
-            break;
+    mut result: string;
+    unsafe {
+        result.data = nil;
+        result.len = 0;
+        result.cap = 0;
+        
+        if start >= end or start < 0 {
+            return result;
         }
-        result = concat_chr(result, get_char(s, i));
-        i = i + 1;
+        
+        val s_len: i32 = cast[i32](s.len);
+        mut actual_end: i32 = end;
+        if actual_end > s_len {
+            actual_end = s_len;
+        }
+        if start >= actual_end {
+            return result;
+        }
+        
+        val len: usize = cast[usize](actual_end - start);
+        result.data = C.malloc(len + 1);
+        if result.data != nil {
+            C.memcpy(result.data, s.data + start, len);
+            result.data[len] = '\0';
+            result.len = len;
+            result.cap = len + 1;
+        }
     }
     return result;
 }
@@ -455,45 +511,44 @@ pub def concat_c(original: string, addon: ref char): string {
 
 /// Concatenates source string to destination. Returns a new string.
 pub def concat(dest: string, src: string): string {
-    mut result: string = str("");
-    raw {
-        result.data = NULL;
-        result.len  = 0;
-        result.cap  = 0;
+    mut result: string;
+    unsafe {
+        result.data = nil;
+        result.len = 0;
+        result.cap = 0;
 
-        size_t new_len = (size_t)(dest.len + src.len);
-        result.data = (char*)malloc(new_len + 1);
+        val new_len: usize = dest.len + src.len;
+        result.data = C.malloc(new_len + 1);
 
-        if (result.data != NULL) {
-            if (dest.len > 0) {
-                memcpy(result.data, dest.data, dest.len);
+        if result.data != nil {
+            if dest.len > 0 {
+                C.memcpy(result.data, dest.data, dest.len);
             }
-            if (src.len > 0) {
-                memcpy(result.data + dest.len, src.data, src.len);
+            if src.len > 0 {
+                C.memcpy(result.data + dest.len, src.data, src.len);
             }
-            ((char*)result.data)[new_len] = '\0';
+            result.data[new_len] = '\0';
             result.len = new_len;
             result.cap = new_len + 1;
         }
     }
-
     return result;
 }
 
 /// Finds first occurrence of character in string. Returns pointer or 0.
 pub def first_occurrence(s: string, c: i32): char* {
-    mut result: char* = 0;
-    raw {
-        result = strchr((const char*)s.data, c);
+    mut result: char* = nil;
+    unsafe {
+        result = C.strchr(s.data, c);
     }
     return result;
 }
 
 /// Finds first occurrence of substring in string. Returns pointer or 0.
 pub def substring(haystack: string, needle: string): char* {
-    mut result: char* = 0;
-    raw {
-        result = strstr((const char*)haystack.data, (const char*)needle.data);
+    mut result: char* = nil;
+    unsafe {
+        result = C.strstr(haystack.data, needle.data);
     }
     return result;
 }
@@ -511,8 +566,8 @@ pub def str_contains_c(s: string, substr: char*): bool {
 /// Converts string to integer.
 pub def str_to_int(s: string): i32 {
     mut result: i32 = 0;
-    raw {
-        result = atoi((const char*)s.data);
+    unsafe {
+        result = C.atoi(s.data);
     }
     return result;
 }
@@ -520,8 +575,8 @@ pub def str_to_int(s: string): i32 {
 /// Converts string to long integer.
 pub def str_to_long(s: char*): i64 {
     mut result: i64 = 0;
-    raw {
-        result = atol((const char*)s);
+    unsafe {
+        result = C.atol(s);
     }
     return result;
 }
@@ -529,8 +584,8 @@ pub def str_to_long(s: char*): i64 {
 /// Checks if character is alphabetic.
 pub def is_alpha(c: i32): i32 {
     mut result: i32 = 0;
-    raw {
-        result = isalpha(c);
+    unsafe {
+        result = C.isalpha(c);
     }
     return result;
 }
@@ -538,8 +593,8 @@ pub def is_alpha(c: i32): i32 {
 /// Checks if character is numeric.
 pub def is_digit(c: i32): i32 {
     mut result: i32 = 0;
-    raw {
-        result = isdigit(c);
+    unsafe {
+        result = C.isdigit(c);
     }
     return result;
 }
@@ -547,21 +602,28 @@ pub def is_digit(c: i32): i32 {
 /// Checks if character is alphanumeric.
 pub def is_alphanum(c: i32): i32 {
     mut result: i32 = 0;
-    raw {
-        result = isalnum(c);
+    unsafe {
+        result = C.isalnum(c);
     }
     return result;
 }
 
 /// Converts char* to uppercase.
 pub def to_upper_chrptr(s: char*): char* {
-    mut result: char* = 0;
-    raw {
-        result = (char*)malloc(strlen((const char*)s) + 1);
-        if (result != 0) {
-            strcpy((char*)result, (const char*)s);
-            for (int i = 0; i < strlen((const char*)result); i++) {
-                result[i] = toupper(result[i]);
+    mut result: char* = nil;
+    unsafe {
+        val len: usize = C.strlen(s);
+        result = C.malloc(len + 1);
+        if result != nil {
+            C.strcpy(result, s);
+            mut i: usize = 0;
+            loop {
+                if i >= len {
+                    break;
+                }
+                val ch: i32 = cast[i32](result[i]);
+                result[i] = cast[char](C.toupper(ch));
+                i++;
             }
         }
     }
@@ -570,13 +632,20 @@ pub def to_upper_chrptr(s: char*): char* {
 
 /// Converts char* to lowercase.
 pub def to_lower_chrptr(s: char*): char* {
-    mut result: char* = 0;
-    raw {
-        result = (char*)malloc(strlen((const char*)s) + 1);
-        if (result != 0) {
-            strcpy((char*)result, (const char*)s);
-            for (int i = 0; i < strlen((const char*)result); i++) {
-                result[i] = tolower(result[i]);
+    mut result: char* = nil;
+    unsafe {
+        val len: usize = C.strlen(s);
+        result = C.malloc(len + 1);
+        if result != nil {
+            C.strcpy(result, s);
+            mut i: usize = 0;
+            loop {
+                if i >= len {
+                    break;
+                }
+                val ch: i32 = cast[i32](result[i]);
+                result[i] = cast[char](C.tolower(ch));
+                i++;
             }
         }
     }
@@ -586,8 +655,8 @@ pub def to_lower_chrptr(s: char*): char* {
 /// Converts character to uppercase.
 pub def to_upper_chr(c: i32): i32 {
     mut result: i32 = 0;
-    raw {
-        result = toupper(c);
+    unsafe {
+        result = C.toupper(c);
     }
     return result;
 }
@@ -595,20 +664,20 @@ pub def to_upper_chr(c: i32): i32 {
 /// Converts character to lowercase.
 pub def to_lower_chr(c: i32): i32 {
     mut result: i32 = 0;
-    raw {
-        result = tolower(c);
+    unsafe {
+        result = C.tolower(c);
     }
     return result;
 }
 
 /// Allocates and copies a string. Caller must free the result.
 pub def str_dup(s: char*): char* {
-    mut result: char* = 0;
-    raw {
-        int len = (int)strlen((const char*)s);
-        result = (char*)malloc(len + 1);
-        if (result != 0) {
-            strcpy((char*)result, (const char*)s);
+    mut result: char* = nil;
+    unsafe {
+        val len: usize = C.strlen(s);
+        result = C.malloc(len + 1);
+        if result != nil {
+            C.strcpy(result, s);
         }
     }
     return result;
@@ -617,49 +686,49 @@ pub def str_dup(s: char*): char* {
 /// Compares first n characters of two strings. Returns 0 if equal.
 pub def str_ncmp(s1: char*, s2: char*, n: i32): i32 {
     mut result: i32 = 0;
-    raw {
-        result = strncmp((const char*)s1, (const char*)s2, (size_t)n);
+    unsafe {
+        result = C.strncmp(s1, s2, cast[usize](n));
     }
     return result;
 }
 
 /// Copies at most n characters from source to destination.
 pub def str_ncopy(dest: char*, src: char*, n: i32): char* {
-    mut result: char* = 0;
-    raw {
-        result = strncpy((char*)dest, (const char*)src, (size_t)n);
+    mut result: char* = nil;
+    unsafe {
+        result = C.strncpy(dest, src, cast[usize](n));
     }
     return result;
 }
 
 /// Converts an integer to a string. Buffer must be at least 12 bytes.
 pub def int_to_str(value: i32, buffer: char*): char* {
-    raw {
-        sprintf(buffer, "%d", value);
+    unsafe {
+        C.sprintf(buffer, "%d", value);
     }
     return buffer;
 }
 
 /// Converts a long to a string. Buffer must be at least 21 bytes.
 pub def long_to_str(value: i64, buffer: char*): char* {
-    raw {
-        sprintf(buffer, "%ld", value);
+    unsafe {
+        C.sprintf(buffer, "%ld", value);
     }
     return buffer;
 }
 
 /// Converts a float to a string. Buffer must be at least 32 bytes.
 pub def float_to_str(value: f32, buffer: char*): char* {
-    raw {
-        sprintf(buffer, "%f", value);
+    unsafe {
+        C.sprintf(buffer, "%f", value);
     }
     return buffer;
 }
 
 /// Converts a double to a string. Buffer must be at least 32 bytes.
 pub def double_to_str(value: f64, buffer: char*): char* {
-    raw {
-        sprintf(buffer, "%lf", value);
+    unsafe {
+        C.sprintf(buffer, "%lf", value);
     }
     return buffer;
 }
@@ -672,20 +741,20 @@ pub def get_char(s: string, pos: usize): char {
 /// Returns the index of the first occurrence of character `c` in `s` at or after `start`.
 /// Returns -1 if the character is not found.
 pub def find_char_from(s: string, c: char, start: usize): i32 {
-    mut index: i32 = -1;
-    raw {
-        if (start >= s.len) {
-            index = -1;
-        } else {
-            for (size_t i = (size_t)start; i < (size_t)s.len; i++) {
-                if (s.data[i] == c) {
-                    index = (int)i;
-                    break;
-                }
-            }
-        }
+    if start >= s.len {
+        return -1;
     }
-    return index;
+    mut i: usize = start;
+    loop {
+        if i >= s.len {
+            break;
+        }
+        if s.data[i] == c {
+            return cast[i32](i);
+        }
+        i++;
+    }
+    return -1;
 }
 
 /// Returns the index of the first occurrence of `substr` inside `s`, or -1 if not found.
@@ -728,29 +797,27 @@ pub def find_substr(s: string, substr: string): i32 {
 /// The function clamps the requested range to the bounds of the source string.
 pub def substr(s: string, start: usize, length: usize): string {
     mut result: string;
-    raw {
-        result.data = NULL;
-        result.len  = 0;
-        result.cap  = 0;
+    unsafe {
+        result.data = nil;
+        result.len = 0;
+        result.cap = 0;
 
-        if (start >= s.len || length == 0) {
+        if start >= s.len or length == 0 {
             return result;
         }
-        size_t max_len = (size_t)(s.len - start);
-        size_t copy_len = (size_t)length;
-        if (copy_len > max_len) {
+        val max_len: usize = s.len - start;
+        mut copy_len: usize = length;
+        if copy_len > max_len {
             copy_len = max_len;
         }
-        char *buf = (char*)malloc(copy_len + 1);
-        if (!buf) {
+        result.data = C.malloc(copy_len + 1);
+        if result.data == nil {
             return result;
         }
-        memcpy(buf, s.data + start, copy_len);
-        buf[copy_len] = '\0';
-
-        result.data = buf;
-        result.len  = copy_len;
-        result.cap  = copy_len + 1;
+        C.memcpy(result.data, s.data + start, copy_len);
+        result.data[copy_len] = '\0';
+        result.len = copy_len;
+        result.cap = copy_len + 1;
     }
     return result;
 }
