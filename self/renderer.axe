@@ -287,6 +287,7 @@ def replace_keyword_outside_strings(expr: string, keyword: string, replacement: 
     
     mut sb: StringBuilder = StringBuilder.init(cast[usize](expr_len + 32));
     mut in_string: bool = false;
+    mut in_char_literal: bool = false;
     mut i: i32 = 0;
     
     loop {
@@ -296,14 +297,21 @@ def replace_keyword_outside_strings(expr: string, keyword: string, replacement: 
         
         val ch: char = get_char(expr, i);
         
-        if ch == '"' and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+            in_char_literal = !in_char_literal;
+            StringBuilder.append_char(addr(sb), ch);
+            i = i + 1;
+            continue;
+        }
+        
+        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
             continue;
         }
         
-        if in_string {
+        if in_string or in_char_literal {
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
             continue;
@@ -384,6 +392,7 @@ def rewrite_pointer_member_accesses(expr: string): string {
     mut sb: StringBuilder = StringBuilder.init(str_len(expr) + 64);
     mut i: i32 = 0;
     mut in_string: bool = false;
+    mut in_char_literal: bool = false;
     val expr_len: i32 = cast[i32](str_len(expr));
 
     loop {
@@ -393,14 +402,21 @@ def rewrite_pointer_member_accesses(expr: string): string {
 
         val ch: char = get_char(expr, i);
 
-        if ch == '"' and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+            in_char_literal = !in_char_literal;
+            StringBuilder.append_char(addr(sb), ch);
+            i++;
+            continue;
+        }
+
+        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i++;
             continue;
         }
 
-        if !in_string and is_ident_start(ch) {
+        if !in_string and !in_char_literal and is_ident_start(ch) {
             val base_start: i32 = i;
             mut j: i32 = i;
             loop {
@@ -848,6 +864,7 @@ def rewrite_ref_member_access(expr: string): string {
     mut sb: StringBuilder = StringBuilder.init(str_len(expr) + 64);
     mut pos: i32 = 0;
     mut in_string: bool = false;
+    mut in_char_literal: bool = false;
     val expr_len: i32 = cast[i32](str_len(expr));
 
     loop {
@@ -857,14 +874,21 @@ def rewrite_ref_member_access(expr: string): string {
 
         val ch: char = get_char(expr, pos);
 
-        if ch == '"' and (pos == 0 or get_char(expr, pos - 1) != '\\') {
+        if ch == '\'' and !in_string and (pos == 0 or get_char(expr, pos - 1) != '\\') {
+            in_char_literal = !in_char_literal;
+            StringBuilder.append_char(addr(sb), ch);
+            pos = pos + 1;
+            continue;
+        }
+
+        if ch == '"' and !in_char_literal and (pos == 0 or get_char(expr, pos - 1) != '\\') {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             pos = pos + 1;
             continue;
         }
 
-        if in_string {
+        if in_string or in_char_literal {
             StringBuilder.append_char(addr(sb), ch);
             pos = pos + 1;
             continue;
@@ -1066,6 +1090,7 @@ def rewrite_method_calls(expr: string): string {
     mut sb: StringBuilder = StringBuilder.init(str_len(expr) + 128);
     mut i: i32 = 0;
     mut in_string: bool = false;
+    mut in_char_literal: bool = false;
     val expr_len: i32 = cast[i32](str_len(expr));
 
     loop {
@@ -1075,14 +1100,21 @@ def rewrite_method_calls(expr: string): string {
 
         val ch: char = get_char(expr, i);
 
-        if ch == '"' and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+            in_char_literal = !in_char_literal;
+            StringBuilder.append_char(addr(sb), ch);
+            i = i + 1;
+            continue;
+        }
+
+        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
             continue;
         }
 
-        if !in_string and is_ident_start(ch) {
+        if !in_string and !in_char_literal and is_ident_start(ch) {
             val base_start: i32 = i;
             mut j: i32 = i;
             loop {
@@ -1232,6 +1264,7 @@ def rewrite_function_prefixes(expr: string): string {
     mut sb: StringBuilder = StringBuilder.init(str_len(expr) + 128);
     mut i: i32 = 0;
     mut in_string: bool = false;
+    mut in_char_literal: bool = false;
     val expr_len: i32 = cast[i32](str_len(expr));
 
     loop {
@@ -1241,7 +1274,14 @@ def rewrite_function_prefixes(expr: string): string {
 
         val ch: char = get_char(expr, i);
 
-        if ch == '"' and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+            in_char_literal = !in_char_literal;
+            StringBuilder.append_char(addr(sb), ch);
+            i++;
+            continue;
+        }
+
+        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i++;
@@ -1250,7 +1290,7 @@ def rewrite_function_prefixes(expr: string): string {
 
         val is_start: bool = is_ident_start(ch);
 
-        if !in_string and is_start {
+        if !in_string and !in_char_literal and is_start {
             val func_start: i32 = i;
             mut j: i32 = i;
             loop {
@@ -1278,6 +1318,13 @@ def rewrite_function_prefixes(expr: string): string {
             }
 
             if k < expr_len and get_char(expr, k) == '(' {
+                val has_double_underscore: bool = find_substr(func_name, str("__")) >= 0;
+                if has_double_underscore {
+                    StringBuilder.append(addr(sb), func_name);
+                    i = j;
+                    continue;
+                }
+                
                 if StringStringMap.contains(addr(g_function_prefixes), func_name) {
                     val full_name: string = StringStringMap.get(addr(g_function_prefixes), func_name);
                     StringBuilder.append(addr(sb), full_name);
@@ -1306,6 +1353,7 @@ def rewrite_sizeof_types(expr: string): string {
     mut sb: StringBuilder = StringBuilder.init(str_len(expr) + 64);
     mut i: i32 = 0;
     mut in_string: bool = false;
+    mut in_char_literal: bool = false;
     val expr_len: i32 = cast[i32](str_len(expr));
 
     loop {
@@ -1315,14 +1363,21 @@ def rewrite_sizeof_types(expr: string): string {
 
         val ch: char = get_char(expr, i);
 
-        if ch == '"' and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+            in_char_literal = !in_char_literal;
+            StringBuilder.append_char(addr(sb), ch);
+            i = i + 1;
+            continue;
+        }
+
+        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
             continue;
         }
 
-        if !in_string and is_ident_start(ch) {
+        if !in_string and !in_char_literal and is_ident_start(ch) {
             val ident_start: i32 = i;
             mut j: i32 = i;
             loop {
@@ -1435,6 +1490,7 @@ def rewrite_casts(expr: string): string {
     mut sb: StringBuilder = StringBuilder.init(str_len(expr) + 64);
     mut i: i32 = 0;
     mut in_string: bool = false;
+    mut in_char_literal: bool = false;
     val expr_len: i32 = cast[i32](str_len(expr));
 
     loop {
@@ -1444,14 +1500,21 @@ def rewrite_casts(expr: string): string {
 
         val ch: char = get_char(expr, i);
 
-        if ch == '"' and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+            in_char_literal = !in_char_literal;
+            StringBuilder.append_char(addr(sb), ch);
+            i = i + 1;
+            continue;
+        }
+
+        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
             continue;
         }
 
-        if !in_string and is_ident_start(ch) {
+        if !in_string and !in_char_literal and is_ident_start(ch) {
             val ident_start: i32 = i;
             mut j: i32 = i;
             loop {
@@ -2212,6 +2275,7 @@ def rewrite_enum_member_refs(s: string): string {
     mut sb: StringBuilder = StringBuilder.init(str_len(s) + 64);
     mut i: i32 = 0;
     mut in_string: bool = false;
+    mut in_char_literal: bool = false;
     val s_len: i32 = cast[i32](str_len(s));
 
     debug_print_raw "\n[DBG-ENUM] rewrite_enum_member_refs input:";
@@ -2224,15 +2288,21 @@ def rewrite_enum_member_refs(s: string): string {
 
         val ch: char = get_char(s, i);
 
-        // Track string literals to avoid modifying contents
-        if ch == '"' and (i == 0 or get_char(s, i - 1) != '\\') {
+        if ch == '\'' and !in_string and (i == 0 or get_char(s, i - 1) != '\\') {
+            in_char_literal = !in_char_literal;
+            StringBuilder.append_char(addr(sb), ch);
+            i = i + 1;
+            continue;
+        }
+
+        if ch == '"' and !in_char_literal and (i == 0 or get_char(s, i - 1) != '\\') {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
             continue;
         }
 
-        if in_string {
+        if in_string or in_char_literal {
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
             continue;
@@ -2654,6 +2724,7 @@ def rewrite_function_calls(expr: string): string {
     mut sb: StringBuilder = StringBuilder.init(str_len(expr) + 64);
     mut i: i32 = 0;
     mut in_string: bool = false;
+    mut in_char_literal: bool = false;
     val expr_len: i32 = cast[i32](str_len(expr));
 
     loop {
@@ -2663,7 +2734,14 @@ def rewrite_function_calls(expr: string): string {
 
         val ch: char = get_char(expr, i);
 
-        if ch == '"' and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+            in_char_literal = !in_char_literal;
+            StringBuilder.append_char(addr(sb), ch);
+            i = i + 1;
+            continue;
+        }
+
+        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
@@ -2671,7 +2749,7 @@ def rewrite_function_calls(expr: string): string {
         }
 
         val is_id_start: bool = is_ident_start(ch);
-        if !in_string and is_id_start {
+        if !in_string and !in_char_literal and is_id_start {
             val ident_start: i32 = i;
             mut j: i32 = i;
             loop {
@@ -2700,7 +2778,8 @@ def rewrite_function_calls(expr: string): string {
 
             mut replaced_ident: string = ident;
             if k < expr_len and get_char(expr, k) == '(' {
-                if StringStringMap.contains(addr(g_function_prefixes), ident) {
+                val has_double_underscore: bool = find_substr(ident, str("__")) >= 0;
+                if !has_double_underscore and StringStringMap.contains(addr(g_function_prefixes), ident) {
                     replaced_ident = StringStringMap.get(addr(g_function_prefixes), ident);
                 }
             }
@@ -2821,7 +2900,8 @@ def process_expression(expr: string): string {
             val calls_fixed_chars: string = rewrite_function_calls(deref_fixed_chars);
             val len_fixed_chars: string = rewrite_len_calls(calls_fixed_chars);
             val enum_fixed_chars: string = rewrite_enum_member_refs(len_fixed_chars);
-            val mod_fixed_chars: string = replace_keyword_outside_strings(enum_fixed_chars, str("mod"), str("%"));
+            val prefixes_fixed_chars: string = rewrite_function_prefixes(enum_fixed_chars);
+            val mod_fixed_chars: string = replace_keyword_outside_strings(prefixes_fixed_chars, str("mod"), str("%"));
             val and_fixed_chars: string = replace_keyword_outside_strings(mod_fixed_chars, str("and"), str("&&"));
             val or_fixed_chars: string = replace_keyword_outside_strings(and_fixed_chars, str("or"), str("||"));
             return strip(or_fixed_chars);
@@ -2921,7 +3001,8 @@ def process_expression(expr: string): string {
         val calls_fixed_no_sugar: string = rewrite_function_calls(sizeof_fixed);
         val len_fixed_no_sugar: string = rewrite_len_calls(calls_fixed_no_sugar);
         val enum_fixed_no_sugar: string = rewrite_enum_member_refs(len_fixed_no_sugar);
-        val mod_fixed_no_sugar: string = replace_keyword_outside_strings(enum_fixed_no_sugar, str("mod"), str("%"));
+        val prefixes_fixed_no_sugar: string = rewrite_function_prefixes(enum_fixed_no_sugar);
+        val mod_fixed_no_sugar: string = replace_keyword_outside_strings(prefixes_fixed_no_sugar, str("mod"), str("%"));
         val and_fixed_no_sugar: string = replace_keyword_outside_strings(mod_fixed_no_sugar, str("and"), str("&&"));
         val or_fixed_no_sugar: string = replace_keyword_outside_strings(and_fixed_no_sugar, str("or"), str("||"));
         
@@ -3072,7 +3153,8 @@ def process_expression(expr: string): string {
     val calls_fixed: string = rewrite_function_calls(sizeof_fixed2);
     val len_fixed: string = rewrite_len_calls(calls_fixed);
     val enum_fixed: string = rewrite_enum_member_refs(len_fixed);
-    val mod_fixed: string = replace_keyword_outside_strings(enum_fixed, str("mod"), str("%"));
+    val prefixes_fixed: string = rewrite_function_prefixes(enum_fixed);
+    val mod_fixed: string = replace_keyword_outside_strings(prefixes_fixed, str("mod"), str("%"));
     val and_fixed: string = replace_keyword_outside_strings(mod_fixed, str("and"), str("&&"));
     val or_fixed: string = replace_keyword_outside_strings(and_fixed, str("or"), str("||"));
 
@@ -3437,6 +3519,46 @@ pub def generate_c(ast: ref ASTNode): string {
         StringBuilder.destroy(addr(sb));
         
         build_function_prefixes(ast);
+
+        if ast.children != nil {
+            mut use_arena: Arena = Arena.create(4096);
+            val use_children: ref list(ASTNode) = ast.children;
+            mut ui: i32 = 0;
+            loop {
+                if ui >= len(deref(use_children)) {
+                    break;
+                }
+                val uchild: ref ASTNode = addr(use_children.data[ui]);
+                if equals_c(uchild.node_type, "Use") {
+                    val module_name: string = uchild.data.use_node.module_name;
+                    mut module_prefix: string = replace_all(module_name, str("."), str("__"));
+                    module_prefix = replace_all(module_prefix, str("-"), str("_"));
+                    
+                    val imports: ref list(string) = uchild.data.use_node.imports;
+                    if imports != nil {
+                        mut ii: i32 = 0;
+                        loop {
+                            if ii >= imports*.len {
+                                break;
+                            }
+                            val import_name: string = imports.data[ii];
+                            if str_len(import_name) > 0 {
+                                val first_char: char = get_char(import_name, 0);
+                                if first_char >= 'a' and first_char <= 'z' {
+                                    if !StringStringMap.contains(addr(g_function_prefixes), import_name) {
+                                        mut prefixed_name: string = concat(module_prefix, str("__"));
+                                        prefixed_name = concat(prefixed_name, import_name);
+                                        StringStringMap.set(addr(g_function_prefixes), addr(use_arena), import_name, prefixed_name);
+                                    }
+                                }
+                            }
+                            ii++;
+                        }
+                    }
+                }
+                ui++;
+            }
+        }
 
         if ast.children != nil {
             val children_for_models: ref list(ASTNode) = ast.children;
