@@ -18,7 +18,6 @@ def main() {
         println("");
         println("Options:");
         println("  -o <name>     specify output binary name");
-        println("  -asm          emit assembly and assemble/link/run it (requires nasm)");
         println("  -e            keep the emitted file");
         println("  -r            run the built executable after compilation");
         println("  -tokens       print lexer tokens and exit");
