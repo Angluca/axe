@@ -7,7 +7,7 @@ This directory contains the self-hosted version of the Axe compiler, written in 
 #### Bugfixes
 
 - [x] Fix `[]` syntax with non-primitive types
-- [ ] "Must initialize" constraint for primitive type inits.
+- [x] "Must initialize" constraint for primitive type inits.
 
 #### Overarching
 
