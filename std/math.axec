@@ -5,42 +5,42 @@ val TWO_PI: f64       = PI * 2.0;
 val E: f64            = 2.718281828459045;
 
 /// Clamp integer
-def clamp(value: i32, min: i32, max: i32): i32 {
+pub def clamp(value: i32, min: i32, max: i32): i32 {
     if value < min { return min; }
     elif value > max { return max; }
     else { return value; }
 }
 
 /// Clamp float
-def clamp_float(value: f64, min: f64, max: f64): f64 {
+pub def clamp_float(value: f64, min: f64, max: f64): f64 {
     if value < min { return min; }
     elif value > max { return max; }
     else { return value; }
 }
 
 /// Absolute value
-def absolute(value: f64): f64 {
+pub def absolute(value: f64): f64 {
     if value < 0.0 { return -value; } else { return value; }
 }
 
 /// Approximately equal
-def approx_equal(a: f64, b: f64, eps: f64): bool {
+pub def approx_equal(a: f64, b: f64, eps: f64): bool {
     return absolute(a - b) <= eps;
 }
 
 /// Minimum
-def minimum(a: f64, b: f64): f64 { if a < b { return a; } else { return b; } }
+pub def minimum(a: f64, b: f64): f64 { if a < b { return a; } else { return b; } }
 
 /// Maximum
-def maximum(a: f64, b: f64): f64 { if a > b { return a; } else { return b; } }
+pub def maximum(a: f64, b: f64): f64 { if a > b { return a; } else { return b; } }
 
 /// Converts an integer to a float.
-def int_to_float(x: i32): f64 {
+pub def int_to_float(x: i32): f64 {
     return x + 0.0;
 }
 
 /// Floor of the number.
-def floor(x: f64): f64 {
+pub def floor(x: f64): f64 {
     val xi: i32 = x;
     if x < 0.0 and (x - xi) != 0.0 {
         return (xi - 1);
@@ -50,7 +50,7 @@ def floor(x: f64): f64 {
 }
 
 /// Ceiling of the number.
-def ceil(x: f64): f64 {
+pub def ceil(x: f64): f64 {
     val xi: i32 = x;     
     val xf: f64 = xi;  
     if x > 0.0 and (x - xf) != 0.0 {
@@ -62,7 +62,7 @@ def ceil(x: f64): f64 {
 }
 
 /// Round to the nearest float
-def round(x: f64): f64 {
+pub def round(x: f64): f64 {
     if x < 0.0 {
         return ceil(x - 0.5);
     } else {
@@ -71,17 +71,17 @@ def round(x: f64): f64 {
 }
 
 /// Float modulus.
-def mod_float(a: f64, b: f64): f64 {
+pub def mod_float(a: f64, b: f64): f64 {
     return a - b * floor(a / b);
 }
 
 /// Reduce angle to [0, 2PI]
-def reduce_angle(x: f64): f64 {
+pub def reduce_angle(x: f64): f64 {
     return mod_float(x, TWO_PI);
 }
 
 /// Square root (Newton)
-def sqrt(value: f64): f64 {
+pub def sqrt(value: f64): f64 {
     if value <= 0.0 { return 0.0; }
     if value < 0.0000001 { return 0.00001; }
 
@@ -102,7 +102,7 @@ def sqrt(value: f64): f64 {
 }
 
 /// Integer exponent (exponentiation by squaring)
-def pow(base: f64, exp: i32): f64 {
+pub def pow(base: f64, exp: i32): f64 {
     mut result: f64 = 1.0;
     mut b: f64 = base;
     mut e: i32 = exp;
@@ -127,7 +127,7 @@ def pow(base: f64, exp: i32): f64 {
 }
 
 /// Exponential series
-def exp(x: f64): f64 {
+pub def exp(x: f64): f64 {
     if x < 0.0 {
         return 1.0 / exp(-x);
     }
@@ -157,7 +157,7 @@ def exp(x: f64): f64 {
 
 
 /// Natural logarithm
-def ln(x: f64): f64 {
+pub def ln(x: f64): f64 {
     if x <= 0.0 { return 0.0; }
 
     mut y: f64 = x - 1.0;
@@ -171,7 +171,7 @@ def ln(x: f64): f64 {
 }
 
 /// Sine (reduced angle)
-def sin(x: f64): f64 {
+pub def sin(x: f64): f64 {
     x = reduce_angle(x);
     mut term: f64 = x;
     mut sum: f64 = x;
@@ -186,7 +186,7 @@ def sin(x: f64): f64 {
 }
 
 /// Cosine
-def cos(x: f64): f64 {
+pub def cos(x: f64): f64 {
     x = reduce_angle(x);
     mut term: f64 = 1.0;
     mut sum: f64 = 1.0;
@@ -201,12 +201,12 @@ def cos(x: f64): f64 {
 }
 
 /// Tangent
-def tan(x: f64): f64 {
+pub def tan(x: f64): f64 {
     return sin(x) / cos(x);
 }
 
 /// Arcsine
-def asin(x: f64): f64 {
+pub def asin(x: f64): f64 {
     x = clamp_float(x, -1.0, 1.0);
 
     if x > 0.7071067811865476 {
@@ -228,12 +228,12 @@ def asin(x: f64): f64 {
 }
 
 /// Arccosine
-def acos(x: f64): f64 {
+pub def acos(x: f64): f64 {
     return HALF_PI - asin(x);
 }
 
 /// Arctangent
-def atan(x: f64): f64 {
+pub def atan(x: f64): f64 {
     mut term: f64 = x;
     mut sum: f64 = x;
     mut x2: f64 = x * x;
@@ -247,7 +247,7 @@ def atan(x: f64): f64 {
 }
 
 /// Float power: base^exp for non-integer exponents
-def powf(base: f64, expp: f64): f64 {
+pub def powf(base: f64, expp: f64): f64 {
     if base <= 0.0 {
         return 0.0; // avoid log(0) or negative base issues
     }
@@ -255,7 +255,7 @@ def powf(base: f64, expp: f64): f64 {
 }
 
 /// Two-argument arctangent: returns angle in radians between [-PI, PI]
-def atan2(y: f64, x: f64): f64 {
+pub def atan2(y: f64, x: f64): f64 {
     if x > 0.0 {
         return atan(y / x);
     } elif x < 0.0 and y >= 0.0 {
@@ -272,7 +272,7 @@ def atan2(y: f64, x: f64): f64 {
 }
 
 /// Hyperbolic tangent inverse
-def atanh(x: f64): f64 {
+pub def atanh(x: f64): f64 {
     if x <= -1.0 or x >= 1.0 {
         return 0.0;
     }
