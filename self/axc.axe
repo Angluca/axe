@@ -14,7 +14,7 @@ def main() {
     val args: ref StringList = get_cmdline_args(addr(arena));
     
     if args.len < 2 {
-        println("Usage: axe <input.axe|axec> [options]");
+        println("Usage: axe <input.axe> [options]");
         println("");
         println("Options:");
         println("  -o <name>     specify output binary name");
