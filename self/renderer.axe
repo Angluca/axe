@@ -3134,12 +3134,26 @@ def process_expression(expr: string): string {
         mut sb_norm: StringBuilder = StringBuilder.init(str_len(normalized_only) + 16);
         mut jn: i32 = 0;
         val norm_len: i32 = cast[i32](str_len(normalized_only));
+        mut in_string_norm: bool = false;
         
         loop {
             if jn >= norm_len {
                 break;
             }
             val chn: char = get_char(normalized_only, jn);
+
+            if chn == '"' and (jn == 0 or get_char(normalized_only, jn - 1) != '\\') {
+                in_string_norm = !in_string_norm;
+                StringBuilder.append_char(addr(sb_norm), chn);
+                jn = jn + 1;
+                continue;
+            }
+
+            if in_string_norm {
+                StringBuilder.append_char(addr(sb_norm), chn);
+                jn = jn + 1;
+                continue;
+            }
 
             if chn == ' ' or chn == '\t' or chn == '\n' {
                 mut prev: char = '\0';
@@ -3280,17 +3294,35 @@ def process_expression(expr: string): string {
     // After pointer-sugar and C. stripping, run the same normalization pass
     // used above to clean up spurious internal spaces within tokens such as
     // "0 . 0" or "reduce _angle" while preserving spaces between tokens.
+    
     mut normalized: string = result;
+    
     debug_print_raw "\n[DBG-EXPR] after sugar/C before normalize:";
     debug_print_str normalized;
+
     mut sb_final: StringBuilder = StringBuilder.init(str_len(normalized) + 32);
     mut jf: i32 = 0;
     val normalized_len: i32 = cast[i32](str_len(normalized));
+    mut in_string_final: bool = false;
+
     loop {
         if jf >= normalized_len {
             break;
         }
         val chf: char = get_char(normalized, jf);
+
+        if chf == '"' and (jf == 0 or get_char(normalized, jf - 1) != '\\') {
+            in_string_final = !in_string_final;
+            StringBuilder.append_char(addr(sb_final), chf);
+            jf = jf + 1;
+            continue;
+        }
+
+        if in_string_final {
+            StringBuilder.append_char(addr(sb_final), chf);
+            jf = jf + 1;
+            continue;
+        }
 
         if chf == ' ' or chf == '\t' or chf == '\n' {
             mut prev2: char = '\0';
