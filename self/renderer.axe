@@ -276,6 +276,26 @@ def normalize_numeric_dots(s: string): string {
     return result;
 }
 
+/// Check if a quote character at position `pos` is escaped by counting
+/// consecutive backslashes before it. Returns true if odd number of backslashes
+/// (meaning the quote is escaped), false if even number (quote is real delimiter).
+def is_escaped_quote(expr: string, pos: i32): bool {
+    mut backslash_count: i32 = 0;
+    mut j: i32 = pos - 1;
+    loop {
+        if j < 0 {
+            break;
+        }
+        if get_char(expr, j) != '\\' {
+            break;
+        }
+        backslash_count = backslash_count + 1;
+        j = j - 1;
+    }
+    // Odd number of backslashes means the quote is escaped
+    return (backslash_count mod 2) == 1;
+}
+
 /// Replace a keyword with another string, but only when it's a standalone word
 /// (not part of a larger identifier) and not inside a string literal.
 def replace_keyword_outside_strings(expr: string, keyword: string, replacement: string): string {
@@ -297,14 +317,14 @@ def replace_keyword_outside_strings(expr: string, keyword: string, replacement: 
         
         val ch: char = get_char(expr, i);
         
-        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
             continue;
         }
         
-        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
@@ -402,14 +422,14 @@ def rewrite_pointer_member_accesses(expr: string): string {
 
         val ch: char = get_char(expr, i);
 
-        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
             i++;
             continue;
         }
 
-        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i++;
@@ -874,14 +894,14 @@ def rewrite_ref_member_access(expr: string): string {
 
         val ch: char = get_char(expr, pos);
 
-        if ch == '\'' and !in_string and (pos == 0 or get_char(expr, pos - 1) != '\\') {
+        if ch == '\'' and !in_string and !is_escaped_quote(expr, pos) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
             pos = pos + 1;
             continue;
         }
 
-        if ch == '"' and !in_char_literal and (pos == 0 or get_char(expr, pos - 1) != '\\') {
+        if ch == '"' and !in_char_literal and !is_escaped_quote(expr, pos) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             pos = pos + 1;
@@ -1100,14 +1120,14 @@ def rewrite_method_calls(expr: string): string {
 
         val ch: char = get_char(expr, i);
 
-        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
             continue;
         }
 
-        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
@@ -1274,14 +1294,14 @@ def rewrite_function_prefixes(expr: string): string {
 
         val ch: char = get_char(expr, i);
 
-        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
             i++;
             continue;
         }
 
-        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i++;
@@ -1363,14 +1383,14 @@ def rewrite_sizeof_types(expr: string): string {
 
         val ch: char = get_char(expr, i);
 
-        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
             continue;
         }
 
-        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
@@ -1500,14 +1520,14 @@ def rewrite_casts(expr: string): string {
 
         val ch: char = get_char(expr, i);
 
-        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
             continue;
         }
 
-        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
@@ -1552,7 +1572,7 @@ def rewrite_casts(expr: string): string {
                             break;
                         }
                         val ct: char = get_char(expr, p);
-                        if ct == '"' and (p == 0 or get_char(expr, p - 1) != '\\') {
+                        if ct == '"' and !is_escaped_quote(expr, p) {
                             in_str_type = !in_str_type;
                         }
                         if !in_str_type and ct == ']' {
@@ -1587,7 +1607,7 @@ def rewrite_casts(expr: string): string {
                                     break;
                                 }
                                 val cp: char = get_char(expr, q);
-                                if cp == '"' and (q == 0 or get_char(expr, q - 1) != '\\') {
+                                if cp == '"' and !is_escaped_quote(expr, q) {
                                     in_str_paren = !in_str_paren;
                                 }
                                 if !in_str_paren {
@@ -1898,7 +1918,7 @@ def process_interpolated_string(interp_content: string, return_struct: bool): st
 
         val ch: char = get_char(interp_content, pos);
 
-        if ch == '{' and (pos == 0 or get_char(interp_content, pos - 1) != '\\') {
+        if ch == '{' and !is_escaped_quote(interp_content, pos) {
             if pos > 0 and get_char(interp_content, pos - 1) == '$' and sb_part.len > 0 {
                 sb_part.len = sb_part.len - 1;
             }
@@ -2288,14 +2308,14 @@ def rewrite_enum_member_refs(s: string): string {
 
         val ch: char = get_char(s, i);
 
-        if ch == '\'' and !in_string and (i == 0 or get_char(s, i - 1) != '\\') {
+        if ch == '\'' and !in_string and !is_escaped_quote(s, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
             continue;
         }
 
-        if ch == '"' and !in_char_literal and (i == 0 or get_char(s, i - 1) != '\\') {
+        if ch == '"' and !in_char_literal and !is_escaped_quote(s, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
@@ -2734,14 +2754,14 @@ def rewrite_function_calls(expr: string): string {
 
         val ch: char = get_char(expr, i);
 
-        if ch == '\'' and !in_string and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
             continue;
         }
 
-        if ch == '"' and !in_char_literal and (i == 0 or get_char(expr, i - 1) != '\\') {
+        if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
             i = i + 1;
