@@ -37,7 +37,7 @@ def has_double_underscore(name: string): bool {
         if c1 == '_' and c2 == '_' {
             return true;
         }
-        k = k + 1;
+        k++;
     }
     return false;
 }
