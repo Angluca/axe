@@ -1,7 +1,7 @@
-// Author: Navid Momtahen (C) 2025
-// License: GPL-3.0
-// 
-// Handles the parsing process - converts tokens into an AST
+/// Author: Navid Momtahen (C) 2025
+/// License: GPL-3.0
+/// 
+/// Handles the parsing process - converts tokens into an AST
 
 use lexer (
     Token, 
