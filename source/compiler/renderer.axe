@@ -274,10 +274,6 @@ def is_c_constant(name: string): bool {
 
 /// Check if a function name is a built-in function or C stdlib function
 def is_builtin_function(name: string): bool {
-    if equals_c(name, "add") or equals_c(name, "println") {
-        return false;
-    }
-
     return equals_c(name, "append") or equals_c(name, "len")
         or equals_c(name, "assert") or equals_c(name, "cast")
         or equals_c(name, "deref") or equals_c(name, "addr")
@@ -286,7 +282,8 @@ def is_builtin_function(name: string): bool {
         or equals_c(name, "strlen") or equals_c(name, "strcmp") or equals_c(name, "strcpy")
         or equals_c(name, "printf") or equals_c(name, "sprintf") or equals_c(name, "fprintf")
         or equals_c(name, "fopen") or equals_c(name, "fclose") or equals_c(name, "fread") or equals_c(name, "fwrite")
-        or has_prefix(name, str("C."));
+        or equals_c(name, "exit") or equals_c(name, "abort") or equals_c(name, "atexit")
+        or (name.len >= 2 and name.data[0] == 'C' and name.data[1] == '.');
 }
 
 /// Check if a symbol is valid (either builtin, imported, or a known model/enum)
@@ -464,6 +461,7 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
     mut sb_arg: StringBuilder = StringBuilder.init(256);
     mut paren_depth: i32 = 0;
     mut in_string: bool = false;
+    mut in_char_literal: bool = false;
     mut i: i32 = 0;
     val args_len: i32 = cast[i32](str_len(args_str));
 
@@ -472,10 +470,14 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
             break;
         }
         val ch: char = get_char(args_str, i);
-        if ch == '\"' {
+        
+        if ch == '\'' and !in_string and !is_escaped_quote(args_str, i) {
+            in_char_literal = !in_char_literal;
+            StringBuilder.append_char(addr(sb_arg), ch);
+        } elif ch == '\"' and !in_char_literal and !is_escaped_quote(args_str, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb_arg), ch);
-        } elif !in_string {
+        } elif !in_string and !in_char_literal {
             if ch == '(' {
                 paren_depth = paren_depth + 1;
                 StringBuilder.append_char(addr(sb_arg), ch);
@@ -3589,8 +3591,47 @@ def rewrite_global_var_refs(expr: string): string {
     return result;
 }
 
+/// Check if a variable is declared
+def check_variable_declared(name: string) {
+    if str_len(name) == 0 { return; }
+    if !is_ident_start(get_char(name, 0)) { return; }
+    
+    mut i: i32 = 1;
+    loop {
+        if i >= str_len(name) { break; }
+        if !is_token_char(get_char(name, i)) { return; }
+        i++;
+    }
+ 
+    if is_language_keyword(name) { return; }
+    if is_builtin_type(name) { return; }
+    if is_builtin_function(name) { return; }
+    if is_c_constant(name) { return; }
+    if equals_c(name, "true") or equals_c(name, "false") or equals_c(name, "nil") { return; }
+    if equals_c(name, "mod") or equals_c(name, "and") or equals_c(name, "or") or equals_c(name, "not") or equals_c(name, "xor") { return; }
+    if StringStringMap.contains(addr(g_var_types), name) { return; }
+    if StringStringMap.contains(addr(g_global_var_prefixes), name) { return; }
+    if StringStringMap.contains(addr(g_function_param_types), name) { return; }
+    if StringStringMap.contains(addr(g_function_prefixes), name) { return; }
+    if StringStringMap.contains(addr(g_model_names), name) { return; }
+    if StringBoolMap.contains(addr(g_enum_names), name) { if equals_c(name, "y") { println "DEBUG: y found in g_enum_names"; } return; }
+    if StringBoolMap.contains(addr(g_opaque_types), name) { if equals_c(name, "y") { println "DEBUG: y found in g_opaque_types"; } return; }
+    if is_symbol_imported(name) { if equals_c(name, "y") { println "DEBUG: y is imported"; } return; }
+    
+    print "error: undefined symbol: ";
+    print name;
+    println "";
+
+    unsafe { 
+        C.exit(1); 
+    }
+}
+
 def process_expression(expr: string): string {
     mut trimmed: string = strip(expr);
+    
+    check_variable_declared(trimmed);
+    
     mut has_pointer_sugar: bool = false;
     mut in_string: bool = false;
     mut i: i32 = 0;
@@ -6860,8 +6901,27 @@ pub def generate_c(ast: ref ASTNode): string {
         mut cond: string = strip(cond_raw);
         mut incr: string = strip(incr_raw);
 
+        mut loop_var_name: string = str("");
+        mut loop_var_added: bool = false;
+
         if has_prefix(init, str("mut ")) {
             init = strip(substr(init, 4, str_len(init) - 4));
+            
+            mut k_var: i32 = 0;
+            val init_len: i32 = cast[i32](str_len(init));
+            loop {
+                if k_var >= init_len { break; }
+                if !is_token_char(get_char(init, k_var)) { break; }
+                k_var = k_var + 1;
+            }
+            if k_var > 0 {
+                loop_var_name = substring_se(init, 0, k_var);
+                if !StringStringMap.contains(addr(g_var_types), loop_var_name) {
+                    mut temp_arena: Arena = Arena.create(256);
+                    StringStringMap.set(addr(g_var_types), addr(temp_arena), loop_var_name, str("i32"));
+                    loop_var_added = true;
+                }
+            }
         }
 
         mut header: string = str("int32_t ");
@@ -6897,6 +6957,11 @@ pub def generate_c(ast: ref ASTNode): string {
         }
 
         StringBuilder.append_c(addr(sb_for), "}\n");
+        
+        if loop_var_added {
+            val dummy: string = StringStringMap.pop(addr(g_var_types), loop_var_name);
+        }
+
         return StringBuilder.to_string(addr(sb_for));
     }
     
