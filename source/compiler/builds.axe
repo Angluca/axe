@@ -119,8 +119,10 @@ def print_ast_node(node: ref ASTNode, indent: i32) {
 
 /// Compile an Axe source file to an executable
 def compile_file(filename: string, is_axec: bool, output_filename: string): bool {
-    println(concat(str("Compiling: "), filename));
-    println "\n1 | IO";
+    if !::quiet_mode {
+        println(concat(str("Compiling: "), filename));
+        println "\n1 | IO";
+    }
 
     val source: string = read_file(filename);
     if str_len(source) == 0 {
@@ -128,7 +130,9 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
         return false;
     }
     
-    println "2 | Lex";
+    if !::quiet_mode {
+        println "2 | Lex";
+    }
     val tokens: list(Token) = lex(source);
     if len(tokens) == 0 {
         println "Error: No tokens generated";
@@ -153,7 +157,9 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
         }
     }
     
-    println "3 | Parse";
+    if !::quiet_mode {
+        println "3 | Parse";
+    }
     initialize_all();
     mut ast: ASTNode = parse(addr(tokens), is_axec, true, str(""));
     if len(ast.children) == 0 {
@@ -161,7 +167,9 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
         return false;
     }
     
-    println "4 | Imports";
+    if !::quiet_mode {
+        println "4 | Imports";
+    }
     reset_processed_modules();
 
     mut base_dir: string = str(".");
@@ -188,7 +196,9 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
         print_ast_node(addr(ast), 0);
     }
 
-    println "5 | Lowering";
+    if !::quiet_mode {
+        println "5 | Lowering";
+    }
 
     mut dir_name: string = str("");
     mut file_stem: string = str("");
@@ -196,7 +206,9 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
     mut last_dot: i32 = -1;
     mut i_ext: i32 = flen - 1;
 
-    println "6 | PFCCG I";
+    if !::quiet_mode {
+        println "6 | PFCCG I";
+    }
 
     loop {
         if i_ext < 0 {
@@ -213,7 +225,9 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
         last_dot = flen;
     }
 
-    println "7 | PFCCG II";
+    if !::quiet_mode {
+        println "7 | PFCCG II";
+    }
 
     mut last_sep: i32 = -1;
     mut i_sep: i32 = flen - 1;
@@ -235,7 +249,9 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
         file_stem = substring_se(filename, 0, last_dot);
     }
 
-    println "8 | PFCCG III";
+    if !::quiet_mode {
+        println "8 | PFCCG III";
+    }
     if last_sep > 0 {
         mut dir_sep2: i32 = -1;
         mut j: i32 = last_sep - 1;
@@ -256,7 +272,9 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
             dir_name = substring_se(filename, 0, last_sep);
         }
     }
-    println "9 | PFCCG IV";
+    if !::quiet_mode {
+        println "9 | PFCCG IV";
+    }
 
     mut module_prefix: string = str("");
     if str_len(dir_name) > 0 {
@@ -267,13 +285,17 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
         module_prefix = file_stem;
     }
 
-    println "10| PFCCG V";
+    if !::quiet_mode {
+        println "10| PFCCG V";
+    }
 
     prefix_root_enums(addr(ast), module_prefix);
     initialize_renderer();
     set_source_file(filename);
 
-    println "11| GEN";
+    if !::quiet_mode {
+        println "11| GEN";
+    }
 
     val c_code: string = generate_c(addr(ast));
 
@@ -286,7 +308,9 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
     write_file(c_filename, c_code);
     // println(concat(str("\nGenerated: "), c_filename));
     
-    println "12| Last compilation pass";
+    if !::quiet_mode {
+        println "12| Last compilation pass";
+    }
 
     val exe_filename: string = get_output_filename(output_filename, filename);
     val needs_omp: bool = should_link_openmp(addr(ast), filename);
@@ -394,18 +418,26 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
     val keep_file: bool = ::keep_emitted_file;
 
     if keep_file {
-        println "Keeping emitted C.";
+        if !::quiet_mode {
+            println "Keeping emitted C.";
+        }
     } else {
         delete_file(c_filename);
     }
     
-    println "Compiled.";
+    if !::quiet_mode {
+        println "Compiled.";
+    }
     
     val do_run: bool = ::run_after_compile;
     if do_run {
-        println(concat(str("Running: "), exe_filename));
+        if !::quiet_mode {
+            println(concat(str("Running: "), exe_filename));
+        }
         val run_code: i32 = exec(exe_filename.data);
-        println(concat(str("Exit code: "), i32_to_string(run_code)));
+        if !::quiet_mode {
+            println(concat(str("Exit code: "), i32_to_string(run_code)));
+        }
     }
     
     return true;

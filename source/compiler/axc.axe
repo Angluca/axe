@@ -25,6 +25,7 @@ def main() {
         println("  -dll          Build shared instead of standalone executable");
         println("  --release     Build in release mode");
         println("  -l, --loud    Loud debug output");
+        println("  --quiet       Suppress all output");
         println("  -I<path>      Pass a C include directory");
         println("  --version, -v Show axe version and exit\n");
         quit(0);
@@ -68,6 +69,10 @@ def main() {
 
     if strlst_contains_c(deref(args), "-l") or strlst_contains_c(deref(args), "--loud") {
         set_loud_logger(true);
+    }
+
+    if strlst_contains_c(deref(args), "--quiet") {
+        set_quiet_mode(true);
     }
 
     if strlst_contains_c(deref(args), "--release") {
