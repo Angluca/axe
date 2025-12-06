@@ -621,6 +621,18 @@ pub def get_user_home_dir(): string {
     return out;
 }
 
+/// Get an environment variable by name
+pub def get_env(name: string): string {
+    mut out: string = str("");
+    unsafe {
+        mut value: ref char = C.getenv(name.data);
+        if value {
+            out.data = value;
+        }
+    }
+    return out;
+}
+
 /// Get commandline args
 pub def get_cmdline_args(arena: ref Arena): ref StringList {
     mut val result: ref StringList;
