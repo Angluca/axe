@@ -3,6 +3,12 @@ use std.io (
     print
 );
 
+use std.string (
+    concat,
+    i32_to_string,
+    str
+);
+
 use std.errors (
     error,
     panic
@@ -43,7 +49,14 @@ pub model Arena {
 
         unsafe {
             if (arena*.offset + size > arena*.capacity) {
-                panic(error.create("Arena out of memory!\n"));
+                mut msg: string = str("Arena out of memory! cap=");
+                msg = concat(msg, i32_to_string(arena*.capacity));
+                msg = concat(msg, str(" used="));
+                msg = concat(msg, i32_to_string(arena*.offset));
+                msg = concat(msg, str(" req="));
+                msg = concat(msg, i32_to_string(size));
+                msg = concat(msg, str("\n"));
+                panic(error.create(msg.data));
                 return nil;
             }
             result = cast[ref void](arena*.buffer + arena*.offset);

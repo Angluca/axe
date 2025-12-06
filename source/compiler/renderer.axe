@@ -1736,7 +1736,7 @@ def add_list_element(c_elem: string) {
         return;
     }
 
-    mut arena: Arena = Arena.create(256);
+    mut arena: Arena = Arena.create(2560);
     StringBoolMap.set(addr(g_list_element_types), addr(arena), c_elem, true);
 
     if g_list_elements != nil {
@@ -3738,7 +3738,7 @@ def generate_global_decl(ast: ref ASTNode): string {
     }
 
     if str_len(var_name) > 0 and str_len(type_name) > 0 {
-        mut arena: Arena = Arena.create(256);
+        mut arena: Arena = Arena.create(2560);
         StringStringMap.set(addr(g_var_types), addr(arena), var_name, type_name);
 
         if has_prefix(type_name, str("list(")) {
@@ -3760,11 +3760,11 @@ def generate_global_decl(ast: ref ASTNode): string {
                 paren_pos = paren_pos + 1;
             }
             val element_type: string = strip(substr(type_name, 5, paren_pos - 5));
-            mut list_arena: Arena = Arena.create(256);
+            mut list_arena: Arena = Arena.create(2560);
             StringStringMap.set(addr(g_list_of_types), addr(list_arena), var_name, element_type);
         } elif has_suffix(type_name, str("[999]")) {
             val element_type: string = strip(substring_se(type_name, 0, str_len(type_name) - 5));
-            mut list_arena: Arena = Arena.create(256);
+            mut list_arena: Arena = Arena.create(2560);
             StringStringMap.set(addr(g_list_of_types), addr(list_arena), var_name, element_type);
         }
     }
@@ -5046,7 +5046,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     val initializer: string = child.data.declaration.initializer;
 
                     if str_len(var_name) > 0 and str_len(type_name) > 0 {
-                        mut arena_decl: Arena = Arena.create(256);
+                        mut arena_decl: Arena = Arena.create(2560);
                         StringStringMap.set(addr(g_var_types), addr(arena_decl), var_name, type_name);
                     }
 
@@ -5501,7 +5501,7 @@ pub def generate_c(ast: ref ASTNode): string {
         // MemberAccess nodes can determine whether the base object should
         // use '.' or '->' in generated C.
         if str_len(var_name) > 0 and str_len(type_name) > 0 {
-            mut arena: Arena = Arena.create(256);
+            mut arena: Arena = Arena.create(2560);
             StringStringMap.set(addr(g_var_types), addr(arena), var_name, type_name);
 
             if has_prefix(type_name, str("list(")) {
@@ -5523,11 +5523,11 @@ pub def generate_c(ast: ref ASTNode): string {
                     paren_pos = paren_pos + 1;
                 }
                 val element_type: string = strip(substr(type_name, 5, paren_pos - 5));
-                mut list_arena: Arena = Arena.create(256);
+                mut list_arena: Arena = Arena.create(2560);
                 StringStringMap.set(addr(g_list_of_types), addr(list_arena), var_name, element_type);
             } elif has_suffix(type_name, str("[999]")) {
                 val element_type: string = strip(substring_se(type_name, 0, str_len(type_name) - 5));
-                mut list_arena: Arena = Arena.create(256);
+                mut list_arena: Arena = Arena.create(2560);
                 StringStringMap.set(addr(g_list_of_types), addr(list_arena), var_name, element_type);
             }
         }
@@ -7013,7 +7013,7 @@ pub def generate_c(ast: ref ASTNode): string {
 
     if equals_c(node_type, "Extern") {
         val func_name: string = ast.data.extern_node.function_name;
-        mut arena: Arena = Arena.create(256);
+        mut arena: Arena = Arena.create(2560);
         StringBoolMap.set(addr(g_generated_functions), addr(arena), func_name, true);
         return str("");
     }

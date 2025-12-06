@@ -1,0 +1,11 @@
+/// Test file for import checking
+
+use std.arena;
+
+def test_missing_import() {
+    mut arena: Arena = Arena.create(1024);
+}
+
+def main() {
+    println "If you see this, the test passed";
+}
