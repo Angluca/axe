@@ -1,5 +1,7 @@
 use std.string (
-    string
+    string,
+    find_last_char,
+    substring_se
 );
 use std.io (
     print_str
@@ -733,6 +735,24 @@ pub def get_executable_dir(): string {
     }
     
     return substring_se(exe_path, 0, last_sep);
+}
+
+/// Extracts the filename from a path string.
+///
+/// Handles both forward and backward slashes.
+pub def get_short_filename(path: string): string {
+    val last_slash: i32 = find_last_char(path, '\\');
+    val last_slash_fwd: i32 = find_last_char(path, '/');
+    mut idx: i32 = last_slash;
+    if last_slash_fwd > idx {
+        idx = last_slash_fwd;
+    }
+    
+    if idx == -1 {
+        return path;
+    }
+    
+    return substring_se(path, idx + 1, cast[i32](path.len));
 }
 
 test {
