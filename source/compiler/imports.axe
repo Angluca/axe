@@ -33,12 +33,21 @@ mut g_import_model_names: StringStringMap;
 /// Global arena for model name storage
 mut g_model_names_arena: Arena;
 
+/// Global set tracking all imported symbol names (models, functions, enums)
+/// Used for import checking to ensure symbols are explicitly imported
+mut g_imported_symbols: StringBoolMap;
+
+/// Global arena for imported symbols storage
+mut g_imported_symbols_arena: Arena;
+
 /// Resets the processed modules and model name mappings
 pub def reset_processed_modules() {
     mut arena: Arena = Arena.create(1024 * 16);
     g_processed_modules = deref(StringBoolMap.create(addr(arena), 128));
     g_model_names_arena = Arena.create(1024 * 16);
     g_import_model_names = deref(StringStringMap.create(addr(g_model_names_arena), 128));
+    g_imported_symbols_arena = Arena.create(1024 * 16);
+    g_imported_symbols = deref(StringBoolMap.create(addr(g_imported_symbols_arena), 128));
 }
 
 /// Register a model name mapping (short name -> prefixed name)
@@ -52,6 +61,16 @@ def lookup_model_name(short_name: string): string {
         return StringStringMap.get(addr(g_import_model_names), short_name);
     }
     return str("");
+}
+
+/// Register a symbol as imported (for import checking)
+def register_imported_symbol(symbol_name: string) {
+    StringBoolMap.set(addr(g_imported_symbols), addr(g_imported_symbols_arena), symbol_name, true);
+}
+
+/// Check if a symbol has been imported
+pub def is_symbol_imported(symbol_name: string): bool {
+    return StringBoolMap.contains(addr(g_imported_symbols), symbol_name);
 }
 
 pub def has_imported_module(name: string): bool {
@@ -605,15 +624,20 @@ def merge_imported_module(program: ref ASTNode, imported: ref ASTNode, use_modul
                 i++;
                 continue;
             }
+            val func_name: string = child.data.function.name;
+            register_imported_symbol(func_name);
             prefix_function_node(addr(child), module_prefix, addr(exported));
             prefix_types_in_node(addr(child), module_prefix, addr(exported));
         } elif equals_c(child.node_type, "Model") {
             val original_name: string = child.data.model_node.name;
+            register_imported_symbol(original_name);
             prefix_model_node(addr(child), module_prefix);
             val prefixed_name: string = child.data.model_node.name;
             register_model_name(original_name, prefixed_name);
             prefix_types_in_node(addr(child), module_prefix, addr(exported));
         } elif equals_c(child.node_type, "Enum") {
+            val enum_name: string = child.data.enum_node.name;
+            register_imported_symbol(enum_name);
             prefix_enum_node(addr(child), module_prefix);
         } elif equals_c(child.node_type, "Overload") {
             prefix_types_in_node(addr(child), module_prefix, addr(exported));

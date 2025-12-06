@@ -5,6 +5,7 @@
 
 use gstate;
 use structs     (ASTNode);
+use imports     (is_symbol_imported);
 use std.lists   (StringList, IntList);
 use std.string;
 use std.io;
@@ -155,6 +156,132 @@ pub def initialize_renderer() {
     StringStringMap.set(addr(g_type_mappings), addr(arena), str("rchar"), str("char*"));
     StringStringMap.set(addr(g_type_mappings), addr(arena), str("byte"), str("uint8_t"));
     StringStringMap.set(addr(g_type_mappings), addr(arena), str("ptrdiff"), str("isize"));
+}
+
+/// Check if a type is a builtin primitive type
+def is_builtin_type(type_name: string): bool {
+    if equals_c(type_name, "i8") or equals_c(type_name, "u8") {
+        return true;
+    }
+    if equals_c(type_name, "i16") or equals_c(type_name, "u16") {
+        return true;
+    }
+    if equals_c(type_name, "i32") or equals_c(type_name, "u32") {
+        return true;
+    }
+    if equals_c(type_name, "i64") or equals_c(type_name, "u64") {
+        return true;
+    }
+    if equals_c(type_name, "isize") or equals_c(type_name, "usize") {
+        return true;
+    }
+    if equals_c(type_name, "f32") or equals_c(type_name, "f64") {
+        return true;
+    }
+    if equals_c(type_name, "bool") or equals_c(type_name, "char") {
+        return true;
+    }
+    if equals_c(type_name, "void") or equals_c(type_name, "byte") {
+        return true;
+    }
+    if equals_c(type_name, "rchar") or equals_c(type_name, "ptrdiff") {
+        return true;
+    }
+    return false;
+}
+
+/// Extract the base type name from a complex type (removing ref, list, mut, etc.)
+def extract_base_type(type_name: string): string {
+    mut result: string = strip(type_name);
+    
+    if has_prefix(result, str("mut ")) {
+        result = strip(substr(result, 4, str_len(result) - 4));
+    }
+    
+    if has_prefix(result, str("ref ")) {
+        result = strip(substr(result, 4, str_len(result) - 4));
+    }
+    
+    if has_prefix(result, str("list(")) {
+        val close_paren: i32 = find_char_from(result, cast[char](41), 0);
+        if close_paren > 5 {
+            result = strip(substring_se(result, 5, close_paren));
+            return extract_base_type(result);
+        }
+    }
+    
+    val br_idx: i32 = find_char_from(result, '[', 0);
+    if br_idx > 0 {
+        result = strip(substring_se(result, 0, br_idx));
+    }
+    
+    if has_suffix(result, str("*")) {
+        result = strip(substring_se(result, 0, str_len(result) - 1));
+    }
+    
+    return result;
+}
+
+/// Check if a type is a language keyword (not a user-defined type)
+def is_language_keyword(name: string): bool {
+    if equals_c(name, "union") or equals_c(name, "generic") {
+        return true;
+    }
+    if equals_c(name, "untyped") {
+        return true;
+    }
+    return false;
+}
+
+/// Check if a symbol is valid (either builtin, imported, or a known model/enum)
+def is_valid_symbol(symbol_name: string): bool {
+    if str_len(symbol_name) == 0 {
+        return true;
+    }
+    
+    if is_builtin_type(symbol_name) {
+        return true;
+    }
+    
+    if is_language_keyword(symbol_name) {
+        return true;
+    }
+    
+    if is_symbol_imported(symbol_name) {
+        return true;
+    }
+    
+    if StringStringMap.contains(addr(g_model_names), symbol_name) {
+        return true;
+    }
+    
+    if StringBoolMap.contains(addr(g_enum_names), symbol_name) {
+        return true;
+    }
+    
+    return false;
+}
+
+/// Validate that a type is properly imported (call this for user-facing types)
+def validate_type_imported(type_name: string) {
+    if str_len(type_name) == 0 {
+        return;
+    }
+    
+    val base_type: string = extract_base_type(type_name);
+    
+    if str_len(base_type) == 0 {
+        return;
+    }
+    
+    if !is_valid_symbol(base_type) {
+        print "error: undefined symbol: ";
+        print base_type;
+        println ", perhaps missing 'use' statement?";
+        unsafe {
+            C.exit(1);
+        }
+    }
 }
 
 /// Collect external imports from AST recursively.
@@ -5203,6 +5330,8 @@ pub def generate_c(ast: ref ASTNode): string {
         StringBoolMap.set(addr(g_generated_functions), addr(arena), func_name, true);
         StringStringMap.clear(addr(g_var_types));
         
+        validate_type_imported(return_type);
+        
         val fn_params: ref list(string) = ast.data.function.params;
         if fn_params != nil {
             mut pi: i32 = 0;
@@ -5216,6 +5345,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     val pname: string = strip(substring_se(p, 0, cp));
                     val ptype: string = strip(substr(p, cp + 1, str_len(p) - cp - 1));
                     if str_len(pname) > 0 and str_len(ptype) > 0 {
+                        validate_type_imported(ptype);
                         StringStringMap.set(addr(g_var_types), addr(arena), pname, ptype);
                     }
                 }
@@ -5456,6 +5586,9 @@ pub def generate_c(ast: ref ASTNode): string {
         mut type_name: string = ast.data.declaration.type_name;
         val is_mutable: bool = ast.data.declaration.is_mutable;
         val initializer: string = ast.data.declaration.initializer;
+        
+        validate_type_imported(type_name);
+        
         mut mapped_type: string = map_axe_type_to_c(type_name);
 
         if str_len(type_name) == 0 {
@@ -6750,6 +6883,11 @@ pub def generate_c(ast: ref ASTNode): string {
 
                 val field_name: string = field_names.data[field_idx];
                 val field_type: string = field_types.data[field_idx];
+                
+                if !equals_c(field_type, "union") and !equals_c(field_type, "model") {
+                    validate_type_imported(field_type);
+                }
+                
                 mut field_key: string = model_name;
 
                 field_key = concat(field_key, str("."));
