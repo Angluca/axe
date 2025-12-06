@@ -7,15 +7,15 @@ pub def randomize(): void {
 
 /// Get random value between two i32s.
 pub def random(a: i32, b: i32): i32 {
-    raw {
-        return rand() % (b - a + 1) + a;
+    unsafe {
+        return C.rand() mod (b - a + 1) + a;
     }
 }
 
 /// Get random value between two f32s.
 pub def random_float(a: f32, b: f32): f32 {
-    raw {
-        return (rand() / (float)RAND_MAX) * (b - a) + a;
+    unsafe {
+        return (C.rand() / cast[float](C.RAND_MAX)) * (b - a) + a;
     }
 }
 
