@@ -815,7 +815,7 @@ pub def find_substr(s: string, substr: string): i32 {
 /// Returns a substring of `s` starting at `start` with the given `length`.
 /// If `start` is beyond the end of the string or `length` is zero, an empty string is returned.
 /// The function clamps the requested range to the bounds of the source string.
-pub def substr(s: string, start: usize, length: usize): string {
+pub def substr(s: string, start: i32, length: i32): string {
     mut result: string;
     unsafe {
         result.data = nil;
