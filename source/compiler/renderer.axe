@@ -2495,7 +2495,10 @@ def get_type_format_specifier(var_type: string): string {
     if equals_c(t, "double") or has_suffix(t, str("double")) {
         return str("%f");
     }
-    if equals_c(t, "char") or has_suffix(t, str("char")) {
+    if has_prefix(t, str("ref char")) or has_suffix(t, str("char*")) {
+        return str("%s");
+    }
+    if equals_c(t, "char") {
         return str("%c");
     }
 
