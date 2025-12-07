@@ -388,7 +388,7 @@ def register_function_signature(func_name: string, params: ref list(string), ret
                 types_str = concat(types_str, param_type);
             }
         }
-        i = i + 1;
+        i++;
     }
     StringStringMap.set(addr(g_function_param_types), arena, func_name, types_str);
 }
@@ -513,7 +513,7 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         } else {
             StringBuilder.append_char(addr(sb_arg), ch);
         }
-        i = i + 1;
+        i++;
     }
 
     val final_arg: string = StringBuilder.to_string(addr(sb_arg));
@@ -710,7 +710,7 @@ def collect_function_signatures(node: ref ASTNode, arena: ref Arena) {
                 break;
             }
             collect_function_signatures(addr(children.data[i]), arena);
-            i = i + 1;
+            i++;
         }
     }
 }
@@ -758,7 +758,7 @@ def collect_external_imports(node: ref ASTNode, current_platform: string, arena:
                     break;
                 }
                 collect_external_imports(addr(children.data[i]), platform_name, arena);
-                i = i + 1;
+                i++;
             }
         }
         return;
@@ -773,7 +773,7 @@ def collect_external_imports(node: ref ASTNode, current_platform: string, arena:
                 break;
             }
             collect_external_imports(addr(children.data[i]), current_platform, arena);
-            i = i + 1;
+            i++;
         }
     }
 }
@@ -933,20 +933,20 @@ def replace_keyword_outside_strings(expr: string, keyword: string, replacement: 
         if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
         
         if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
         
         if in_string or in_char_literal {
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
         
@@ -1231,7 +1231,7 @@ def collect_function_prefixes(node: ref ASTNode) {
                 break;
             }
             collect_function_prefixes(addr(children.data[i]));
-            i = i + 1;
+            i++;
         }
     }
 }
@@ -1346,7 +1346,7 @@ def sanitize_list_element_name(c_elem: string): string {
         } else {
             StringBuilder.append_char(addr(sb), ch);
         }
-        i = i + 1;
+        i++;
     }
     val result: string = StringBuilder.to_string(addr(sb));
     StringBuilder.destroy(addr(sb));
@@ -1740,14 +1740,14 @@ def rewrite_method_calls(expr: string): string {
         if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
         if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
@@ -1886,7 +1886,7 @@ def rewrite_method_calls(expr: string): string {
         }
 
         StringBuilder.append_char(addr(sb), ch);
-        i = i + 1;
+        i++;
     }
 
     val result: string = StringBuilder.to_string(addr(sb));
@@ -2003,14 +2003,14 @@ def rewrite_sizeof_types(expr: string): string {
         if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
         if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
@@ -2150,14 +2150,14 @@ def rewrite_casts(expr: string): string {
         if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
         if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
@@ -2282,7 +2282,7 @@ def rewrite_casts(expr: string): string {
         }
 
         StringBuilder.append_char(addr(sb), ch);
-        i = i + 1;
+        i++;
     }
 
     val result: string = StringBuilder.to_string(addr(sb));
@@ -2314,7 +2314,7 @@ def add_list_element(c_elem: string) {
             if compare(it, c_elem) == 0 {
                 return;
             }
-            i = i + 1;
+            i++;
         }
         StringList.push(g_list_elements, addr(arena), c_elem);
     }
@@ -2736,14 +2736,14 @@ def c_prefix_end_index(s: string): i32 {
         if ch != ' ' and ch != '\t' and ch != '\n' {
             break;
         }
-        i = i + 1;
+        i++;
     }
 
     if get_char(s, i) != '.' {
         return -1;
     }
 
-    i = i + 1;
+    i++;
     loop {
         if i >= str_len(s) {
             break;
@@ -2752,7 +2752,7 @@ def c_prefix_end_index(s: string): i32 {
         if ch != ' ' and ch != '\t' and ch != '\n' {
             break;
         }
-        i = i + 1;
+        i++;
     }
 
     return i;
@@ -2841,7 +2841,7 @@ def collapse_duplicate_segments_once(s: string): string {
         }
 
         StringBuilder.append_char(addr(sb), get_char(s, i));
-        i = i + 1;
+        i++;
     }
 
     val result: string = StringBuilder.to_string(addr(sb));
@@ -2910,7 +2910,7 @@ def strip_all_c_prefixes(s: string): string {
         }
 
         StringBuilder.append_char(addr(sb), ch);
-        i = i + 1;
+        i++;
     }
 
     val result: string = StringBuilder.to_string(addr(sb));
@@ -2941,20 +2941,20 @@ def rewrite_enum_member_refs(s: string): string {
         if ch == '\'' and !in_string and !is_escaped_quote(s, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
         if ch == '"' and !in_char_literal and !is_escaped_quote(s, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
         if in_string or in_char_literal {
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
@@ -3042,7 +3042,7 @@ def rewrite_enum_member_refs(s: string): string {
         }
 
         StringBuilder.append_char(addr(sb), ch);
-        i = i + 1;
+        i++;
     }
 
     val result: string = StringBuilder.to_string(addr(sb));
@@ -3405,14 +3405,14 @@ def rewrite_function_calls(expr: string): string {
         if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
             in_char_literal = !in_char_literal;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
         if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
@@ -3461,7 +3461,7 @@ def rewrite_function_calls(expr: string): string {
         }
 
         StringBuilder.append_char(addr(sb), ch);
-        i = i + 1;
+        i++;
     }
 
     val result: string = StringBuilder.to_string(addr(sb));
@@ -3491,13 +3491,13 @@ def rewrite_global_scope_refs(expr: string): string {
         if ch == '"' and (i == 0 or get_char(expr, i - 1) != '\\') {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
         if in_string {
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
@@ -3552,7 +3552,7 @@ def rewrite_global_scope_refs(expr: string): string {
         }
 
         StringBuilder.append_char(addr(sb), ch);
-        i = i + 1;
+        i++;
     }
 
     val result: string = StringBuilder.to_string(addr(sb));
@@ -3583,13 +3583,13 @@ def rewrite_global_var_refs(expr: string): string {
         if ch == '"' and (i == 0 or get_char(expr, i - 1) != '\\') {
             in_string = !in_string;
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
         if in_string {
             StringBuilder.append_char(addr(sb), ch);
-            i = i + 1;
+            i++;
             continue;
         }
 
@@ -3598,7 +3598,7 @@ def rewrite_global_var_refs(expr: string): string {
                 val prev_ch: char = get_char(expr, i - 1);
                 if (prev_ch >= 'a' and prev_ch <= 'z') or (prev_ch >= 'A' and prev_ch <= 'Z') or (prev_ch >= '0' and prev_ch <= '9') or prev_ch == '_' {
                     StringBuilder.append_char(addr(sb), ch);
-                    i = i + 1;
+                    i++;
                     continue;
                 }
             }
@@ -3662,7 +3662,7 @@ def rewrite_global_var_refs(expr: string): string {
         }
 
         StringBuilder.append_char(addr(sb), ch);
-        i = i + 1;
+        i++;
     }
 
     val result: string = StringBuilder.to_string(addr(sb));
@@ -3794,7 +3794,7 @@ def process_expression(expr: string): string {
                 break;
             }
         }
-        i = i + 1;
+        i++;
     }
 
     mut has_c_prefix: bool = false;
@@ -4223,7 +4223,7 @@ def generate_function_prototype(ast: ref ASTNode): string {
         if c1 == '_' and c2 == '_' {
             sep = i;
         }
-        i = i + 1;
+        i++;
     }
 
     if sep >= 0 and sep + 2 < n {
@@ -4348,7 +4348,7 @@ def generate_global_decl(ast: ref ASTNode): string {
                     end_pos = i;
                     break;
                 }
-                i = i + 1;
+                i++;
             }
             if end_pos < 0 {
                 end_pos = str_len(trimmed_init);
@@ -5306,7 +5306,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     result = concat(result, ov_code);
                     result = concat(result, str("\n"));
                 }
-                i = i + 1;
+                i++;
             }
 
             i = 0;
@@ -5381,7 +5381,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     val child_code: string = generate_c(child2);
                     result = concat(result, child_code);
                 }
-                i = i + 1;
+                i++;
             }
             
             i = 0;
@@ -6135,7 +6135,7 @@ pub def generate_c(ast: ref ASTNode): string {
                         end_pos = i;
                         break;
                     }
-                    i = i + 1;
+                    i++;
                 }
                 if end_pos < 0 {
                     end_pos = str_len(trimmed_init);
@@ -7411,7 +7411,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     }
                     val child_code: string = generate_c(child_ref);
                     StringBuilder.append(addr(sb_if), child_code);
-                    i = i + 1;
+                    i++;
                 }
             }
 
