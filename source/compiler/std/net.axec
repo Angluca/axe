@@ -599,6 +599,8 @@ def net_init(): bool {
 }
 
 /// Cleanup networking subsystem (cross-platform)
+///
+/// This is a NOOP on POSIX systems.
 def net_cleanup() {
     platform windows {
         unsafe {
