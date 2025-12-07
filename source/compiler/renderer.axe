@@ -6283,11 +6283,13 @@ pub def generate_c(ast: ref ASTNode): string {
                 StringBuilder.append_c(addr(sb_list_init), "}");
 
                 mut sb_decl2: StringBuilder = StringBuilder.init(512);
+                
                 StringBuilder.append(addr(sb_decl2), result);
                 StringBuilder.append(addr(sb_decl2), StringBuilder.to_string(addr(sb_list_init)));
-                result = StringBuilder.to_string(addr(sb_decl2));
-                StringBuilder.destroy(addr(sb_decl2));
                 
+                result = StringBuilder.to_string(addr(sb_decl2));
+
+                StringBuilder.destroy(addr(sb_decl2));
                 StringBuilder.destroy(addr(sb_list_init));
             } elif has_prefix(trimmed, str("new ")) {
                 trimmed = substring_se(trimmed, 4, str_len(trimmed));
@@ -7342,7 +7344,7 @@ pub def generate_c(ast: ref ASTNode): string {
         }
         
         mut sb_forin: StringBuilder = StringBuilder.init(1024);
-        
+
         StringBuilder.append_c(addr(sb_forin), "for (int32_t ");
         StringBuilder.append(addr(sb_forin), index_var);
         StringBuilder.append_c(addr(sb_forin), " = 0; ");
