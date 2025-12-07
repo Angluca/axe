@@ -5896,8 +5896,6 @@ pub def generate_c(ast: ref ASTNode): string {
         }
         
         val mapped_return_type: string = map_axe_type_to_c(return_type);
-        
-        // Use StringBuilder for function generation
         mut sb_func: StringBuilder = StringBuilder.init(4096);
         
         StringBuilder.append(addr(sb_func), emit_line_directive(ast.line));
@@ -6227,13 +6225,13 @@ pub def generate_c(ast: ref ASTNode): string {
                         }
                         val ch_elem: char = get_char(elements_trimmed, idx_elem);
                         if ch_elem == '(' or ch_elem == '[' or ch_elem == '{' {
-                            depth = depth + 1;
+                            depth++;
                         } elif ch_elem == ')' or ch_elem == ']' or ch_elem == '}' {
-                            depth = depth - 1;
+                            depth--;
                         } elif ch_elem == ',' and depth == 0 {
-                            element_count = element_count + 1;
+                            element_count++;
                         }
-                        idx_elem = idx_elem + 1;
+                        idx_elem++;
                     }
                 }
                 
@@ -6247,9 +6245,9 @@ pub def generate_c(ast: ref ASTNode): string {
                         }
                         val ch_t: char = get_char(type_name, paren_end);
                         if ch_t == '(' {
-                            depth_type = depth_type + 1;
+                            depth_type++;
                         } elif ch_t == ')' {
-                            depth_type = depth_type - 1;
+                            depth_type--;
                             if depth_type == 0 {
                                 break;
                             }
