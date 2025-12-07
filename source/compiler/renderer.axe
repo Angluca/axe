@@ -114,6 +114,7 @@ pub def has_external_header(header_name: string): bool {
 }
 
 /// Emit a #line directive for error mapping
+[inline]
 def emit_line_directive(line: i32): string {
     if !g_emit_line_directives or line <= 0 {
         return str("");
@@ -179,6 +180,7 @@ pub def initialize_renderer() {
 }
 
 /// Check if a type is a builtin primitive type
+[inline]
 def is_builtin_type(type_name: string): bool {
     return equals_c(type_name, "i8") or equals_c(type_name, "u8") or
         equals_c(type_name, "i16") or equals_c(type_name, "u16") or
@@ -238,6 +240,7 @@ def extract_base_type(type_name: string): string {
 }
 
 /// Check if a type is a language keyword (not a user-defined type)
+[inline]
 def is_language_keyword(name: string): bool {
     if equals_c(name, "union") or equals_c(name, "generic") {
         return true;
@@ -270,6 +273,7 @@ def is_all_upper_or_underscore(name: string): bool {
 }
 
 /// Check if a name is a C standard constant
+[inline]
 def is_c_constant(name: string): bool {
     return equals_c(name, "NULL") or equals_c(name, "TRUE") or equals_c(name, "FALSE")
         or equals_c(name, "EOF") or equals_c(name, "SEEK_SET") or equals_c(name, "SEEK_CUR") or equals_c(name, "SEEK_END")
@@ -281,6 +285,7 @@ def is_c_constant(name: string): bool {
 }
 
 /// Check if a function name is a built-in function or C stdlib function
+[inline]
 def is_builtin_function(name: string): bool {
     return equals_c(name, "append") or equals_c(name, "len")
         or equals_c(name, "assert") or equals_c(name, "cast")
@@ -1251,6 +1256,7 @@ def map_type(axe_type: string): string {
 }
 
 /// Get canonical model C name from g_model_names
+[inline]
 def canonical_model_c_name(name: string): string {
     if StringStringMap.contains(addr(g_model_names), name) {
         return StringStringMap.get(addr(g_model_names), name);
@@ -2410,6 +2416,7 @@ def format_model_field_type(field_type: string): string {
 }
 
 /// Process parameter type (handle ref, mut, pointers, etc.)
+[inline]
 def process_parameter_type(param_type: string): string {
     // Delegate to the comprehensive Axe->C mapper so that 'mut', repeated
     // 'ref' prefixes, list[999] sugar, and pointer suffixes are handled
