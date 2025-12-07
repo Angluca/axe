@@ -23,6 +23,7 @@ pub model ParserContext {
     check_entry_point: bool;
     current_module: string;
     current_scope: Scope;
+    filename: string;
 }
 
 /// Scope tracking for variable declarations

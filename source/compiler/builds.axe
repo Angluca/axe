@@ -161,7 +161,7 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
         println "3 | Parse";
     }
     initialize_all();
-    mut ast: ASTNode = parse(addr(tokens), is_axec, true, str(""));
+    mut ast: ASTNode = parse(addr(tokens), is_axec, true, str(""), filename);
     if len(ast.children) == 0 {
         println "Error: Failed to parse";
         return false;

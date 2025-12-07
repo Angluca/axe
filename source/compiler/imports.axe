@@ -730,8 +730,7 @@ pub def process_imports(ast: ref ASTNode, base_dir: string, is_axec: bool, curre
                 }
             }
 
-            mut import_ast: ASTNode = parse(addr(toks), import_is_axec, false, use_mod);
-
+            mut import_ast: ASTNode = parse(addr(toks), import_is_axec, false, use_mod, module_path);
             val import_base: string = get_dir_from_path(module_path);
 
             import_ast = process_imports(addr(import_ast), import_base, import_is_axec, module_path, false, use_mod);

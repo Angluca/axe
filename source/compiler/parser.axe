@@ -177,13 +177,14 @@ pub def add_child_to_ast(ast: ref ASTNode, child: ASTNode) {
 }
 
 /// Parse the tokens into an AST
-pub def parse(tokens: ref list(Token), is_axec: bool, check_entry_point: bool, current_module: string): ASTNode {
+pub def parse(tokens: ref list(Token), is_axec: bool, check_entry_point: bool, current_module: string, filename: string): ASTNode {
     mut ctx: ParserContext;
     ctx.tokens = tokens;
     ctx.pos = 0;
     ctx.is_axec = is_axec;
     ctx.check_entry_point = check_entry_point;
     ctx.current_module = current_module;
+    ctx.filename = filename;
     
     debug_print_raw "=== DEBUG TOKENS ===";
     mut i: i32 = 0;
@@ -373,7 +374,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
             }
 
             val expanded_ref: ref list(Token) = addr(expanded_tokens);
-            val expanded_ast: ASTNode = parse(expanded_ref, ctx.is_axec, false, ctx.current_module);
+            val expanded_ast: ASTNode = parse(expanded_ref, ctx.is_axec, false, ctx.current_module, ctx.filename);
 
             if expanded_ast.children != nil {
                 mut k: i32 = 0;
@@ -1389,6 +1390,21 @@ def current_line(ctx: ref ParserContext): i32 {
     return token.line;
 }
 
+/// Format error message with file and line information
+def format_error(ctx: ref ParserContext, message: string): string {
+    mut result: string = str("");
+    if str_len(ctx.filename) > 0 {
+        result = concat(result, ctx.filename);
+        result = concat(result, str(":"));
+    }
+    val line_num: i32 = current_line(ctx);
+    mut line_str: string = i32_to_string(line_num);
+    result = concat(result, line_str);
+    result = concat(result, str(": "));
+    result = concat(result, message);
+    return result;
+}
+
 /// Consume current token and advance
 def consume(ctx: ref ParserContext): Token {
     val token: Token = peek(ctx);
@@ -1408,7 +1424,8 @@ def parse_type(ctx: ref ParserContext): string {
     skip_whitespace(ctx);
     
     if ctx.pos >= len(ctx.tokens) {
-        enforce_raw(false, "Expected type but reached end of tokens");
+        mut err: string = format_error(ctx, str("Expected type but reached end of tokens"));
+        enforce_raw(false, err.data);
         return str("");
     }
     
@@ -1537,7 +1554,8 @@ def parse_function(ctx: ref ParserContext): ASTNode {
     
     skip_whitespace(ctx);
     if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
-        enforce_raw(false, "Expected function name after 'def'");
+        mut err: string = format_error(ctx, str("Expected function name after 'def'"));
+        enforce_raw(false, err.data);
         return func;
     }
     
@@ -1789,7 +1807,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         skip_whitespace(ctx);
         
         if !expect(ctx, TokenType.SEMICOLON) {
-            enforce_raw(false, "Expected ';' after break");
+            mut err: string = format_error(ctx, str("Expected ';' after break"));
+            enforce_raw(false, err.data);
             return node;
         }
         consume(ctx);
@@ -1805,7 +1824,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         skip_whitespace(ctx);
         
         if !expect(ctx, TokenType.SEMICOLON) {
-            enforce_raw(false, "Expected ';' after continue");
+            mut err: string = format_error(ctx, str("Expected ';' after continue"));
+            enforce_raw(false, err.data);
             return node;
         }
         consume(ctx);
@@ -1867,14 +1887,16 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         }
         
         if !expect(ctx, TokenType.COMMA) {
-            enforce_raw(false, "Expected ',' after assert condition");
+            mut err: string = format_error(ctx, str("Expected ',' after assert condition"));
+            enforce_raw(false, err.data);
             return node;
         }
         consume(ctx);
         skip_whitespace(ctx);
         
         if !expect(ctx, TokenType.STR) {
-            enforce_raw(false, "Expected string message after comma in assert");
+            mut err: string = format_error(ctx, str("Expected string message after comma in assert"));
+            enforce_raw(false, err.data);
             return node;
         }
         val message_token: Token = consume(ctx);
@@ -1891,7 +1913,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         }
         
         if !expect(ctx, TokenType.SEMICOLON) {
-            enforce_raw(false, "Expected ';' after assert statement");
+            mut err: string = format_error(ctx, str("Expected ';' after assert statement"));
+            enforce_raw(false, err.data);
             return node;
         }
         consume(ctx);
@@ -1949,7 +1972,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         }
         
         if !expect(ctx, TokenType.SEMICOLON) {
-            enforce_raw(false, "Expected ';' after return");
+            mut err: string = format_error(ctx, str("Expected ';' after return"));
+            enforce_raw(false, err.data);
             return node;
         }
         consume(ctx);
@@ -1969,7 +1993,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         skip_whitespace(ctx);
 
         if !expect(ctx, TokenType.LBRACE) {
-            enforce_raw(false, "Expected '{' after loop");
+            mut err: string = format_error(ctx, str("Expected '{' after loop"));
+            enforce_raw(false, err.data);
             return node;
         }
         consume(ctx); // skip '{'
@@ -2123,7 +2148,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         }
 
         if !expect(ctx, TokenType.LBRACE) {
-            enforce_raw(false, "Expected '{' after if condition");
+            mut err: string = format_error(ctx, str("Expected '{' after if condition"));
+            enforce_raw(false, err.data);
             return node;
         }
         consume(ctx); // skip '{'
@@ -2712,7 +2738,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         skip_whitespace(ctx);
         
         if !expect(ctx, TokenType.IDENTIFIER) {
-            enforce_raw(false, "Expected identifier after 'val'");
+            mut err: string = format_error(ctx, str("Expected identifier after 'val'"));
+            enforce_raw(false, err.data);
             return node;
         }
 
@@ -2877,7 +2904,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         }
         
         if !expect(ctx, TokenType.IDENTIFIER) {
-            enforce_raw(false, "Expected identifier after 'mut'");
+            mut err: string = format_error(ctx, str("Expected identifier after 'mut'"));
+            enforce_raw(false, err.data);
             return node;
         }
         val var_name: Token = consume(ctx);
@@ -5294,42 +5322,42 @@ test {
     println "\nTest 9: parse full program with def main";
     mut tokens9: list(Token) = lex(str("def main() { }"));
     mut empty_module: string = str("");
-    mut ast9: ASTNode = parse(addr(tokens9), false, false, empty_module);
+    mut ast9: ASTNode = parse(addr(tokens9), false, false, empty_module, str("test9"));
     assert equals_c(ast9.node_type, "Program"), "Expected Program AST node";
 
     println "\nTest 10: parse program with model definition";
     mut tokens10: list(Token) = lex(str("model Point { x: i32 } def main() { }"));
-    mut ast10: ASTNode = parse(addr(tokens10), false, false, str(""));
+    mut ast10: ASTNode = parse(addr(tokens10), false, false, str(""), str("test10"));
     assert equals_c(ast10.node_type, "Program"), "Expected Program node with model";
 
     println "\nTest 11: parse program with enum definition";
     mut tokens11: list(Token) = lex(str("enum Color { Red } def main() { }"));
-    mut ast11: ASTNode = parse(addr(tokens11), false, false, str(""));
+    mut ast11: ASTNode = parse(addr(tokens11), false, false, str(""), str("test11"));
     assert equals_c(ast11.node_type, "Program"), "Expected Program node with enum";
 
     println "\nTest 12: parse program with use statement";
     mut tokens12: list(Token) = lex(str("use std.io; def main() { }"));
-    mut ast12: ASTNode = parse(addr(tokens12), false, false, str(""));
+    mut ast12: ASTNode = parse(addr(tokens12), false, false, str(""), str("test12"));
     assert equals_c(ast12.node_type, "Program"), "Expected Program node with use statement";
 
     println "\nTest 13: parse program with global val";
     mut tokens13: list(Token) = lex(str("val CONSTANT: i32 = 42; def main() { }"));
-    mut ast13: ASTNode = parse(addr(tokens13), false, false, str(""));
+    mut ast13: ASTNode = parse(addr(tokens13), false, false, str(""), str("test13"));
     assert equals_c(ast13.node_type, "Program"), "Expected Program node with global val";
 
     println "\nTest 14: parse program with mut val";
     mut tokens14: list(Token) = lex(str("mut val counter: i32 = 0; def main() { }"));
-    mut ast14: ASTNode = parse(addr(tokens14), false, false, str(""));
+    mut ast14: ASTNode = parse(addr(tokens14), false, false, str(""), str("test14"));
     assert equals_c(ast14.node_type, "Program"), "Expected Program node with mut val";
 
     println "\nTest 15: parse program with pub function";
     mut tokens15: list(Token) = lex(str("pub def helper() { } def main() { }"));
-    mut ast15: ASTNode = parse(addr(tokens15), false, false, str(""));
+    mut ast15: ASTNode = parse(addr(tokens15), false, false, str(""), str("test15"));
     assert equals_c(ast15.node_type, "Program"), "Expected Program node with pub function";
 
     println "\nTest 16: parse empty test block";
     mut tokens16: list(Token) = lex(str("test { }"));
-    mut ast16: ASTNode = parse(addr(tokens16), false, false, str(""));
+    mut ast16: ASTNode = parse(addr(tokens16), false, false, str(""), str("test16"));
     assert equals_c(ast16.node_type, "Program"), "Expected Program node with test block";
 
     println "\nTest 17: parse_type with pointer syntax";
@@ -5343,7 +5371,7 @@ test {
 
     println "\nTest 18: parse multiple functions";
     mut tokens18: list(Token) = lex(str("def foo() { } def bar() { } def main() { }"));
-    mut ast18: ASTNode = parse(addr(tokens18), false, false, str(""));
+    mut ast18: ASTNode = parse(addr(tokens18), false, false, str(""), str("test18"));
     assert equals_c(ast18.node_type, "Program"), "Expected Program node with multiple functions";
 
     println "\nTest 19: parse_statement_helper with break";
