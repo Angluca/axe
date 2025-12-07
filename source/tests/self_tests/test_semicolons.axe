@@ -1,0 +1,4 @@
+def main() {
+    val x: i32 = 1 + 1
+    val y: i32 = x * 2; // Should not compile. Missing semicolon above.
+}

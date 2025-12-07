@@ -2740,6 +2740,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 mut first_non_ws_token: Token;
                 mut non_ws_count: i32 = 0;
 
+                mut found_semicolon: bool = false;
                 loop {
                     if ctx.pos >= len(ctx.tokens) {
                         break;
@@ -2747,6 +2748,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     val t: Token = peek(ctx);
                     if t.token_type == TokenType.SEMICOLON {
                         consume(ctx);
+                        found_semicolon = true;
+                        break;
+                    }
+                    
+                    if t.token_type == TokenType.VAL or t.token_type == TokenType.MUT {
                         break;
                     }
 
@@ -2782,6 +2788,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                         initializer = concat(initializer, str(" "));
                     }
                     consume(ctx);
+                }
+                
+                if !found_semicolon {
+                    enforce_raw(false, "ERROR: Expected ';' after val declaration");
+                    return node;
                 }
 
                 if !has_explicit_type {
@@ -2892,6 +2903,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 mut last_non_ws_token_type_mut: i32 = -1;
                 mut first_non_ws_token_mut: Token;
                 mut non_ws_count_mut: i32 = 0;
+                mut found_semicolon_mut: bool = false;
 
                 loop {
                     if ctx.pos >= len(ctx.tokens) {
@@ -2900,6 +2912,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     val t: Token = peek(ctx);
                     if t.token_type == TokenType.SEMICOLON {
                         consume(ctx);
+                        found_semicolon_mut = true;
+                        break;
+                    }
+                    
+                    if t.token_type == TokenType.VAL or t.token_type == TokenType.MUT {
                         break;
                     }
 
@@ -2935,6 +2952,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                         initializer = concat(initializer, str(" "));
                     }
                     consume(ctx);
+                }
+                
+                if !found_semicolon_mut {
+                    enforce_raw(false, "ERROR: Expected ';' after mut declaration");
+                    return node;
                 }
 
                 if !has_explicit_type_mut {
@@ -3121,9 +3143,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     consume(ctx);
                 }
                 
-                if expect(ctx, TokenType.SEMICOLON) {
-                    consume(ctx);
+                if !expect(ctx, TokenType.SEMICOLON) {
+                    enforce_raw(false, "ERROR: Expected ';' after function call assignment");
+                    return node;
                 }
+                consume(ctx);
                 
                 mut left_side: string = concat(ident_name, str("("));
                 left_side = concat(left_side, strip(args_str));
@@ -3136,9 +3160,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 return node;
             }
             
-            if expect(ctx, TokenType.SEMICOLON) {
-                consume(ctx);
+            if !expect(ctx, TokenType.SEMICOLON) {
+                enforce_raw(false, "ERROR: Expected ';' after function call");
+                return node;
             }
+            consume(ctx);
             
             node.node_type = str("FunctionCall");
             node.data.func_call.function_name = ident_name;
@@ -3577,6 +3603,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     skip_whitespace(ctx);
                     
                     mut value_expr: string = str("");
+                    mut found_semicolon_member: bool = false;
                     loop {
                         if ctx.pos >= len(ctx.tokens) {
                             break;
@@ -3584,6 +3611,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                         val t: Token = peek(ctx);
                         if t.token_type == TokenType.SEMICOLON {
                             consume(ctx);
+                            found_semicolon_member = true;
+                            break;
+                        }
+                        
+                        if t.token_type == TokenType.VAL or t.token_type == TokenType.MUT {
                             break;
                         }
                         if t.token_type == TokenType.STR {
@@ -3600,6 +3632,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                             value_expr = concat(value_expr, str(" "));
                         }
                         consume(ctx);
+                    }
+                    
+                    if !found_semicolon_member {
+                        enforce_raw(false, "ERROR: Expected ';' after member assignment");
+                        return node;
                     }
                     
                     node.node_type = str("MemberAccess");
@@ -3811,6 +3848,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     skip_whitespace(ctx);
                     
                     mut ptr_value_expr: string = str("");
+                    mut found_semicolon_ptr: bool = false;
+
                     loop {
                         if ctx.pos >= len(ctx.tokens) {
                             break;
@@ -3818,6 +3857,10 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                         val t: Token = peek(ctx);
                         if t.token_type == TokenType.SEMICOLON {
                             consume(ctx);
+                            found_semicolon_ptr = true;
+                            break;
+                        }
+                        if t.token_type == TokenType.VAL or t.token_type == TokenType.MUT {
                             break;
                         }
                         if t.token_type == TokenType.STR {
@@ -3834,6 +3877,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                             ptr_value_expr = concat(ptr_value_expr, str(" "));
                         }
                         consume(ctx);
+                    }
+                    
+                    if !found_semicolon_ptr {
+                        enforce_raw(false, "ERROR: Expected ';' after pointer member assignment");
+                        return node;
                     }
                     
                     node.node_type = str("PtrMemberAccess");
@@ -3909,6 +3957,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             skip_whitespace(ctx);
 
             mut expr: string = str("");
+            mut found_semicolon_compound: bool = false;
             loop {
                 if ctx.pos >= len(ctx.tokens) {
                     break;
@@ -3916,6 +3965,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 val t: Token = peek(ctx);
                 if t.token_type == TokenType.SEMICOLON {
                     consume(ctx);
+                    found_semicolon_compound = true;
+                    break;
+                }
+                
+                if t.token_type == TokenType.VAL or t.token_type == TokenType.MUT {
                     break;
                 }
 
@@ -3934,6 +3988,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     expr = concat(expr, str(" "));
                 }
                 consume(ctx);
+            }
+            
+            if !found_semicolon_compound {
+                enforce_raw(false, "ERROR: Expected ';' after compound assignment");
+                return node;
             }
 
             node.node_type = str("Assignment");
@@ -3967,6 +4026,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             skip_whitespace(ctx);
 
             mut expr: string = str("");
+            mut found_semicolon_assign: bool = false;
             loop {
                 if ctx.pos >= len(ctx.tokens) {
                     debug_print_raw "\n[DEBUG]   reached end of tokens while collecting RHS";
@@ -3976,6 +4036,12 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 if t.token_type == TokenType.SEMICOLON {
                     debug_print_raw "\n[DEBUG]   encountered ';' terminating RHS";
                     consume(ctx);
+                    found_semicolon_assign = true;
+                    break;
+                }
+                
+                if t.token_type == TokenType.VAL or t.token_type == TokenType.MUT {
+                    debug_print_raw "\n[DEBUG]   encountered new declaration, stopping RHS collection";
                     break;
                 }
 
@@ -4010,6 +4076,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     }
                 }
                 consume(ctx);
+            }
+            
+            if !found_semicolon_assign {
+                enforce_raw(false, "ERROR: Expected ';' after assignment");
+                return node;
             }
 
             debug_print_raw "\n[DEBUG]   final RHS expr:";
@@ -4067,6 +4138,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         
         // Function call without parentheses (Axe syntax sugar): e.g. println "hello"
         mut args_str_sugar: string = str("");
+        mut found_semicolon_sugar: bool = false;
         loop {
             if ctx.pos >= len(ctx.tokens) {
                 break;
@@ -4074,6 +4146,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             val t: Token = peek(ctx);
             if t.token_type == TokenType.SEMICOLON {
                 consume(ctx);
+                found_semicolon_sugar = true;
+                break;
+            }
+            
+            if t.token_type == TokenType.VAL or t.token_type == TokenType.MUT {
                 break;
             }
 
@@ -4091,6 +4168,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 args_str_sugar = concat(args_str_sugar, t.value);
             }
             consume(ctx);
+        }
+        
+        if !found_semicolon_sugar {
+            enforce_raw(false, "ERROR: Expected ';' after function call");
+            return node;
         }
 
         node.node_type = str("FunctionCall");
