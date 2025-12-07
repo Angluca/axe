@@ -1,0 +1,4 @@
+// Test file with syntax error for LSP testing
+def main() {
+    val x: i32 = 
+}
