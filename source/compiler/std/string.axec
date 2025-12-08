@@ -221,6 +221,7 @@ pub def replace_all(s: string, from: string, dest: string): string {
 
         mut j: i32 = 0;
         mut match: bool = true;
+
         loop {
             if j >= from_len {
                 break;
