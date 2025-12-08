@@ -1,15 +1,23 @@
 /// Copies a value from one location to another.
 macro copy(src: untyped, dest: untyped, type: untyped) {
-    raw {
-        if (sizeof(type) > 0) {
-            memcpy(&dest, &src, sizeof(type));
+    unsafe {
+        if C.sizeof(type) > 0 {
+            C.memcpy(&dest, &src, C.sizeof(type));
         }
     }
 }
 
 /// Returns the size of a type in bytes.
 macro size_of(type: untyped) {
-    raw {
-        return (int)sizeof(type);
+    unsafe {
+        cast[i32](sizeof(type));
     }
+}
+
+test {
+    val a: i32 = 42;
+    mut b: i32 = 0;
+    copy(a, b, i32);
+    assert b == 42, "Copy macro failed.";
+    assert size_of(i32) == 4, "Size of i32 should be 4 bytes.";
 }
