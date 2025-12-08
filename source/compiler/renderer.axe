@@ -5835,7 +5835,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     }
                 }
 
-                i_test = i_test + 1;
+                i_test++;
             }
         }
 
