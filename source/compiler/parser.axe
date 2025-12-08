@@ -3243,7 +3243,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             }
         }
 
-        // Handle "for mut i = 0 to N" syntax
+        // Handle "for mut i = 0 to n" syntax
         if part_idx == 0 and str_len(init) > 0 and str_len(cond) == 0 {
             val to_pos: i32 = find_substr(init, str(" to "));
             if to_pos >= 0 {
