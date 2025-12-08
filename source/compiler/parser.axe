@@ -152,6 +152,7 @@ def expand_macros_in_expression(expr: string): string {
             }
             val ident: string = substring_se(expr, ident_start, i);
             
+            val ws_start: i32 = i;
             loop {
                 if i >= expr_len {
                     break;
@@ -162,6 +163,7 @@ def expand_macros_in_expression(expr: string): string {
                 }
                 i++;
             }
+            val ws_after: string = substring_se(expr, ws_start, i);
             
             if i < expr_len and get_char(expr, i) == '(' and macros_contains(ident) {
                 i++;  // skip '('
@@ -261,6 +263,7 @@ def expand_macros_in_expression(expr: string): string {
                 StringBuilder.append(addr(result), fully_expanded);
             } else {
                 StringBuilder.append(addr(result), ident);
+                StringBuilder.append(addr(result), ws_after);
             }
         } else {
             StringBuilder.append_char(addr(result), ch);
@@ -3371,6 +3374,181 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         val ident_token: Token = consume(ctx);
         mut ident_name: string = ident_token.value;
         skip_whitespace(ctx);
+        
+        if macros_contains(ident_name) and ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.LPAREN {
+            consume(ctx);
+            
+            mut args: list(string);
+            mut current_arg: string = str("");
+            mut paren_depth: i32 = 0;
+            
+            loop {
+                if ctx.pos >= len(ctx.tokens) {
+                    break;
+                }
+                
+                val t: Token = peek(ctx);
+                
+                if t.token_type == TokenType.RPAREN and paren_depth == 0 {
+                    val trimmed: string = strip(current_arg);
+                    if str_len(trimmed) > 0 {
+                        append(args, trimmed);
+                    }
+                    consume(ctx);
+                    break;
+                }
+                
+                if t.token_type == TokenType.LPAREN {
+                    paren_depth = paren_depth + 1;
+                    current_arg = concat(current_arg, t.value);
+                    consume(ctx);
+                    continue;
+                }
+                
+                if t.token_type == TokenType.RPAREN {
+                    paren_depth = paren_depth - 1;
+                    current_arg = concat(current_arg, t.value);
+                    consume(ctx);
+                    continue;
+                }
+                
+                if t.token_type == TokenType.COMMA and paren_depth == 0 {
+                    val trimmed_arg: string = strip(current_arg);
+                    if str_len(trimmed_arg) > 0 {
+                        append(args, trimmed_arg);
+                    }
+                    current_arg = str("");
+                    consume(ctx);
+                    continue;
+                }
+                
+                if t.token_type == TokenType.STR {
+                    current_arg = concat(current_arg, str("\""));
+                    current_arg = concat(current_arg, t.value);
+                    current_arg = concat(current_arg, str("\""));
+                } elif t.token_type == TokenType.CHAR {
+                    current_arg = concat(current_arg, str("'"));
+                    current_arg = concat(current_arg, t.value);
+                    current_arg = concat(current_arg, str("'"));
+                } elif t.token_type == TokenType.WHITESPACE or t.token_type == TokenType.NEWLINE {
+                    current_arg = concat(current_arg, str(" "));
+                } else {
+                    current_arg = concat(current_arg, t.value);
+                }
+                consume(ctx);
+            }
+            
+            skip_whitespace(ctx);
+            
+            if !expect(ctx, TokenType.SEMICOLON) {
+                mut err: string = format_error(ctx, str("Expected ';' after macro invocation"));
+                enforce_raw(false, err.data);
+                return node;
+            }
+            consume(ctx);
+            
+            val defn: MacroDef = macros_get(ident_name);
+            
+            mut expanded_tokens: list(Token);
+            mut i_tok: i32 = 0;
+            loop {
+                if i_tok >= len(defn.body) {
+                    break;
+                }
+                append(expanded_tokens, defn.body.data[i_tok]);
+                i_tok = i_tok + 1;
+            }
+            
+            mut i_param: i32 = 0;
+            loop {
+                if i_param >= len(defn.params) or i_param >= len(args) {
+                    break;
+                }
+                
+                val param_name: string = defn.params.data[i_param];
+                val arg_expr: string = args.data[i_param];
+                mut j_tok: i32 = 0;
+
+                loop {
+                    if j_tok >= len(expanded_tokens) {
+                        break;
+                    }
+                    
+                    if expanded_tokens.data[j_tok].token_type == TokenType.IDENTIFIER {
+                        mut exp_token: ref Token = addr(expanded_tokens.data[j_tok]);
+                        if compare(exp_token.value, param_name) == 0 {
+                            exp_token.value = arg_expr;
+                            
+                            if is_all_digits(arg_expr) {
+                                exp_token.token_type = TokenType.NUMBER;
+                            }
+                        }
+                    }
+                    j_tok++;
+                }
+                
+                i_param++;
+            }
+            
+            mut temp_ctx: ParserContext;
+            temp_ctx.tokens = addr(expanded_tokens);
+            temp_ctx.pos = 0;
+            temp_ctx.is_axec = ctx.is_axec;
+            temp_ctx.check_entry_point = false;
+            temp_ctx.current_module = ctx.current_module;
+            temp_ctx.filename = ctx.filename;
+            temp_ctx.current_scope = ctx.current_scope;
+            
+            mut expanded_nodes: list(ASTNode);
+            
+            loop {
+                if temp_ctx.pos >= len(deref(temp_ctx.tokens)) {
+                    break;
+                }
+                
+                loop {
+                    if temp_ctx.pos >= len(deref(temp_ctx.tokens)) {
+                        break;
+                    }
+                    val t: Token = temp_ctx.tokens.data[temp_ctx.pos];
+                    if t.token_type != TokenType.WHITESPACE and t.token_type != TokenType.NEWLINE {
+                        break;
+                    }
+                    temp_ctx.pos++;
+                }
+                
+                if temp_ctx.pos >= len(deref(temp_ctx.tokens)) {
+                    break;
+                }
+                
+                val stmt: ASTNode = parse_statement_helper(addr(temp_ctx), addr(temp_ctx.current_scope));
+                if str_len(stmt.node_type) > 0 {
+                    append(expanded_nodes, stmt);
+                }
+            }
+            
+            if len(expanded_nodes) == 0 {
+                return node;
+            } elif len(expanded_nodes) == 1 {
+                return expanded_nodes.data[0];
+            } else {
+                mut compound: ASTNode;
+                compound.node_type = str("MacroExpansion");
+                compound.line = node.line;
+                compound.source_file = ctx.filename;
+                
+                unsafe {
+                    val list_size: usize = C.sizeof(list(ASTNode));
+                    val heap_list: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(list_size));
+                    if heap_list != nil {
+                        C.memcpy(heap_list, addr(expanded_nodes), list_size);
+                        compound.children = heap_list;
+                    }
+                }
+                
+                return compound;
+            }
+        }
 
         if ctx.pos + 1 < len(ctx.tokens) {
             val look1: Token = ctx.tokens.data[ctx.pos];

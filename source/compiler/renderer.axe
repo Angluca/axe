@@ -4500,6 +4500,24 @@ pub def generate_c(ast: ref ASTNode): string {
     val str_comma: string = str(",");
     val str_equals_space: string = str(" = ");
 
+    if equals_c(node_type, "MacroExpansion") {
+        if ast.children != nil {
+            mut result_macro: string = str("");
+            val children: ref list(ASTNode) = ast.children;
+            mut i: i32 = 0;
+            loop {
+                if i >= len(deref(children)) {
+                    break;
+                }
+                val child_code: string = generate_c(addr(children.data[i]));
+                result_macro = concat(result_macro, child_code);
+                i++;
+            }
+            return result_macro;
+        }
+        return str("");
+    }
+
     if equals_c(node_type, "Overload") {
         val name: string = ast.data.overload_node.name;
         mut param_name: string = ast.data.overload_node.param_name;
