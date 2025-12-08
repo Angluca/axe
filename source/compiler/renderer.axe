@@ -4926,7 +4926,7 @@ pub def generate_c(ast: ref ASTNode): string {
                                 break;
                             }
                             val oc_child: ref ASTNode = addr(plat_children.data[oc]);
-                            if equals_c(oc_child.node_type, "Opaque") {
+                            if equals_c(oc_child.node_type, "Opaque") or equals_c(oc_child.node_type, "Foreign") {
                                 has_opaque = true;
                                 break;
                             }
@@ -4950,6 +4950,9 @@ pub def generate_c(ast: ref ASTNode): string {
                             if equals_c(oc_child2.node_type, "Opaque") {
                                 val opaque_code: string = generate_c(oc_child2);
                                 StringBuilder.append(addr(sb_prog), opaque_code);
+                            } elif equals_c(oc_child2.node_type, "Foreign") {
+                                val foreign_code: string = generate_c(oc_child2);
+                                StringBuilder.append(addr(sb_prog), foreign_code);
                             }
                             oc2++;
                         }
@@ -7883,6 +7886,23 @@ pub def generate_c(ast: ref ASTNode): string {
             return StringBuilder.to_string(addr(sb_opaque));
         }
         return result;
+    }
+    
+    if equals_c(node_type, "Foreign") {
+        mut fnames: ref list(string) = ast.data.foreign_node.type_names;
+        if fnames != nil {
+            mut arena_foreign: Arena = Arena.create(2560);
+            mut fi: i32 = 0;
+            loop {
+                if fi >= len(deref(fnames)) {
+                    break;
+                }
+                val type_name: string = fnames.data[fi];
+                StringBoolMap.set(addr(g_opaque_types), addr(arena_foreign), type_name, true);
+                fi++;
+            }
+        }
+        return str("");
     }
     
     if equals_c(node_type, "IncDec") {

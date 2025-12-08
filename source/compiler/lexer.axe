@@ -68,6 +68,7 @@ enum TokenType {
     TO,
     REDUCE,
     OPAQUE,
+    FOREIGN,
     EXTERN,
     UNSAFE,
     STAR_DOT,
@@ -537,7 +538,10 @@ pub def lex(source: string): list(Token) {
                 append(tokens, create_token(TokenType.IDENTIFIER, substring_scse(source, start, pos)));
             }
         } elif ch == 'f' {
-            if str_equals(source, "for", pos, 3, source_len) and check_boundary(source, pos + 3, source_len) {
+            if str_equals(source, "foreign", pos, 7, source_len) and check_boundary(source, pos + 7, source_len) {
+                append(tokens, create_token(TokenType.FOREIGN, "foreign"));
+                pos = pos + 7;
+            } elif str_equals(source, "for", pos, 3, source_len) and check_boundary(source, pos + 3, source_len) {
                 append(tokens, create_token(TokenType.FOR, "for"));
                 pos = pos + 3;
             } else {

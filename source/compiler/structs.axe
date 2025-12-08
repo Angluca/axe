@@ -215,6 +215,10 @@ pub model ASTNode {
             type_names: list(string);
         };
         
+        foreign_node: model {
+            type_names: list(string);
+        };
+        
         extern_node: model {
             function_name: string;
             params: list(string);

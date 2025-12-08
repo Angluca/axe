@@ -1587,6 +1587,21 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         return;
     }
     
+    if token_type == TokenType.FOREIGN {
+        ctx.pos++;
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            if ctx.tokens.data[ctx.pos].token_type == TokenType.SEMICOLON {
+                ctx.pos++;
+                break;
+            }
+            ctx.pos++;
+        }
+        return;
+    }
+    
     if token_type == TokenType.PLATFORM {
         mut node: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
         if str_len(node.node_type) > 0 {
@@ -5365,6 +5380,54 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             if heap_list != nil {
                 C.memcpy(heap_list, addr(type_names), list_size);
                 node.data.opaque_node.type_names = heap_list;
+            }
+        }
+        
+        return node;
+    }
+    
+    if token_type == TokenType.FOREIGN {
+        consume(ctx);
+        skip_whitespace(ctx);
+        
+        if !expect(ctx, TokenType.LBRACE) {
+            mut err: string = format_error(ctx, str("Expected '{' after 'foreign'"));
+            enforce_raw(false, err.data);
+            return node;
+        }
+        consume(ctx);
+        
+        mut type_names: list(string);
+        loop {
+            skip_whitespace(ctx);
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            val t: Token = peek(ctx);
+            if t.token_type == TokenType.RBRACE {
+                consume(ctx);
+                break;
+            }
+            if t.token_type == TokenType.IDENTIFIER {
+                append(type_names, t.value);
+                consume(ctx);
+            } elif t.token_type == TokenType.SEMICOLON or t.token_type == TokenType.COMMA {
+                consume(ctx);
+            } else {
+                consume(ctx);
+            }
+        }
+        
+        skip_whitespace(ctx);
+        
+        node.node_type = str("Foreign");
+        
+        unsafe {
+            val list_size: usize = C.sizeof(list(string));
+            mut heap_list: ref list(string) = cast[ref list(string)](C.malloc(list_size));
+            if heap_list != nil {
+                C.memcpy(heap_list, addr(type_names), list_size);
+                node.data.foreign_node.type_names = heap_list;
             }
         }
         
