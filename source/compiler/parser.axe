@@ -20,6 +20,7 @@ use std.io;
 use std.maps;
 use std.arena;
 use std.errors;
+use std.os;
 
 mut g_type_aliases: StringStringMap;
 mut g_imported_modules: StringBoolMap;
@@ -420,6 +421,11 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
     }
     
     val token_type = ctx.tokens.data[ctx.pos].token_type;
+    
+    if token_type == TokenType.COMMENT {
+        ctx.pos++;
+        return;
+    }
     
     if token_type == TokenType.USE {
         mut node: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
@@ -1610,8 +1616,13 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         return;
     }
     
-    // Unknown token type - skip it
-    ctx.pos++;
+    val unexpected_token: Token = ctx.tokens.data[ctx.pos];
+    mut err: string = format_error(
+        ctx,
+        str("Unexpected token at top level. Expected def, model, enum, val, mut, use, platform, macro, opaque, foreign, extern, or pub.")
+    );
+    println err;
+    quit(1);
 }
 
 /// Skip the whitespace and newline tokens
