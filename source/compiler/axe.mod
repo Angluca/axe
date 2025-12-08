@@ -1,3 +1,3 @@
 name: axe
-version: 0.0.1
+version: 0.0.3
 entry: axc.axe
