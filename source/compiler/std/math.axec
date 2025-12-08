@@ -94,7 +94,7 @@ pub def sqrt(value: f64): f64 {
     }
 
     for mut i = 0; i < 50; i++ {
-        mut last: f64 = x;
+        val last: f64 = x;
         x = 0.5 * (x + value / x);
         if approx_equal(last, x, 0.0000000000001) { break; }
     }
@@ -162,8 +162,8 @@ pub def ln(x: f64): f64 {
 
     mut y: f64 = x - 1.0;
     for mut i = 0; i < 25; i++ {
-        mut last: f64 = y;
-        mut ey: f64 = exp(y);
+        val last: f64 = y;
+        val ey: f64 = exp(y);
         y = y - (ey - x) / ey;
         if approx_equal(last, y, 0.0000001) { break; }
     }
@@ -175,7 +175,7 @@ pub def sin(x: f64): f64 {
     x = reduce_angle(x);
     mut term: f64 = x;
     mut sum: f64 = x;
-    mut x2: f64 = x * x;
+    val x2: f64 = x * x;
     mut n: i32 = 1;
     for mut i = 1; i < 10; i++ {
         term = -term * x2 / ((2 * n) * (2 * n + 1));
@@ -190,7 +190,7 @@ pub def cos(x: f64): f64 {
     x = reduce_angle(x);
     mut term: f64 = 1.0;
     mut sum: f64 = 1.0;
-    mut x2: f64 = x * x;
+    val x2: f64 = x * x;
     mut n: i32 = 1;
     for mut i = 1; i < 10; i++ {
         term = -term * x2 / ((2 * n - 1) * (2 * n));
@@ -217,7 +217,7 @@ pub def asin(x: f64): f64 {
 
     mut term: f64 = x;
     mut sum: f64 = x;
-    mut x2: f64 = x * x;
+    val x2: f64 = x * x;
 
     for mut n = 0; n < 15; n++ {
         term = term * ((2.0*n + 1.0)*(2.0*n + 1.0))/((2.0*n + 2.0)*(2.0*n + 3.0)) * x2;
@@ -236,7 +236,7 @@ pub def acos(x: f64): f64 {
 pub def atan(x: f64): f64 {
     mut term: f64 = x;
     mut sum: f64 = x;
-    mut x2: f64 = x * x;
+    val x2: f64 = x * x;
     mut sign: f64 = -1.0;
     for mut n = 3; n < 20; n += 2 {
         term = term * x2;

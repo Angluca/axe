@@ -26,6 +26,8 @@ mut g_type_aliases: StringStringMap;
 mut g_imported_modules: StringBoolMap;
 mut g_list_of_types: StringStringMap;
 mut g_var_mutability: StringBoolMap;
+mut g_var_actually_mutated: StringBoolMap;
+mut g_mutable_vars_in_scope: list(string);
 mut g_macro_names: list(string);
 mut g_macro_defs: list(MacroDef);
 
@@ -36,6 +38,8 @@ pub def initialize_all() {
     g_imported_modules = deref(StringBoolMap.create(addr(arena), 128));
     g_list_of_types = deref(StringStringMap.create(addr(arena), 128));
     g_var_mutability = deref(StringBoolMap.create(addr(arena), 128));
+    g_var_actually_mutated = deref(StringBoolMap.create(addr(arena), 128));
+    g_mutable_vars_in_scope.len = 0;
     g_macro_names.len = 0;
     g_macro_defs.len = 0;
 }
@@ -286,6 +290,7 @@ def register_variable(var_name: string, is_mutable: bool) {
     debug_print_raw "\n[DEBUG]   is_mutable:";
     if is_mutable {
         debug_print_raw "true";
+        append(g_mutable_vars_in_scope, var_name);
     } else {
         debug_print_raw "false";
     }
@@ -321,6 +326,12 @@ def is_variable_mutable(var_name: string): bool {
         debug_print_raw "\n[DEBUG]   mutable: false";
     }
     return mut_val;
+}
+
+/// Mark a variable as actually mutated
+def mark_variable_mutated(var_name: string) {
+    mut arena: Arena = Arena.create(512);
+    StringBoolMap.set(addr(g_var_actually_mutated), addr(arena), var_name, true);
 }
 
 /// Check if an identifier is NULL and report an error.
@@ -2074,6 +2085,28 @@ def parse_function(ctx: ref ParserContext): ASTNode {
             func.children = heap_list;
         }
     }
+    
+    mut i_mut: i32 = 0;
+    loop {
+        if i_mut >= len(g_mutable_vars_in_scope) {
+            break;
+        }
+        val var_name: string = g_mutable_vars_in_scope.data[i_mut];
+        if !StringBoolMap.contains(addr(g_var_actually_mutated), var_name) {
+            print ctx.filename;
+            print ":";
+            print(i32_to_string(func.line));
+            print ": error: variable '";
+            print var_name;
+            println "' is declared 'mut' but is never mutated. Use 'val' instead.";
+            quit(1);
+        }
+        i_mut++;
+    }
+    
+    g_mutable_vars_in_scope.len = 0;
+    StringBoolMap.clear(addr(g_var_mutability));
+    StringBoolMap.clear(addr(g_var_actually_mutated));
     
     return func;
 }
@@ -4557,6 +4590,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             node.data.assignment.variable = ident_name;
             node.data.assignment.expression = strip(expr);
             node.data.assignment.operator = compound_op;
+            mark_variable_mutated(ident_name);
             return node;
         }
         
@@ -4659,11 +4693,13 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             node.data.assignment.variable = ident_name;
             node.data.assignment.expression = expr;
             node.data.assignment.operator = str("=");
+            mark_variable_mutated(ident_name);
             return node;
         }
         
         // Handle: INCREMENT and DECREMENT: variable++ or variable--
         if next_token.token_type == TokenType.INCREMENT or next_token.token_type == TokenType.DECREMENT {
+            mark_variable_mutated(ident_name);
             val is_inc: bool = next_token.token_type == TokenType.INCREMENT;
             consume(ctx);
             skip_whitespace(ctx);
