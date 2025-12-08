@@ -28,6 +28,10 @@ mut g_list_of_types: StringStringMap;
 mut g_var_mutability: StringBoolMap;
 mut g_var_actually_mutated: StringBoolMap;
 mut g_mutable_vars_in_scope: list(string);
+mut g_all_vars_in_scope: list(string);
+mut g_var_actually_used: StringBoolMap;
+mut g_var_declaration_lines: StringIntMap;
+mut g_var_declaration_files: StringStringMap;
 mut g_function_has_raw_block: bool;
 mut g_macro_names: list(string);
 mut g_macro_defs: list(MacroDef);
@@ -41,6 +45,10 @@ pub def initialize_all() {
     g_var_mutability = deref(StringBoolMap.create(addr(arena), 128));
     g_var_actually_mutated = deref(StringBoolMap.create(addr(arena), 128));
     g_mutable_vars_in_scope.len = 0;
+    g_all_vars_in_scope.len = 0;
+    g_var_actually_used = deref(StringBoolMap.create(addr(arena), 128));
+    g_var_declaration_lines = deref(StringIntMap.create(addr(arena), 128));
+    g_var_declaration_files = deref(StringStringMap.create(addr(arena), 128));
     g_macro_names.len = 0;
     g_macro_defs.len = 0;
 }
@@ -283,7 +291,7 @@ def expand_macros_in_expression(expr: string): string {
 }
 
 /// Register a variable's mutability (true for mut, false for val)
-def register_variable(var_name: string, is_mutable: bool) {
+def register_variable(var_name: string, is_mutable: bool, line_num: i32, source_file: string) {
     mut arena: Arena = Arena.create(1024);
     debug_print_raw "\n[DEBUG] register_variable:";
     debug_print_raw "\n[DEBUG]   name:";
@@ -295,6 +303,9 @@ def register_variable(var_name: string, is_mutable: bool) {
         debug_print_raw "false";
     }
     StringBoolMap.set(addr(g_var_mutability), addr(arena), var_name, is_mutable);
+    StringIntMap.set(addr(g_var_declaration_lines), addr(arena), var_name, line_num);
+    StringStringMap.set(addr(g_var_declaration_files), addr(arena), var_name, source_file);
+    register_for_usage_tracking(var_name);
 }
 
 /// Register a mutable variable for mutation tracking (only for vars with initializers)
@@ -337,6 +348,55 @@ def is_variable_mutable(var_name: string): bool {
 def mark_variable_mutated(var_name: string) {
     mut arena: Arena = Arena.create(512);
     StringBoolMap.set(addr(g_var_actually_mutated), addr(arena), var_name, true);
+}
+
+/// Mark a variable as used (referenced)
+def mark_variable_used(var_name: string) {
+    mut arena: Arena = Arena.create(512);
+    StringBoolMap.set(addr(g_var_actually_used), addr(arena), var_name, true);
+}
+
+/// Register a variable for usage tracking
+def register_for_usage_tracking(var_name: string) {
+    append(g_all_vars_in_scope, var_name);
+}
+
+/// Scan an expression for variable references and mark them as used
+def scan_expression_for_usage(expr: string) {
+    mut pos: i32 = 0;
+    loop {
+        if pos >= str_len(expr) {
+            break;
+        }
+        
+        val ch: char = get_char(expr, pos);
+        
+        if (ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'Z') or ch == '_' {
+            val id_start: i32 = pos;
+            mut id_end: i32 = pos;
+            loop {
+                if id_end >= str_len(expr) {
+                    break;
+                }
+                val ich: char = get_char(expr, id_end);
+                if (ich >= 'a' and ich <= 'z') or (ich >= 'A' and ich <= 'Z') or (ich >= '0' and ich <= '9') or ich == '_' {
+                    id_end = id_end + 1;
+                } else {
+                    break;
+                }
+            }
+            
+            val var_name: string = substring_se(expr, id_start, id_end);
+            
+            if str_len(var_name) > 0 and is_variable_declared(var_name) {
+                mark_variable_used(var_name);
+            }
+            
+            pos = id_end;
+        } else {
+            pos++;
+        }
+    }
 }
 
 /// Check if string contains "C." (for detecting C function calls)
@@ -483,9 +543,13 @@ def scan_expression_for_c_calls(expr: string) {
             
             val var_name: string = substring_se(expr, id_start, id_end);
             
-            // If this is a declared mutable variable, mark it as mutated
-            if str_len(var_name) > 0 and is_variable_declared(var_name) and is_variable_mutable(var_name) {
-                mark_variable_mutated(var_name);
+            // If this is a declared variable, mark it as used
+            if str_len(var_name) > 0 and is_variable_declared(var_name) {
+                mark_variable_used(var_name);
+                // If mutable, also mark as mutated since C calls might modify it
+                if is_variable_mutable(var_name) {
+                    mark_variable_mutated(var_name);
+                }
             }
             
             pos = id_end;
@@ -563,10 +627,11 @@ def scan_function_args_for_ref_params(args_str: string) {
             j = j + 1;
         }
         
-        // If it's a simple identifier, mark it as mutated (might be passed by ref)
+        // If it's a simple identifier, mark it as used and mutated (might be passed by ref)
         if is_simple_var and str_len(arg) > 0 {
             val first_ch: char = get_char(arg, 0);
             if (first_ch >= 'a' and first_ch <= 'z') or (first_ch >= 'A' and first_ch <= 'Z') or first_ch == '_' {
+                mark_variable_used(arg);
                 mark_variable_mutated(arg);
             }
         }
@@ -2101,8 +2166,8 @@ def parse_function(ctx: ref ParserContext): ASTNode {
     func.node_type = str("Function");
     func.line = current_line(ctx);
     
-    // Clear function-local mutable variable tracking (keep globals out of the list)
     g_mutable_vars_in_scope.len = 0;
+    g_all_vars_in_scope.len = 0;
     g_function_has_raw_block = false;
     
     skip_whitespace(ctx);
@@ -2353,6 +2418,34 @@ def parse_function(ctx: ref ParserContext): ASTNode {
         }
     }
     
+    if !g_function_has_raw_block {
+        mut i_unused: i32 = 0;
+        loop {
+            if i_unused >= len(g_all_vars_in_scope) {
+                break;
+            }
+            val var_name: string = g_all_vars_in_scope.data[i_unused];
+            if !StringBoolMap.contains(addr(g_var_actually_used), var_name) {
+                mut decl_line: i32 = func.line;
+                mut decl_file: string = ctx.filename;
+                if StringIntMap.contains(addr(g_var_declaration_lines), var_name) {
+                    decl_line = StringIntMap.get(addr(g_var_declaration_lines), var_name);
+                }
+                if StringStringMap.contains(addr(g_var_declaration_files), var_name) {
+                    decl_file = StringStringMap.get(addr(g_var_declaration_files), var_name);
+                }
+                print decl_file;
+                print ":";
+                print(i32_to_string(decl_line));
+                print ": error: variable '";
+                print var_name;
+                println "' is declared but never used.";
+                quit(1);
+            }
+            i_unused++;
+        }
+    }
+    
     // Clear only the function-local variables from the maps (keep globals)
     mut clear_idx: i32 = 0;
     loop {
@@ -2365,6 +2458,19 @@ def parse_function(ctx: ref ParserContext): ASTNode {
         clear_idx++;
     }
     g_mutable_vars_in_scope.len = 0;
+    
+    mut clear_all_idx: i32 = 0;
+    loop {
+        if clear_all_idx >= len(g_all_vars_in_scope) {
+            break;
+        }
+        val var_to_clear_all: string = g_all_vars_in_scope.data[clear_all_idx];
+        StringBoolMap.pop(addr(g_var_actually_used), var_to_clear_all);
+        val dummy_line: i32 = StringIntMap.pop(addr(g_var_declaration_lines), var_to_clear_all);
+        val dummy_file: string = StringStringMap.pop(addr(g_var_declaration_files), var_to_clear_all);
+        clear_all_idx++;
+    }
+    g_all_vars_in_scope.len = 0;
     
     return func;
 }
@@ -2581,6 +2687,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         debug_print_raw "\n[DEBUG] RETURN expr:";
         debug_print_str expr;
         node.data.return_node.expression = expr;
+        scan_expression_for_usage(expr);
         return node;
     }
     
@@ -2882,6 +2989,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             mut elif_node: ASTNode;
             elif_node.node_type = str("If");
             elif_node.data.if_node.condition = elif_condition;
+            scan_expression_for_usage(elif_condition);
 
             unsafe {
                 mut body_list_el: list(ASTNode);
@@ -3026,6 +3134,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         node.line = if_line;
         node.source_file = ctx.filename;
         node.data.if_node.condition = condition;
+        scan_expression_for_usage(condition);
 
         unsafe {
             mut body_list: list(ASTNode);
@@ -3273,6 +3382,9 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         fnode.data.for_loop.initialization = init;
         fnode.data.for_loop.condition = cond;
         fnode.data.for_loop.increment = incr;
+        scan_expression_for_usage(init);
+        scan_expression_for_usage(cond);
+        scan_expression_for_usage(incr);
 
         mut body: list(ASTNode);
         loop {
@@ -3517,9 +3629,10 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         node.data.declaration.initializer = initializer;
         node.data.declaration.type_name = type_name;
         node.data.declaration.ref_depth = 0;
-        register_variable(var_name.value, false);
+        register_variable(var_name.value, false, decl_line, ctx.filename);
         scan_expression_for_addr(initializer);
         scan_expression_for_c_calls(initializer);
+        scan_expression_for_usage(initializer);
         debug_print_raw "\n[DEBUG] VAL declaration details:";
         debug_print_raw "\n[DEBUG]   name:";
         debug_print_str var_name.value;
@@ -3707,7 +3820,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         node.data.declaration.type_name = type_name;
         node.data.declaration.ref_depth = 0;
 
-        register_variable(var_name.value, true);
+        register_variable(var_name.value, true, mut_line, ctx.filename);
 
         mut should_track: bool = false;
 
@@ -3723,6 +3836,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             
             scan_expression_for_addr(initializer);
             scan_expression_for_c_calls(initializer);
+            scan_expression_for_usage(initializer);
 
             if contains_c_call(initializer) {
                 mark_variable_mutated(var_name.value);
@@ -3983,6 +4097,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             // Scan function arguments for addr() calls
             scan_expression_for_addr(args_str);
             scan_expression_for_c_calls(args_str);
+            scan_expression_for_usage(args_str);
             // Scan for variables passed as arguments (potential ref params)
             scan_function_args_for_ref_params(args_str);
             
@@ -4905,6 +5020,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             expr = expand_macros_in_expression(expr);
             scan_expression_for_addr(expr);
             scan_expression_for_c_calls(expr);
+            scan_expression_for_usage(expr);
             
             node.node_type = str("Assignment");
             node.data.assignment.variable = ident_name;
@@ -5011,6 +5127,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
 
             scan_expression_for_addr(expr);
             scan_expression_for_c_calls(expr);
+            scan_expression_for_usage(expr);
             
             node.node_type = str("Assignment");
             node.data.assignment.variable = ident_name;
@@ -5435,7 +5552,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 append(private_types, type_name);
                 append(is_mutable, is_mut);
                 
-                register_variable(var_name, is_mut);
+                register_variable(var_name, is_mut, current_line(ctx), ctx.filename);
                 
                 skip_whitespace(ctx);
                 if expect(ctx, TokenType.COMMA) {
