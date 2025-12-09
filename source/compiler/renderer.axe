@@ -6045,6 +6045,12 @@ pub def generate_c(ast: ref ASTNode): string {
                 val tag: string = func_tags.data[tag_idx];
                 if equals_c(tag, "inline") {
                     StringBuilder.append_c(addr(sb_func), "inline ");
+                } elif equals_c(tag, "noinline") {
+                    StringBuilder.append_c(addr(sb_func), "__attribute__((noinline)) ");
+                } elif equals_c(tag, "cold") {
+                    StringBuilder.append_c(addr(sb_func), "__attribute__((cold)) ");
+                } elif equals_c(tag, "hot") {
+                    StringBuilder.append_c(addr(sb_func), "__attribute__((hot)) ");
                 }
                 tag_idx = tag_idx + 1;
             }

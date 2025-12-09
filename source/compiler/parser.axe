@@ -1309,13 +1309,13 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.IDENTIFIER {
             val tag_name: string = ctx.tokens.data[ctx.pos].value;
             
-            if !equals_c(tag_name, "inline") {
+            if !equals_c(tag_name, "inline") and !equals_c(tag_name, "noinline") and !equals_c(tag_name, "cold") and !equals_c(tag_name, "hot") {
                 print ctx.filename;
                 print ":";
                 print(i32_to_string(current_line(ctx)));
                 print ": error: unrecognized function tag '";
                 print tag_name;
-                println "'. Only [inline] is currently supported.";
+                println "'. Supported tags: [inline], [noinline], [cold], [hot].";
                 quit(1);
             }
             
