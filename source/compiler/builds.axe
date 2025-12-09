@@ -384,6 +384,19 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
         }
     }
     
+    val lib_paths: ref StringList = get_library_paths();
+    if lib_paths != nil {
+        mut lp_idx: i32 = 0;
+        loop {
+            if lp_idx >= len(deref(lib_paths)) {
+                break;
+            }
+            compile_cmd = concat_c(compile_cmd, " -L");
+            compile_cmd = concat(compile_cmd, lib_paths.data[lp_idx]);
+            lp_idx++;
+        }
+    }
+    
     val toolchain_root: string = get_executable_dir();
     
     if has_external_header(str("pcre.h")) {
@@ -434,6 +447,19 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
         }
     }
     
+    val link_libs: ref StringList = get_link_libraries();
+    if link_libs != nil {
+        mut ll_idx: i32 = 0;
+        loop {
+            if ll_idx >= len(deref(link_libs)) {
+                break;
+            }
+            compile_cmd = concat_c(compile_cmd, " -l");
+            compile_cmd = concat(compile_cmd, link_libs.data[ll_idx]);
+            ll_idx++;
+        }
+    }
+    
     if !::is_release_build {
         platform windows {
             compile_cmd = concat_c(compile_cmd, " -gcodeview -fuse-ld=lld -Xlinker /debug -ldbghelp");
@@ -443,7 +469,12 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
         }
     }
     
-    compile_cmd = concat(compile_cmd, str(" -Wno-everything -O0 -o "));
+    val compile_only: bool = get_compile_only();
+    if compile_only {
+        compile_cmd = concat(compile_cmd, str(" -Wno-everything -O0 -c -o "));
+    } else {
+        compile_cmd = concat(compile_cmd, str(" -Wno-everything -O0 -o "));
+    }
     compile_cmd = concat(compile_cmd, exe_filename);
     
     val result: ExecResult = exec_capture(compile_cmd);
@@ -508,11 +539,19 @@ def replace_extension(filename: string, new_ext: string): string {
 def get_output_filename(specified_output: string, input_filename: string): string {
     mut result: string = str("");
     val is_shared: bool = ::build_shared_lib;
+    val compile_only: bool = get_compile_only();
     
     if str_len(specified_output) > 0 {
         result = specified_output;
     } else {
-        if is_shared {
+        if compile_only {
+            platform windows {
+                result = replace_extension(input_filename, str(".obj"));
+            }
+            platform posix {
+                result = replace_extension(input_filename, str(".o"));
+            }
+        } elif is_shared {
             platform windows {
                 result = replace_extension(input_filename, str(".dll"));
             }
@@ -525,7 +564,11 @@ def get_output_filename(specified_output: string, input_filename: string): strin
     }
     
     platform windows {
-        if is_shared {
+        if compile_only {
+            if !has_suffix(result, str(".obj")) {
+                result = concat(result, str(".obj"));
+            }
+        } elif is_shared {
             if !has_suffix(result, str(".dll")) {
                 result = concat(result, str(".dll"));
             }
@@ -537,7 +580,11 @@ def get_output_filename(specified_output: string, input_filename: string): strin
     }
     
     platform posix {
-        if is_shared and !has_suffix(result, str(".so")) {
+        if compile_only {
+            if !has_suffix(result, str(".o")) {
+                result = concat(result, str(".o"));
+            }
+        } elif is_shared and !has_suffix(result, str(".so")) {
             result = concat(result, str(".so"));
         }
     }

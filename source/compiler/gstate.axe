@@ -18,6 +18,9 @@ pub mut quiet_mode: bool = false;
 pub mut syntax_check_only: bool = false;
 pub mut target_triple: string;
 pub mut sysroot_path: string;
+pub mut compile_only: bool = false;
+pub mut library_paths: ref StringList = nil;
+pub mut link_libraries: ref StringList = nil;
 
 /// Print a debug message
 overload debug_print(x: generic) {
@@ -99,6 +102,36 @@ pub def set_sysroot_path(path: string) {
 /// Get sysroot path for cross-compilation
 pub def get_sysroot_path(): string {
     return sysroot_path;
+}
+
+/// Set compile only mode (produce object file)
+pub def set_compile_only(v: bool) {
+    compile_only = v;
+}
+
+/// Get compile only mode
+pub def get_compile_only(): bool {
+    return compile_only;
+}
+
+/// Set library search paths list
+pub def set_library_paths(paths: ref StringList) {
+    library_paths = paths;
+}
+
+/// Get library search paths list
+pub def get_library_paths(): ref StringList {
+    return library_paths;
+}
+
+/// Set libraries to link list
+pub def set_link_libraries(libs: ref StringList) {
+    link_libraries = libs;
+}
+
+/// Get libraries to link list
+pub def get_link_libraries(): ref StringList {
+    return link_libraries;
 }
 
 /// Ditto.

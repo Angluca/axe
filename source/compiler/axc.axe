@@ -18,6 +18,7 @@ def main() {
         println("");
         println("Options:");
         println("  -o <name>         Specify output binary name");
+        println("  -c                Compile only; produce object file (.obj or .o)");
         println("  -e                Keep the emitted file");
         println("  -r                Run the built executable after compilation");
         println("  -tokens           Print lexer tokens and exit");
@@ -27,6 +28,8 @@ def main() {
         println("  -l, --loud        Loud debug output");
         println("  -q, --quiet       Suppress all output");
         println("  -I<path>          Pass a C include directory");
+        println("  -L<path>          Add C library search path");
+        println("  -l<name>          Link against C library (e.g. -lm, -lSDL2)");
         println("  --syntax-check    Check syntax only (no code generation)");
         println("  --target <triple> Cross-compile for target (e.g. x86_64-w64-mingw32)");
         println("  --sysroot <path>  Specify sysroot for cross-compilation");
@@ -39,8 +42,12 @@ def main() {
     mut source_file: string = StringList.get(args, 1);
     mut output_filename: string = str("");
     val inc_paths: ref StringList = StringList.create(addr(arena), 16);
+    val lib_paths: ref StringList = StringList.create(addr(arena), 16);
+    val link_libs: ref StringList = StringList.create(addr(arena), 16);
 
     set_include_paths(inc_paths);
+    set_library_paths(lib_paths);
+    set_link_libraries(link_libs);
     
     mut i: i32 = 2;
 
@@ -52,6 +59,11 @@ def main() {
         if equals_c(arg, "-o") and i + 1 < args.len {
             output_filename = StringList.get(args, i + 1);
             i += 2;
+            continue;
+        }
+        if equals_c(arg, "-c") {
+            set_compile_only(true);
+            i++;
             continue;
         }
         if equals_c(arg, "--target") and i + 1 < args.len {
@@ -69,6 +81,14 @@ def main() {
         if has_prefix(arg, str("-I")) and str_len(arg) > 2 {
             val inc_path: string = substring_se(arg, 2, str_len(arg));
             StringList.push(inc_paths, addr(arena), inc_path);
+        }
+        if has_prefix(arg, str("-L")) and str_len(arg) > 2 {
+            val lib_path: string = substring_se(arg, 2, str_len(arg));
+            StringList.push(lib_paths, addr(arena), lib_path);
+        }
+        if has_prefix(arg, str("-l")) and str_len(arg) > 2 {
+            val lib_name: string = substring_se(arg, 2, str_len(arg));
+            StringList.push(link_libs, addr(arena), lib_name);
         }
         i++;
     }
