@@ -262,7 +262,7 @@ def parse_simple(csv_data: string, arena: ref Arena): CsvDocument {
 }
 
 /// Convert a CSV document back to a string (using arena allocation)
-def to_string(doc: ref CsvDocument, options: CsvOptions): string {
+def csv_to_string(doc: ref CsvDocument, options: CsvOptions): string {
     mut result: string;
     result.data = nil;
     result.len = 0;
@@ -393,7 +393,7 @@ test {
     assert quoted_row.field_count == 3, "Should have 3 fields despite internal commas";
     
     mut opts: CsvOptions = default_options();
-    mut regenerated: string = to_string(addr(doc), opts);
+    mut regenerated: string = csv_to_string(addr(doc), opts);
     assert regenerated.len > 0, "Should generate CSV string";
     
     Arena.destroy(addr(arena));
