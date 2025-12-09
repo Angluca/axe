@@ -2747,7 +2747,7 @@ def parse_function(ctx: ref ParserContext): ASTNode {
             print ctx.filename;
             print ":";
             print(i32_to_string(current_line(ctx)));
-            print ": error: raw pointer syntax (e.g., 'char*') is not allowed in .axe files. ";
+            print ": error: raw pointer syntax (e.g., 'char*') is not allowed. ";
             println "Use 'ref' instead (e.g., 'ref char').";
             print "  in return type: ";
             println return_type;
