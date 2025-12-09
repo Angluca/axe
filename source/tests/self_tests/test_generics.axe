@@ -7,9 +7,6 @@ def some_func[T](arg: T): T {
     when T is f32 {
         return arg * 2.0;
     }
-    otherwise {
-        return arg;
-    }
 }
 
 def main() {
