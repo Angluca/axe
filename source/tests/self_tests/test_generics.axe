@@ -1,0 +1,17 @@
+use std.io;
+
+def some_func[T](arg: T): T {
+    when T is i32 {
+        return arg + 1;
+    }
+    when T is f32 {
+        return arg * 2.0;
+    }
+    otherwise {
+        return arg;
+    }
+}
+
+def main() {
+    println(some_func[i32](5));
+}
