@@ -16,6 +16,8 @@ pub mut build_shared_lib: bool = false;
 pub mut include_paths: ref StringList = nil;
 pub mut quiet_mode: bool = false;
 pub mut syntax_check_only: bool = false;
+pub mut target_triple: string;
+pub mut sysroot_path: string;
 
 /// Print a debug message
 overload debug_print(x: generic) {
@@ -77,6 +79,26 @@ pub def set_quiet_mode(v: bool) {
 /// Set syntax check only mode (no code generation)
 pub def set_syntax_check_only(v: bool) {
     syntax_check_only = v;
+}
+
+/// Set target triple for cross-compilation
+pub def set_target_triple(triple: string) {
+    target_triple = triple;
+}
+
+/// Get target triple for cross-compilation
+pub def get_target_triple(): string {
+    return target_triple;
+}
+
+/// Set sysroot path for cross-compilation
+pub def set_sysroot_path(path: string) {
+    sysroot_path = path;
+}
+
+/// Get sysroot path for cross-compilation
+pub def get_sysroot_path(): string {
+    return sysroot_path;
 }
 
 /// Ditto.

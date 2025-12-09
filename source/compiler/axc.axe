@@ -17,18 +17,22 @@ def main() {
         println("Usage: axe <input.axe> [options]");
         println("");
         println("Options:");
-        println("  -o <name>      Specify output binary name");
-        println("  -e             Keep the emitted file");
-        println("  -r             Run the built executable after compilation");
-        println("  -tokens        Print lexer tokens and exit");
-        println("  -ast           Print the parsed AST and exit");
-        println("  -dll           Build shared instead of standalone executable");
-        println("  --release      Build in release mode");
-        println("  -l, --loud     Loud debug output");
-        println("  -q, --quiet    Suppress all output");
-        println("  -I<path>       Pass a C include directory");
-        println("  --syntax-check Check syntax only (no code generation)");
-        println("  --version, -v  Show axe version and exit\n");
+        println("  -o <name>         Specify output binary name");
+        println("  -e                Keep the emitted file");
+        println("  -r                Run the built executable after compilation");
+        println("  -tokens           Print lexer tokens and exit");
+        println("  -ast              Print the parsed AST and exit");
+        println("  -dll              Build shared instead of standalone executable");
+        println("  --release         Build in release mode");
+        println("  -l, --loud        Loud debug output");
+        println("  -q, --quiet       Suppress all output");
+        println("  -I<path>          Pass a C include directory");
+        println("  --syntax-check    Check syntax only (no code generation)");
+        println("  --target <triple> Cross-compile for target (e.g. x86_64-w64-mingw32)");
+        println("  --sysroot <path>  Specify sysroot for cross-compilation");
+        println("  --version, -v     Show axe version and exit");
+        println("");
+        println("Note: Cross-compiling requires the target platform's SDK and sysroot.\n");
         quit(0);
     }
     
@@ -47,6 +51,18 @@ def main() {
         val arg: string = StringList.get(args, i);
         if equals_c(arg, "-o") and i + 1 < args.len {
             output_filename = StringList.get(args, i + 1);
+            i += 2;
+            continue;
+        }
+        if equals_c(arg, "--target") and i + 1 < args.len {
+            val target: string = StringList.get(args, i + 1);
+            set_target_triple(target);
+            i += 2;
+            continue;
+        }
+        if equals_c(arg, "--sysroot") and i + 1 < args.len {
+            val sysroot: string = StringList.get(args, i + 1);
+            set_sysroot_path(sysroot);
             i += 2;
             continue;
         }
