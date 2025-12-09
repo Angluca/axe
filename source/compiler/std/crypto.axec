@@ -365,9 +365,7 @@ pub def base64_encode(data: char*, len: i32, arena: ref Arena): string {
     }
 
     val out_len: i32 = ((len + 2) / 3) * 4;
-
     mut out: string = string.create_with_capacity(arena, out_len);
-
     mut i: i32 = 0;
     mut o: i32 = 0;
 
