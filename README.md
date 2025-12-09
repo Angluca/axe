@@ -77,7 +77,7 @@ This will create the `axe` executable.
 ./axe hello.axe --release -r
 
 # Compile to shared library
-./axe mylib.axec -dll
+./axe mylib.axe -dll
 ```
 
 ## Language Syntax
