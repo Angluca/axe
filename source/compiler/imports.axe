@@ -76,6 +76,7 @@ pub def is_symbol_imported(symbol_name: string): bool {
     return StringBoolMap.contains(addr(g_imported_symbols), symbol_name);
 }
 
+/// Check if a module has been imported
 pub def has_imported_module(name: string): bool {
     if StringBoolMap.contains(addr(g_processed_modules), name) {
         return true;
@@ -83,15 +84,18 @@ pub def has_imported_module(name: string): bool {
     return false;
 }
 
+/// Mark a module as processed
 def add_processed_module(path: string) {
     mut arena: Arena = Arena.create(1024);
     StringBoolMap.set(addr(g_processed_modules), addr(arena), path, true);
 }
 
+/// Check if a module path has been processed
 def is_module_processed(path: string): bool {
     return StringBoolMap.contains(addr(g_processed_modules), path);
 }
 
+/// Generate a module prefix from its name
 def get_module_prefix(module_name: string): string {
     mut result: string = str("");
     mut i: i32 = 0;
