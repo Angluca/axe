@@ -911,6 +911,10 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         }
         ctx.pos++; // Skip '{'
         
+        g_mutable_vars_in_scope.len = 0;
+        g_all_vars_in_scope.len = 0;
+        g_function_has_raw_block = false;
+        
         mut main_node: ASTNode;
         main_node.node_type = str("Function");
         main_node.data.function.name = str("main");
@@ -958,6 +962,79 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
                 main_node.children = heap_list;
             }
         }
+        
+        if !g_function_has_raw_block {
+            mut i_mut: i32 = 0;
+            loop {
+                if i_mut >= len(g_mutable_vars_in_scope) {
+                    break;
+                }
+                val var_name: string = g_mutable_vars_in_scope.data[i_mut];
+                if !StringBoolMap.contains(addr(g_var_actually_mutated), var_name) {
+                    print ctx.filename;
+                    print ":";
+                    print(i32_to_string(1));
+                    print ": error: variable '";
+                    print var_name;
+                    println "' is declared 'mut' but is never mutated. Use 'val' instead.";
+                    quit(1);
+                }
+                i_mut++;
+            }
+        }
+        
+        if !g_function_has_raw_block {
+            mut i_unused: i32 = 0;
+            loop {
+                if i_unused >= len(g_all_vars_in_scope) {
+                    break;
+                }
+                val var_name: string = g_all_vars_in_scope.data[i_unused];
+                if !StringBoolMap.contains(addr(g_var_actually_used), var_name) {
+                    mut decl_line: i32 = 1;
+                    mut decl_file: string = ctx.filename;
+                    if StringIntMap.contains(addr(g_var_declaration_lines), var_name) {
+                        decl_line = StringIntMap.get(addr(g_var_declaration_lines), var_name);
+                    }
+                    if StringStringMap.contains(addr(g_var_declaration_files), var_name) {
+                        decl_file = StringStringMap.get(addr(g_var_declaration_files), var_name);
+                    }
+                    print decl_file;
+                    print ":";
+                    print(i32_to_string(decl_line));
+                    print ": error: variable '";
+                    print var_name;
+                    println "' is declared but never used.";
+                    quit(1);
+                }
+                i_unused++;
+            }
+        }
+        
+        mut clear_idx: i32 = 0;
+        loop {
+            if clear_idx >= len(g_mutable_vars_in_scope) {
+                break;
+            }
+            val var_to_clear: string = g_mutable_vars_in_scope.data[clear_idx];
+            StringBoolMap.pop(addr(g_var_mutability), var_to_clear);
+            StringBoolMap.pop(addr(g_var_actually_mutated), var_to_clear);
+            clear_idx++;
+        }
+        g_mutable_vars_in_scope.len = 0;
+        
+        mut clear_all_idx: i32 = 0;
+        loop {
+            if clear_all_idx >= len(g_all_vars_in_scope) {
+                break;
+            }
+            val var_to_clear_all: string = g_all_vars_in_scope.data[clear_all_idx];
+            StringBoolMap.pop(addr(g_var_actually_used), var_to_clear_all);
+            StringIntMap.pop(addr(g_var_declaration_lines), var_to_clear_all);
+            StringStringMap.pop(addr(g_var_declaration_files), var_to_clear_all);
+            clear_all_idx++;
+        }
+        g_all_vars_in_scope.len = 0;
         
         add_child_to_ast(ast, main_node);
         return;
