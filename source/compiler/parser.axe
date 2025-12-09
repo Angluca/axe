@@ -888,6 +888,33 @@ def extract_function_name(expr: string): string {
     return str("<unknown function>");
 }
 
+/// Check if a type string contains raw pointer syntax (e.g., "char*", "int*")
+def has_pointer_syntax(type_str: string): bool {
+    val len: i32 = str_len(type_str);
+    if len == 0 {
+        return false;
+    }
+    
+    mut i: i32 = 0;
+    loop {
+        if i >= len {
+            break;
+        }
+        val ch: char = get_char(type_str, i);
+        if ch == '*' {
+            if i > 0 {
+                val prev_ch: char = get_char(type_str, i - 1);
+                if (prev_ch >= 'a' and prev_ch <= 'z') or (prev_ch >= 'A' and prev_ch <= 'Z') or 
+                   (prev_ch >= '0' and prev_ch <= '9') or prev_ch == '_' {
+                    return true;
+                }
+            }
+        }
+        i++;
+    }
+    return false;
+}
+
 /// Add a child AST node to a parent AST node
 pub def add_child_to_ast(ast: ref ASTNode, child: ASTNode) {
     if ast.children == nil {
@@ -2676,6 +2703,28 @@ def parse_function(ctx: ref ParserContext): ASTNode {
         consume(ctx);
     }
 
+    if !ctx.is_axec and len(params) > 0 {
+        mut param_idx: i32 = 0;
+        loop {
+            if param_idx >= len(params) {
+                break;
+            }
+            val param: string = params.data[param_idx];
+            if has_pointer_syntax(param) {
+                print ctx.filename;
+                print ":";
+                print(i32_to_string(current_line(ctx)));
+                print ": error: raw pointer syntax (e.g., 'char*') is not allowed.";
+                println " Use 'ref' instead (e.g., 'ref char').";
+                print "(in parameter: ";
+                print param;
+                println ")";
+                quit(1);
+            }
+            param_idx++;
+        }
+    }
+    
     // Store parameters on function node (if any)
     if len(params) > 0 {
         unsafe {
@@ -2693,6 +2742,17 @@ def parse_function(ctx: ref ParserContext): ASTNode {
         consume(ctx);
         val return_type: string = parse_type(ctx);
         func.data.function.return_type = return_type;
+        
+        if !ctx.is_axec and has_pointer_syntax(return_type) {
+            print ctx.filename;
+            print ":";
+            print(i32_to_string(current_line(ctx)));
+            print ": error: raw pointer syntax (e.g., 'char*') is not allowed in .axe files. ";
+            println "Use 'ref' instead (e.g., 'ref char').";
+            print "  in return type: ";
+            println return_type;
+            quit(1);
+        }
     }
     
     skip_whitespace(ctx);
