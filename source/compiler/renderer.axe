@@ -34,6 +34,9 @@ mut g_enum_names: StringBoolMap;
 /// Opaque types (external C types that don't need import checking)
 mut g_opaque_types: StringBoolMap;
 
+/// Foreign types (declared in foreign blocks)
+mut g_foreign_types: StringBoolMap;
+
 /// Generated typedefs to avoid duplicates
 mut g_generated_typedefs: StringBoolMap;
 
@@ -147,6 +150,7 @@ pub def initialize_renderer() {
     g_model_names = deref(StringStringMap.create(addr(arena), 128));
     g_enum_names = deref(StringBoolMap.create(addr(arena), 128));
     g_opaque_types = deref(StringBoolMap.create(addr(arena), 128));
+    g_foreign_types = deref(StringBoolMap.create(addr(arena), 128));
     g_generated_typedefs = deref(StringBoolMap.create(addr(arena), 128));
     g_generated_functions = deref(StringBoolMap.create(addr(arena), 128));
     g_field_types = deref(StringStringMap.create(addr(arena), 128));
@@ -317,6 +321,10 @@ def is_valid_symbol(symbol_name: string): bool {
     }
     
     if StringBoolMap.contains(addr(g_opaque_types), symbol_name) {
+        return true;
+    }
+    
+    if StringBoolMap.contains(addr(g_foreign_types), symbol_name) {
         return true;
     }
     
@@ -720,6 +728,41 @@ def collect_function_signatures(node: ref ASTNode, arena: ref Arena) {
                 break;
             }
             collect_function_signatures(addr(children.data[i]), arena);
+            i++;
+        }
+    }
+}
+
+/// Collect foreign types from Foreign nodes before processing functions
+def collect_foreign_types(node: ref ASTNode) {
+    if node == nil {
+        return;
+    }
+    
+    if equals_c(node.node_type, "Foreign") {
+        val fnames: ref list(string) = node.data.foreign_node.type_names;
+        if fnames != nil {
+            mut arena_foreign: Arena = Arena.create(2560);
+            mut fi: i32 = 0;
+            loop {
+                if fi >= len(deref(fnames)) {
+                    break;
+                }
+                val type_name: string = fnames.data[fi];
+                StringBoolMap.set(addr(g_foreign_types), addr(arena_foreign), type_name, true);
+                fi++;
+            }
+        }
+    }
+    
+    if node.children != nil {
+        val children: ref list(ASTNode) = node.children;
+        mut i: i32 = 0;
+        loop {
+            if i >= len(deref(children)) {
+                break;
+            }
+            collect_foreign_types(addr(children.data[i]));
             i++;
         }
     }
@@ -3671,7 +3714,7 @@ def rewrite_global_var_refs(expr: string): string {
                 if next_ch != '(' and next_ch != '.' {
                     val is_upper_case_const: bool = is_all_upper_or_underscore(ident);
                     if is_upper_case_const and !is_builtin_type(ident) and !is_language_keyword(ident) and !is_c_constant(ident) {
-                        if !is_symbol_imported(ident) and !StringBoolMap.contains(addr(g_emitted_globals), ident) {
+                        if !is_symbol_imported(ident) and !StringBoolMap.contains(addr(g_emitted_globals), ident) and !StringBoolMap.contains(addr(g_foreign_types), ident) {
                             print(get_short_filename(g_current_source_file));
                             print ":";
                             print(i32_to_string(g_current_line));
@@ -4617,6 +4660,7 @@ pub def generate_c(ast: ref ASTNode): string {
         StringList.clear(g_windows_external_headers);
         StringList.clear(g_posix_external_headers);
         collect_external_imports(ast, str(""), addr(ext_arena));
+        collect_foreign_types(ast);
         build_function_signatures(ast);
         
         mut sb: StringBuilder = StringBuilder.init(1024 * 256);
@@ -7934,7 +7978,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     break;
                 }
                 val type_name: string = fnames.data[fi];
-                StringBoolMap.set(addr(g_opaque_types), addr(arena_foreign), type_name, true);
+                StringBoolMap.set(addr(g_foreign_types), addr(arena_foreign), type_name, true);
                 fi++;
             }
         }
