@@ -17,6 +17,8 @@ extern def yyjson_doc_free(doc: char*);
 extern def yyjson_doc_get_root(doc: char*): char*;
 extern def yyjson_is_null(value: char*): bool;
 extern def yyjson_is_bool(value: char*): bool;
+extern def yyjson_is_num(value: char*): bool;
+extern def yyjson_is_str(value: char*): bool;
 
 /// Parse a JSON string and return a document
 def parse(json_str: string): char* {
@@ -62,10 +64,8 @@ def is_bool(value: char*): bool {
 /// Check if a value is a number
 def is_num(value: char*): bool {
     mut result: bool = false;
-    raw {
-        if (value != NULL) {
-            result = yyjson_is_num((yyjson_val*)value);
-        }
+    if value != nil {
+        result = yyjson_is_num(cast[ref yyjson_val](value));
     }
     return result;
 }
@@ -73,10 +73,8 @@ def is_num(value: char*): bool {
 /// Check if a value is a string
 def is_str(value: char*): bool {
     mut result: bool = false;
-    raw {
-        if (value != NULL) {
-            result = yyjson_is_str((yyjson_val*)value);
-        }
+    if value != nil {
+        result = yyjson_is_str(cast[ref yyjson_val](value));
     }
     return result;
 }
