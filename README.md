@@ -88,7 +88,7 @@ This will create the `axe` executable.
 use std.string;
 
 def greet(name: string): void {
-    println "Hello, ", name.data, ".";
+    println $"Hello, {name}";
 }
 
 def main() {
