@@ -1,3 +1,4 @@
 *.c
 *.dll
 *.lib
+*.dSYM
