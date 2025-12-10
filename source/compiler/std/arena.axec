@@ -18,7 +18,7 @@ use std.errors (
 pub model Arena {
     buffer: usize;
     capacity: usize;
-    offset: i32;
+    offset: usize;
 
     /// Creates a new arena with the specified size.
     pub def create(size: usize): Arena {
@@ -44,7 +44,7 @@ pub model Arena {
     }
 
     /// Allocates memory from the arena, returns a proper reference pointer.
-    pub def alloc(arena: ref Arena, size: i32): ref void {
+    pub def alloc(arena: ref Arena, size: usize): ref void {
         mut result: ref void = nil;
 
         unsafe {
@@ -68,8 +68,8 @@ pub model Arena {
     }
 
     /// Allocates memory for an array from the arena.
-    pub def alloc_array(arena: ref Arena, element_size: i32, count: i32): ref void {
-        val total_size: i32 = element_size * count;
+    pub def alloc_array(arena: ref Arena, element_size: usize, count: usize): ref void {
+        val total_size: usize = element_size * count;
         return Arena.alloc(arena, total_size);
     }
 
@@ -91,8 +91,8 @@ pub model Arena {
     }
 
     /// Returns the amount of remaining memory in the arena.
-    pub def remaining(arena: ref Arena): i32 {
-        mut result: i32 = 0;
+    pub def remaining(arena: ref Arena): usize {
+        mut result: usize = 0;
         unsafe {
             result = (arena*.capacity) - (arena*.offset);
         }
