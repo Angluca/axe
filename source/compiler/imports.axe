@@ -844,26 +844,25 @@ pub def process_imports(ast: ref ASTNode, base_dir: string, is_axec: bool, curre
 }
 
 test {
-    mut prog: ASTNode;
-    prog.node_type = str("Program");
-
-    mut fn: ASTNode;
-    fn.node_type = str("Function");
-    fn.data.function.name = str("test_fn");
-    fn.data.function.return_type = str("string");
-
-    append_child(addr(prog), fn);
-
-    mut im: ASTNode;
-    im.node_type = str("Program");
-
-    mut model_node: ASTNode;
-    model_node.node_type = str("Model");
-    model_node.data.model_node.name = str("string");
-    append_child(addr(im), model_node);
-
-    merge_imported_module(addr(prog), addr(im), str("std.string"));
-
-    val children: ref list(ASTNode) = prog.children;
-    assert len(deref(children)) >= 2, "Expected at least 2 children after import merge";
+    println "\nTest 1: get_module_prefix";
+    val prefix1: string = get_module_prefix(str("std.io"));
+    assert equals_c(prefix1, "std__io"), "Expected std__io";
+    
+    println "\nTest 2: get_module_prefix with dashes";
+    val prefix2: string = get_module_prefix(str("my-module"));
+    assert equals_c(prefix2, "my_module"), "Expected my_module";
+    
+    println "\nTest 3: join_path";
+    val joined: string = join_path(str("foo"), str("bar"));
+    assert str_contains_c(joined, "foo"), "Expected path to contain foo";
+    assert str_contains_c(joined, "bar"), "Expected path to contain bar";
+    
+    println "\nTest 4: get_dir_from_path";
+    val dir: string = get_dir_from_path(str("foo/bar/baz.axe"));
+    assert equals_c(dir, "foo/bar"), "Expected foo/bar";
+    
+    println "\nTest 5: is_symbol_imported (initially empty)";
+    reset_processed_modules();
+    val is_imported: bool = is_symbol_imported(str("nonexistent"));
+    assert is_imported == false, "Expected false for nonexistent symbol";
 }
