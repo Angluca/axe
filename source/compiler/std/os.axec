@@ -313,7 +313,7 @@ platform posix {
 }
 
 platform posix {
-    opaque { DIR, dirent, stat };
+    opaque { dirent };
     
     extern def opendir(name: char*): usize;
     extern def readdir(dirp: usize): usize;
@@ -329,8 +329,10 @@ platform posix {
 
     def stat_is_dir(st: usize): i32 {
         unsafe {
-            val s: stat* = st;
-            return S_ISDIR(s*.st_mode);
+            raw {
+                struct stat* s = (struct stat*)st;
+                return S_ISDIR(s->st_mode);
+            }
         }
     }
 }
@@ -499,8 +501,10 @@ pub def rm_dir_recursive(path: string): bool {
 platform posix {
     def stat_is_reg(st: usize): i32 {
         unsafe {
-            val s: stat* = st;
-            return S_ISREG(s*.st_mode);
+            raw {
+                struct stat* s = (struct stat*)st;
+                return S_ISREG(s->st_mode);
+            }
         }
     }
 }
