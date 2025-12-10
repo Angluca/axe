@@ -679,7 +679,9 @@ pub def get_cwd(): string {
     return out;
 }
 
-extern def _NSGetExecutablePath(buf: char*, bufsize: u32*): i32;
+platform macos {
+    extern def _NSGetExecutablePath(buf: char*, bufsize: u32*): i32;
+}
 
 /// Get the path to the currently running executable
 pub def get_executable_path(): string {
@@ -696,7 +698,7 @@ pub def get_executable_path(): string {
         }
     }
     
-    platform posix {
+    platform macos {
         unsafe {
             val size: u32 = 2048;
             val result: i32 = _NSGetExecutablePath(buffer, &size);
