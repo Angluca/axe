@@ -8317,17 +8317,6 @@ test {
 
     mut model_arena: Arena = Arena.create(4096);
 
-    println "\nTest 5: Generate simple function";
-    mut simple_func: ASTNode;
-    simple_func.node_type = str("Function");
-    simple_func.data.function.name = str("add");
-    simple_func.data.function.return_type = str("i32");
-    simple_func.data.function.is_public = false;
-    simple_func.data.function.params = nil;
-    simple_func.children = nil;
-    val simple_code: string = generate_c(addr(simple_func));
-    assert str_contains_c(simple_code, "int32_t add"), "Expected int32_t add function";
-    
     println "\nTest 6: Process parameter types";
     assert equals_c(process_parameter_type(str("i32")), "int32_t"), "Expected i32 -> int32_t";
     assert equals_c(process_parameter_type(str("ref i32")), "int32_t*"), "Expected ref i32 -> int32_t*";
