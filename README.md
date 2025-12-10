@@ -164,7 +164,7 @@ def count_neighbors(grid: ref list(i32), x: i32, y: i32, width: i32, height: i32
 
             if nx >= 0 and nx < width and ny >= 0 and ny < height {
                 if grid.data[idx(nx, ny, width)] == 1 {
-                    count = count + 1;
+                    count++;
                 }
             }
         }
