@@ -184,7 +184,7 @@ def emit_line_directive(line: i32): string {
     mut sb: StringBuilder = StringBuilder.init(64);
     StringBuilder.append_c(addr(sb), "#line ");
     StringBuilder.append(addr(sb), i32_to_string(line));
-    if str_len(g_current_source_file) > 0 {
+    if g_current_source_file.data != nil and str_len(g_current_source_file) > 0 {
         StringBuilder.append_c(addr(sb), " \"");
         StringBuilder.append(addr(sb), g_current_source_file);
         StringBuilder.append_c(addr(sb), "\"");
