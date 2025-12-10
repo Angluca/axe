@@ -1,6 +1,5 @@
 /// Test file for import checking
 
-
 def test_missing_import() {
     mut arena: Arena = Arena.create(1024);
 }
