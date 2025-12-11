@@ -10,7 +10,7 @@ model SomeModel {
             return arg * 2.0;
         }
         when T is string {
-            return concat_c(arg, "!");
+            return concat_c(arg, "!\n");
         }
     }
 }
@@ -19,4 +19,5 @@ def main() {
     println(SomeModel.some_function[i32](5));
     println(SomeModel.some_function[f32](5.0));
     println(SomeModel.some_function[string](str("Hello")));
+    println(SomeModel.some_function(3.0));
 }

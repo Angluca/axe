@@ -99,6 +99,9 @@ mut g_emitted_prototypes: StringBoolMap;
 /// Global variable prefixes mapping (logical name -> C symbol like gvar__name)
 mut g_global_var_prefixes: StringStringMap;
 
+/// Track generic function names (function name -> "T" for type param, used for inference)
+mut g_generic_functions: StringBoolMap;
+
 /// Function parameter types (function_name -> "type1,type2,type3")
 mut g_function_param_types: StringStringMap;
 
@@ -238,6 +241,7 @@ pub def initialize_renderer() {
     g_dragonflybsd_external_headers = StringList.create(addr(arena), 32);
     g_emitted_globals = deref(StringBoolMap.create(addr(arena), 128));
     g_global_var_prefixes = deref(StringStringMap.create(addr(arena), 128));
+    g_generic_functions = deref(StringBoolMap.create(addr(arena), 128));
     g_function_param_types = deref(StringStringMap.create(addr(arena), 256));
     g_extern_functions = deref(StringBoolMap.create(addr(arena), 128));
     g_emitted_prototypes = deref(StringBoolMap.create(addr(arena), 1024));
@@ -792,6 +796,10 @@ def collect_function_signatures(node: ref ASTNode, arena: ref Arena) {
         val params: ref list(string) = node.data.function.params;
         val ret_type: string = node.data.function.return_type;
         register_function_signature(func_name, params, ret_type, arena);
+        
+        if node.data.function.is_generic {
+            StringBoolMap.set(addr(g_generic_functions), arena, func_name, true);
+        }
     }
     
     if equals_c(node.node_type, "Extern") {
@@ -2004,6 +2012,150 @@ def rewrite_generic_calls(expr: string): string {
                         StringBuilder.append(addr(sb), ident);
                         StringBuilder.append_c(addr(sb), "__T_");
                         StringBuilder.append(addr(sb), type_arg);
+                        i = k;
+                        continue;
+                    }
+                }
+            }
+            
+            if k < expr_len and get_char(expr, k) == '.' {
+                mut m: i32 = k + 1;
+                loop {
+                    if m >= expr_len { break; }
+                    val wc: char = get_char(expr, m);
+                    if wc != ' ' and wc != '\t' and wc != '\n' { break; }
+                    m++;
+                }
+                if m < expr_len and is_ident_start(get_char(expr, m)) {
+                    val method_start: i32 = m;
+                    loop {
+                        if m >= expr_len { break; }
+                        val mc: char = get_char(expr, m);
+                        if !is_token_char(mc) { break; }
+                        m++;
+                    }
+                    val method_name: string = substring_se(expr, method_start, m);
+                    
+                    loop {
+                        if m >= expr_len { break; }
+                        val wc2: char = get_char(expr, m);
+                        if wc2 != ' ' and wc2 != '\t' and wc2 != '\n' { break; }
+                        m++;
+                    }
+                    
+                    if m < expr_len and get_char(expr, m) == '[' {
+                        m++;
+                        val type_start2: i32 = m;
+                        mut bd2: i32 = 1;
+                        loop {
+                            if m >= expr_len or bd2 == 0 { break; }
+                            val tc2: char = get_char(expr, m);
+                            if tc2 == '[' { bd2++; }
+                            elif tc2 == ']' { bd2--; }
+                            if bd2 > 0 { m++; }
+                        }
+                        val type_arg2: string = strip(substring_se(expr, type_start2, m));
+                        if m < expr_len and get_char(expr, m) == ']' {
+                            m++;
+                            loop {
+                                if m >= expr_len { break; }
+                                val wc3: char = get_char(expr, m);
+                                if wc3 != ' ' and wc3 != '\t' and wc3 != '\n' { break; }
+                                m++;
+                            }
+                            if m < expr_len and get_char(expr, m) == '(' {
+                                StringBuilder.append(addr(sb), ident);
+                                StringBuilder.append_c(addr(sb), "__");
+                                StringBuilder.append(addr(sb), method_name);
+                                StringBuilder.append_c(addr(sb), "__T_");
+                                StringBuilder.append(addr(sb), type_arg2);
+                                i = m;
+                                continue;
+                            }
+                        }
+                    } elif m < expr_len and get_char(expr, m) == '(' {
+                        mut sb_full_name: StringBuilder = StringBuilder.init(str_len(ident) + str_len(method_name) + 2);
+                        StringBuilder.append(addr(sb_full_name), ident);
+                        StringBuilder.append_c(addr(sb_full_name), "__");
+                        StringBuilder.append(addr(sb_full_name), method_name);
+                        val full_name: string = StringBuilder.to_string(addr(sb_full_name));
+                        StringBuilder.destroy(addr(sb_full_name));
+                        
+                        if StringBoolMap.contains(addr(g_generic_functions), full_name) {
+                            mut arg_start2: i32 = m + 1;
+                            loop {
+                                if arg_start2 >= expr_len { break; }
+                                val wc4: char = get_char(expr, arg_start2);
+                                if wc4 != ' ' and wc4 != '\t' and wc4 != '\n' { break; }
+                                arg_start2++;
+                            }
+                            
+                            mut inferred_type2: string = str("");
+                            if arg_start2 < expr_len {
+                                val first_ch2: char = get_char(expr, arg_start2);
+                                if first_ch2 == '"' {
+                                    inferred_type2 = str("ref char");
+                                } elif first_ch2 == '-' or (first_ch2 >= '0' and first_ch2 <= '9') {
+                                    mut has_decimal2: bool = false;
+                                    mut scan_pos2: i32 = arg_start2;
+                                    loop {
+                                        if scan_pos2 >= expr_len { break; }
+                                        val sc2: char = get_char(expr, scan_pos2);
+                                        if sc2 == '.' { has_decimal2 = true; break; }
+                                        if sc2 == ',' or sc2 == ')' or sc2 == ' ' or sc2 == '\t' { break; }
+                                        scan_pos2++;
+                                    }
+                                    if has_decimal2 { inferred_type2 = str("f32"); }
+                                    else { inferred_type2 = str("i32"); }
+                                }
+                            }
+                            
+                            if str_len(inferred_type2) > 0 {
+                                StringBuilder.append(addr(sb), full_name);
+                                StringBuilder.append_c(addr(sb), "__T_");
+                                StringBuilder.append(addr(sb), inferred_type2);
+                                i = m;
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if k < expr_len and get_char(expr, k) == '(' {
+                if StringBoolMap.contains(addr(g_generic_functions), ident) {
+                    mut arg_start: i32 = k + 1;
+                    loop {
+                        if arg_start >= expr_len { break; }
+                        val wc: char = get_char(expr, arg_start);
+                        if wc != ' ' and wc != '\t' and wc != '\n' { break; }
+                        arg_start++;
+                    }
+                    
+                    mut inferred_type: string = str("");
+                    if arg_start < expr_len {
+                        val first_ch: char = get_char(expr, arg_start);
+                        if first_ch == '"' {
+                            inferred_type = str("ref char");
+                        } elif first_ch == '-' or (first_ch >= '0' and first_ch <= '9') {
+                            mut has_decimal: bool = false;
+                            mut scan_pos: i32 = arg_start;
+                            loop {
+                                if scan_pos >= expr_len { break; }
+                                val sc: char = get_char(expr, scan_pos);
+                                if sc == '.' { has_decimal = true; break; }
+                                if sc == ',' or sc == ')' or sc == ' ' or sc == '\t' { break; }
+                                scan_pos++;
+                            }
+                            if has_decimal { inferred_type = str("f32"); }
+                            else { inferred_type = str("i32"); }
+                        }
+                    }
+                    
+                    if str_len(inferred_type) > 0 {
+                        StringBuilder.append(addr(sb), ident);
+                        StringBuilder.append_c(addr(sb), "__T_");
+                        StringBuilder.append(addr(sb), inferred_type);
                         i = k;
                         continue;
                     }
