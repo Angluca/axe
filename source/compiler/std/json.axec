@@ -111,6 +111,7 @@ def get_bool(value: char*): bool {
     }
     return result;
 }
+
 extern def yyjson_get_int(value: char*): i32;
 
 /// Get integer value
