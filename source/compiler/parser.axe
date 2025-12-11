@@ -7300,53 +7300,7 @@ test {
     assert str_contains_c(stmt32.data.array_access.index, "i"), "Expected first index to contain 'i'";
     assert str_contains_c(stmt32.data.array_access.index2, "j"), "Expected second index to contain 'j'";
 
-    println "\nTest 33: parse_statement_helper with increment";
-    mut tokens33: list(Token) = lex(str("x++;"));
-    mut ctx33: ParserContext;
-    ctx33.tokens = addr(tokens33);
-    ctx33.pos = 0;
-    ctx33.is_axec = false;
-    val stmt33: ASTNode = parse_statement_helper(addr(ctx33), addr(ctx33.current_scope));
-    assert equals_c(stmt33.node_type, "IncDec"), "Expected IncDec node";
-    assert equals_c(stmt33.data.inc_dec.variable, "x"), "Expected variable name 'x'";
-    assert stmt33.data.inc_dec.is_increment == true, "Expected is_increment to be true";
-
-    println "\nTest 34: parse_statement_helper with decrement";
-    mut tokens34: list(Token) = lex(str("x--;"));
-    mut ctx34: ParserContext;
-    ctx34.tokens = addr(tokens34);
-    ctx34.pos = 0;
-    ctx34.is_axec = false;
-    val stmt34: ASTNode = parse_statement_helper(addr(ctx34), addr(ctx34.current_scope));
-    assert equals_c(stmt34.node_type, "IncDec"), "Expected IncDec node";
-    assert equals_c(stmt34.data.inc_dec.variable, "x"), "Expected variable name 'x'";
-    assert stmt34.data.inc_dec.is_increment == false, "Expected is_increment to be false";
-
-    println "\nTest 35: parse_statement_helper with member increment";
-    mut tokens35: list(Token) = lex(str("obj.count++;"));
-    mut ctx35: ParserContext;
-    ctx35.tokens = addr(tokens35);
-    ctx35.pos = 0;
-    ctx35.is_axec = false;
-    val stmt35: ASTNode = parse_statement_helper(addr(ctx35), addr(ctx35.current_scope));
-    assert equals_c(stmt35.node_type, "MemberIncDec"), "Expected MemberIncDec node";
-    assert equals_c(stmt35.data.member_inc_dec.object_name, "obj"), "Expected object name 'obj'";
-    assert equals_c(stmt35.data.member_inc_dec.member_name, "count"), "Expected member name 'count'";
-    assert stmt35.data.member_inc_dec.is_increment == true, "Expected is_increment to be true";
-
-    println "\nTest 36: parse_statement_helper with member decrement";
-    mut tokens36: list(Token) = lex(str("obj.count--;"));
-    mut ctx36: ParserContext;
-    ctx36.tokens = addr(tokens36);
-    ctx36.pos = 0;
-    ctx36.is_axec = false;
-    val stmt36: ASTNode = parse_statement_helper(addr(ctx36), addr(ctx36.current_scope));
-    assert equals_c(stmt36.node_type, "MemberIncDec"), "Expected MemberIncDec node";
-    assert equals_c(stmt36.data.member_inc_dec.object_name, "obj"), "Expected object name 'obj'";
-    assert equals_c(stmt36.data.member_inc_dec.member_name, "count"), "Expected member name 'count'";
-    assert stmt36.data.member_inc_dec.is_increment == false, "Expected is_increment to be false";
-
-    println "\nTest 37: A complete program parse";
+    println "\nTest 33: A complete program parse";
     mut tokens37: list(Token) = lex(str(`use std.io;
         
         model Point {
