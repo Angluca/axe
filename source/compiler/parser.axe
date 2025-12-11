@@ -7019,7 +7019,6 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         return node;
     }
     
-    // For now, skip unknown tokens
     consume(ctx);
     return node;
 }
