@@ -7945,7 +7945,11 @@ pub def generate_c(ast: ref ASTNode): string {
 
         mut init: string = strip(init_raw);
         val cond: string = strip(cond_raw);
-        val incr: string = strip(incr_raw);
+        mut incr: string = strip(incr_raw);
+        
+        if has_suffix(incr, str(";")) {
+            incr = strip(substring_se(incr, 0, cast[i32](str_len(incr) - 1)));
+        }
 
         if has_prefix(init, str("mut ")) {
             init = strip(substr(init, 4, str_len(init) - 4));
@@ -7953,10 +7957,13 @@ pub def generate_c(ast: ref ASTNode): string {
 
         mut sb_pheader: StringBuilder = StringBuilder.init(256);
         StringBuilder.append(addr(sb_pheader), init);
-        StringBuilder.append_c(addr(sb_pheader), "; ");
-        StringBuilder.append(addr(sb_pheader), cond);
-        StringBuilder.append_c(addr(sb_pheader), "; ");
-        StringBuilder.append(addr(sb_pheader), incr);
+        
+        if str_len(cond) > 0 or str_len(incr) > 0 {
+            StringBuilder.append_c(addr(sb_pheader), "; ");
+            StringBuilder.append(addr(sb_pheader), cond);
+            StringBuilder.append_c(addr(sb_pheader), "; ");
+            StringBuilder.append(addr(sb_pheader), incr);
+        }
 
         mut header: string = StringBuilder.to_string(addr(sb_pheader));
         StringBuilder.destroy(addr(sb_pheader));
