@@ -93,6 +93,7 @@ mut g_renderer_sb: ref StringBuilder;
 
 /// Track emitted global variable names to avoid duplicates
 mut g_emitted_globals: StringBoolMap;
+
 /// Track emitted function prototypes to avoid emitting conflicting duplicates
 mut g_emitted_prototypes: StringBoolMap;
 
