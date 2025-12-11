@@ -762,7 +762,7 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         val mapped_inferred: string = map_axe_type_to_c(inferred_type);
         val mapped_expected: string = map_axe_type_to_c(expected_type);
         
-        if !StringBoolMap.contains(addr(g_extern_functions), func_name) {
+        if !StringBoolMap.contains(addr(g_extern_functions), func_name) and !StringBoolMap.contains(addr(g_generic_functions), func_name) {
             if str_len(inferred_type) > 0 and !equals_c(inferred_type, "auto") and compare(mapped_inferred, mapped_expected) != 0 {
                 print(get_short_filename(g_current_source_file));
                 print ":";

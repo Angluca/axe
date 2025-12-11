@@ -10,6 +10,10 @@ def some_func[T](arg: T): T {
     }
 }
 
+def some_other_func(x: i32) {
+    println(x);
+}
+
 def main() {
-    println(some_func[f32](5));
+    println(some_func(5));
 }
