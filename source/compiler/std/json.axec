@@ -79,57 +79,56 @@ def is_str(value: char*): bool {
     return result;
 }
 
+extern def yyjson_is_arr(value: char*): bool;
+
 /// Check if a value is an array
 def is_array(value: char*): bool {
     mut result: bool = false;
-    raw {
-        if (value != NULL) {
-            result = yyjson_is_arr((yyjson_val*)value);
-        }
+    if value != nil {
+        result = yyjson_is_arr(cast[ref yyjson_val](value));
     }
     return result;
 }
+
+extern def yyjson_is_obj(value: char*): bool;
 
 /// Check if a value is an object
 def is_object(value: char*): bool {
     mut result: bool = false;
-    raw {
-        if (value != NULL) {
-            result = yyjson_is_obj((yyjson_val*)value);
-        }
+    if value != nil {
+        result = yyjson_is_obj(cast[ref yyjson_val](value));
     }
     return result;
 }
+
+extern def yyjson_get_bool(value: char*): bool;
 
 /// Get boolean value
 def get_bool(value: char*): bool {
     mut result: bool = false;
-    raw {
-        if (value != NULL) {
-            result = yyjson_get_bool((yyjson_val*)value);
-        }
+    if value != nil {
+        result = yyjson_get_bool(cast[ref yyjson_val](value));
     }
     return result;
 }
+extern def yyjson_get_int(value: char*): i32;
 
 /// Get integer value
 def get_int(value: char*): i32 {
     mut result: i32 = 0;
-    raw {
-        if (value != NULL) {
-            result = yyjson_get_int((yyjson_val*)value);
-        }
+    if value != nil {
+        result = yyjson_get_int(cast[ref yyjson_val](value));
     }
     return result;
 }
 
+extern def yyjson_get_sint(value: char*): i64;
+
 /// Get 64-bit integer value
 def get_int64(value: char*): i64 {
     mut result: i64 = 0;
-    raw {
-        if (value != NULL) {
-            result = yyjson_get_sint((yyjson_val*)value);
-        }
+    if result != nil {
+        result = yyjson_get_sint(cast[ref yyjson_val](value));
     }
     return result;
 }
