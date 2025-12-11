@@ -130,7 +130,7 @@ def main() {
 
 Tagged unions provide a safe and expressive way to model AST nodes, protocol messages, and other variant-based structures.
 
-### Generics
+### Generics (new in v0.0.6)
 
 Generics in Axe allow writing of functions and models that operate on different types while maintaining type safety. You can specify type parameters using square brackets `[T]`, and use type-specific logic with `when` clauses.
 
