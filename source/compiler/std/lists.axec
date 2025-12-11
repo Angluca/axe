@@ -65,7 +65,7 @@ macro make_list(
             lst.len = lst.len + 1;
         }
 
-        pub def get(lst: ref name, index: i32): type {
+        pub def get(lst: ref name, index: usize): type {
             if index < 0 or index >= lst.len {
                 panic(error.create("Index out of bounds for list."));
                 return nullval;
