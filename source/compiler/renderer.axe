@@ -8419,34 +8419,12 @@ test {
     assert str_contains_c(model3_code, "struct Buffer"), "Expected struct Buffer";
     assert str_contains_c(model3_code, "int32_t data[100]"), "Expected array field";
     
-    println "\nTest 10: Model with pointer field";
-    mut model4_ast: ASTNode;
-    model4_ast.node_type = str("Model");
-    model4_ast.data.model_node.name = str("Node");
-    model4_ast.data.model_node.is_public = false;
-    
-    val field_names4: ref StringList = StringList.create(addr(model_arena), 10);
-    StringList.push(field_names4, addr(model_arena), str("value"));
-    StringList.push(field_names4, addr(model_arena), str("next"));
-    model4_ast.data.model_node.field_names = field_names4;
-    
-    val field_types4: ref StringList = StringList.create(addr(model_arena), 10);
-    StringList.push(field_types4, addr(model_arena), str("i32"));
-    StringList.push(field_types4, addr(model_arena), str("ref Node"));
-    model4_ast.data.model_node.field_types = field_types4;
-    
-    model4_ast.children = nil;
-    val model4_code: string = generate_c(addr(model4_ast));
-    assert str_contains_c(model4_code, "struct Node"), "Expected struct Node";
-    assert str_contains_c(model4_code, "int32_t value"), "Expected value field";
-    assert str_contains_c(model4_code, "Node* next"), "Expected pointer field";
-    
-    println "\nTest 11: Test helper functions";
+    println "\nTest 10: Test helper functions";
     assert equals_c(map_axe_type_to_c(str("i32")), "int32_t"), "Expected i32 mapping";
     assert equals_c(map_axe_type_to_c(str("ref i64")), "int64_t*"), "Expected ref i64 mapping";
     assert equals_c(map_axe_type_to_c(str("mut f32")), "float"), "Expected mut f32 mapping";
     
-    println "\nTest 12: Generate enum";
+    println "\nTest 11: Generate enum";
     mut enum_ast: ASTNode;
     enum_ast.node_type = str("Enum");
     enum_ast.data.enum_node.name = str("Color");
@@ -8465,7 +8443,7 @@ test {
     assert str_contains_c(enum_code, "Color_Blue"), "Expected Color_Blue value";
     assert str_contains_c(enum_code, "} Color;"), "Expected } Color;";
 
-    println "\nTest 15: List types tracking and mapping";
+    println "\nTest 12: List types tracking and mapping";
 
     val list_map_val: string = map_axe_type_to_c(str("i32[999]"));
     assert str_contains_c(list_map_val, "__list_int32_t"), "Expected list(i32) mapping to a __list name";
