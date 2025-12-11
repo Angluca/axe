@@ -422,7 +422,7 @@ pub def substring_se(s: string, start: i32, end: i32): string {
 }
 
 /// Returns a substring from start to end (exclusive).
-pub def substring_scse(s: string, start: i32, end: i32): char* {
+pub def substring_scse(s: string, start: i32, end: i32): ref char {
     unsafe {
         mut len: i32 = end - start;
         mut result: char* = C.malloc(len + 1);
@@ -436,7 +436,7 @@ pub def substring_scse(s: string, start: i32, end: i32): char* {
 
 /// Returns a substring from char* s from start to end (exclusive). 
 /// Caller must free the result.
-pub def substring_cse(s: char*, start: i32, end: i32): char* {
+pub def substring_cse(s: ref char, start: i32, end: i32): ref char {
     unsafe {
         mut len: i32 = end - start;
         mut result: char* = C.malloc(len + 1);
