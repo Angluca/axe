@@ -2553,7 +2553,57 @@ def parse_function(ctx: ref ParserContext): ASTNode {
     func.data.function.name = func_name;
     func.data.function.return_type = str("");
     func.data.function.is_public = false;
+    func.data.function.is_generic = false;
     ctx.pos++;
+    
+    skip_whitespace(ctx);
+    
+    if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.LBRACKET {
+        ctx.pos++; // Skip '['
+        func.data.function.is_generic = true;
+        
+        mut type_params: list(string);
+        
+        loop {
+            skip_whitespace(ctx);
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            
+            if ctx.tokens.data[ctx.pos].token_type == TokenType.RBRACKET {
+                ctx.pos++; // Skip ']'
+                break;
+            }
+            
+            if ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
+                mut err: string = format_error(ctx, str("Expected type parameter name in generic function declaration"));
+                enforce_raw(false, err.data);
+                return func;
+            }
+            
+            val type_param: string = ctx.tokens.data[ctx.pos].value;
+            append(type_params, type_param);
+            ctx.pos++;
+            
+            skip_whitespace(ctx);
+            
+            if ctx.pos < len(ctx.tokens) and ctx.tokens.data[ctx.pos].token_type == TokenType.COMMA {
+                ctx.pos++; // Skip ','
+                continue;
+            }
+        }
+        
+        if len(type_params) > 0 {
+            unsafe {
+                val params_size: usize = C.sizeof(list(string));
+                val heap_type_params: ref list(string) = cast[ref list(string)](C.malloc(params_size));
+                if heap_type_params != nil {
+                    C.memcpy(heap_type_params, addr(type_params), params_size);
+                    func.data.function.type_params = heap_type_params;
+                }
+            }
+        }
+    }
     
     skip_whitespace(ctx);
 
@@ -2772,25 +2822,142 @@ def parse_function(ctx: ref ParserContext): ASTNode {
     consume(ctx);
     
     mut children: list(ASTNode);
-    loop {
-        if ctx.pos >= len(ctx.tokens) {
-            break;
-        }
-        
-        skip_whitespace(ctx);
-        
-        if ctx.pos >= len(ctx.tokens) {
-            break;
-        }
-        
-        if ctx.tokens.data[ctx.pos].token_type == TokenType.RBRACE {
+    mut when_branch_types: list(string);
+    mut when_branch_counts: list(i32);
+    
+    if func.data.function.is_generic {
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            
+            skip_whitespace(ctx);
+            
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            
+            if ctx.tokens.data[ctx.pos].token_type == TokenType.RBRACE {
+                ctx.pos++;
+                break;
+            }
+            
+            if ctx.tokens.data[ctx.pos].token_type != TokenType.WHEN {
+                mut err: string = format_error(ctx, str("Expected 'when' branch in generic function"));
+                enforce_raw(false, err.data);
+                return func;
+            }
+            ctx.pos++; // Skip 'when'
+            skip_whitespace(ctx);
+            
+            if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
+                mut err: string = format_error(ctx, str("Expected type parameter after 'when'"));
+                enforce_raw(false, err.data);
+                return func;
+            }
+            ctx.pos++; // Skip type param name (we already know it from func.data.function.type_params)
+            skip_whitespace(ctx);
+            
+            // Expect 'is' keyword
+            if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IS {
+                mut err: string = format_error(ctx, str("Expected 'is' after type parameter in when clause"));
+                enforce_raw(false, err.data);
+                return func;
+            }
+            ctx.pos++; // Skip 'is'
+            skip_whitespace(ctx);
+            
+            if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
+                mut err: string = format_error(ctx, str("Expected concrete type after 'is' in when clause"));
+                enforce_raw(false, err.data);
+                return func;
+            }
+            val concrete_type: string = ctx.tokens.data[ctx.pos].value;
+            append(when_branch_types, concrete_type);
             ctx.pos++;
-            break;
+            skip_whitespace(ctx);
+            
+            if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.LBRACE {
+                mut err: string = format_error(ctx, str("Expected '{' after type in when clause"));
+                enforce_raw(false, err.data);
+                return func;
+            }
+            ctx.pos++; // Skip '{'
+            
+            mut branch_child_count: i32 = 0;
+            loop {
+                if ctx.pos >= len(ctx.tokens) {
+                    break;
+                }
+                
+                skip_whitespace(ctx);
+                
+                if ctx.pos >= len(ctx.tokens) {
+                    break;
+                }
+                
+                if ctx.tokens.data[ctx.pos].token_type == TokenType.RBRACE {
+                    ctx.pos++; // Skip '}' of when-branch
+                    break;
+                }
+                
+                val stmt: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
+                if str_len(stmt.node_type) > 0 {
+                    append(children, stmt);
+                    branch_child_count++;
+                }
+            }
+            
+            append(when_branch_counts, branch_child_count);
+            skip_whitespace(ctx);
         }
         
-        val stmt: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
-        if str_len(stmt.node_type) > 0 {
-            append(children, stmt);
+        if len(when_branch_types) == 0 {
+            print ctx.filename;
+            print ":";
+            print(i32_to_string(func.line));
+            print ": error: generic function '";
+            print func_name;
+            println "' must have at least one 'when' branch";
+            quit(1);
+        }
+        
+        unsafe {
+            val types_size: usize = C.sizeof(list(string));
+            val heap_types: ref list(string) = cast[ref list(string)](C.malloc(types_size));
+            if heap_types != nil {
+                C.memcpy(heap_types, addr(when_branch_types), types_size);
+                func.data.function.when_branch_types = heap_types;
+            }
+            
+            val counts_size: usize = C.sizeof(list(i32));
+            val heap_counts: ref list(i32) = cast[ref list(i32)](C.malloc(counts_size));
+            if heap_counts != nil {
+                C.memcpy(heap_counts, addr(when_branch_counts), counts_size);
+                func.data.function.when_branch_counts = heap_counts;
+            }
+        }
+    } else {
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            
+            skip_whitespace(ctx);
+            
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            
+            if ctx.tokens.data[ctx.pos].token_type == TokenType.RBRACE {
+                ctx.pos++;
+                break;
+            }
+            
+            val stmt: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
+            if str_len(stmt.node_type) > 0 {
+                append(children, stmt);
+            }
         }
     }
     
@@ -4648,6 +4815,76 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             }
             consume(ctx);
             skip_whitespace(ctx);
+            
+            // Check if this is a generic function call: func[Type](args)
+            if expect(ctx, TokenType.LPAREN) {
+                // This is a generic function call, not array access
+                consume(ctx); // Skip '('
+                skip_whitespace(ctx);
+                
+                // Parse arguments
+                mut args_str: string = str("");
+                mut paren_depth_args: i32 = 0;
+                loop {
+                    if ctx.pos >= len(ctx.tokens) {
+                        break;
+                    }
+                    val t: Token = peek(ctx);
+                    if t.token_type == TokenType.RPAREN and paren_depth_args == 0 {
+                        break;
+                    }
+                    if t.token_type == TokenType.LPAREN {
+                        paren_depth_args = paren_depth_args + 1;
+                    }
+                    if t.token_type == TokenType.RPAREN {
+                        paren_depth_args = paren_depth_args - 1;
+                    }
+                    if t.token_type != TokenType.WHITESPACE and t.token_type != TokenType.NEWLINE {
+                        args_str = concat(args_str, t.value);
+                        args_str = concat(args_str, str(" "));
+                    }
+                    consume(ctx);
+                }
+                
+                if !expect(ctx, TokenType.RPAREN) {
+                    mut err: string = format_error(ctx, str("Expected ')' after generic function call arguments"));
+                    enforce_raw(false, err.data);
+                    return node;
+                }
+                consume(ctx); // Skip ')'
+                skip_whitespace(ctx);
+                
+                if !expect(ctx, TokenType.SEMICOLON) {
+                    mut err: string = format_error(ctx, str("Expected ';' after generic function call"));
+                    enforce_raw(false, err.data);
+                    return node;
+                }
+                consume(ctx);
+                
+                // Build specialized function name: func__T_typename
+                val type_arg: string = strip(index_expr);
+                mut mangled_name: string = concat(ident_name, str("__T_"));
+                mangled_name = concat(mangled_name, type_arg);
+                
+                node.node_type = str("FunctionCall");
+                node.data.func_call.function_name = mangled_name;
+                
+                mut args_list: list(string);
+                val trimmed_args: string = strip(args_str);
+                if str_len(trimmed_args) > 0 {
+                    append(args_list, trimmed_args);
+                }
+                
+                unsafe {
+                    val list_size: usize = C.sizeof(list(string));
+                    mut heap_list: ref list(string) = cast[ref list(string)](C.malloc(list_size));
+                    if heap_list != nil {
+                        C.memcpy(heap_list, addr(args_list), list_size);
+                        node.data.func_call.args = heap_list;
+                    }
+                }
+                return node;
+            }
             
             mut index2_expr: string = str("");
             if expect(ctx, TokenType.LBRACKET) {

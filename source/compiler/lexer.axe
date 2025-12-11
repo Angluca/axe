@@ -83,7 +83,9 @@ enum TokenType {
     OVERLOAD,
     EXTERNAL,
     SWITCH,
-    XOR
+    XOR,
+    WHEN,
+    IS
 }
 
 /// Representation of some token
@@ -560,6 +562,9 @@ pub def lex(source: string): list(Token) {
             } elif str_equals(source, "if", pos, 2, source_len) and check_boundary(source, pos + 2, source_len) {
                 append(tokens, create_token(TokenType.IF, "if"));
                 pos = pos + 2;
+            } elif str_equals(source, "is", pos, 2, source_len) and check_boundary(source, pos + 2, source_len) {
+                append(tokens, create_token(TokenType.IS, "is"));
+                pos = pos + 2;
             } else {
                 val start: i32 = pos;
                 loop {
@@ -817,6 +822,9 @@ pub def lex(source: string): list(Token) {
             if str_equals(source, "while", pos, 5, source_len) and check_boundary(source, pos + 5, source_len) {
                 append(tokens, create_token(TokenType.WHILE, "while"));
                 pos = pos + 5;
+            } elif str_equals(source, "when", pos, 4, source_len) and check_boundary(source, pos + 4, source_len) {
+                append(tokens, create_token(TokenType.WHEN, "when"));
+                pos = pos + 4;
             } else {
                 val start: i32 = pos;
                 loop {
