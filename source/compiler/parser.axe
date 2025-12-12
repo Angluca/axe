@@ -1843,6 +1843,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         
         clear_local_variables();
         g_current_scope_depth = 1;
+        ctx.in_test_block = true;
         
         mut test_node: ASTNode;
         test_node.node_type = str("Test");
@@ -1880,6 +1881,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         
         clear_local_variables();
         g_current_scope_depth = 0;
+        ctx.in_test_block = false;
         
         add_child_to_ast(ast, test_node);
         return;
@@ -3298,6 +3300,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
     
     // Handle ASSERT
     if token_type == TokenType.ASSERT {
+        if !ctx.in_test_block {
+            mut err: string = format_error(ctx, str("assert statements are only allowed inside test { } blocks"));
+            enforce_raw(false, err.data);
+            return node;
+        }
         val assert_line: i32 = token.line;
         consume(ctx);
         skip_whitespace(ctx);

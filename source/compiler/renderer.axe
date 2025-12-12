@@ -6381,6 +6381,22 @@ pub def generate_c(ast: ref ASTNode): string {
         return result;
     }
     
+    if equals_c(node_type, "Assert") {
+        val cond_raw: string = strip(ast.data.assert_node.condition);
+        val cond_norm: string = process_expression(cond_raw);
+        val msg: string = ast.data.assert_node.message;
+
+        mut sb_assert: StringBuilder = StringBuilder.init(512);
+        StringBuilder.append_c(addr(sb_assert), "if (");
+        StringBuilder.append(addr(sb_assert), cond_norm);
+        StringBuilder.append_c(addr(sb_assert), ") {\n    printf(\"PASSED: ");
+        StringBuilder.append(addr(sb_assert), msg);
+        StringBuilder.append_c(addr(sb_assert), "\\n\");\n    passed++;\n} else {\n    printf(\"FAILED: ");
+        StringBuilder.append(addr(sb_assert), msg);
+        StringBuilder.append_c(addr(sb_assert), "\\n\");\n    failed++;\n}\n\n");
+        return StringBuilder.to_string(addr(sb_assert));
+    }
+    
     if equals_c(node_type, "Function") {
         mut func_name: string = ast.data.function.name;
         mut return_type: string = ast.data.function.return_type;
