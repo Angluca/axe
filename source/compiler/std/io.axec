@@ -40,14 +40,14 @@ pub def println_char(value: char) {
 }
 
 /// Print out some string
-pub def print_chrptr(value: char*) {
+pub def print_chrptr(value: ref char) {
     unsafe {
         C.printf("%s", value);
     }
 }
 
 /// Print out some string with a newline
-pub def println_chrptr(value: char*) {
+pub def println_chrptr(value: ref char) {
     unsafe {
         C.printf("%s\n", value);
     }
