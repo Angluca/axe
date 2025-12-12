@@ -284,7 +284,7 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
             last_dot = i_ext;
             break;
         }
-        i_ext = i_ext - 1;
+        i_ext--;
     }
 
     if last_dot < 0 {
