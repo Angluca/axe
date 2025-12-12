@@ -6393,7 +6393,6 @@ pub def generate_c(ast: ref ASTNode): string {
                 return str("");
             }
             
-            val type_param_name: string = type_params.data[0];
             
             mut sb_all_funcs: StringBuilder = StringBuilder.init(8192);
 
@@ -6404,15 +6403,43 @@ pub def generate_c(ast: ref ASTNode): string {
                     break;
                 }
                 
-                val concrete_type: string = when_types.data[branch_idx];
+                val constraint_str: string = when_types.data[branch_idx];
                 val child_count: i32 = when_counts.data[branch_idx];
+                
                 mut sb_spec_name: StringBuilder = StringBuilder.init(256);
-
                 StringBuilder.append(addr(sb_spec_name), func_name);
-                StringBuilder.append_c(addr(sb_spec_name), "__");
-                StringBuilder.append(addr(sb_spec_name), type_param_name);
-                StringBuilder.append_c(addr(sb_spec_name), "_");
-                StringBuilder.append(addr(sb_spec_name), concrete_type);
+                mut constraint_idx: i32 = 0;
+                mut constraint_start: i32 = 0;
+                val constraint_len: i32 = str_len(constraint_str);
+                
+                loop {
+                    if constraint_idx > constraint_len {
+                        break;
+                    }
+                    
+                    mut is_sep: bool = false;
+                    if constraint_idx == constraint_len {
+                        is_sep = true;
+                    } elif get_char(constraint_str, constraint_idx) == ',' {
+                        is_sep = true;
+                    }
+                    
+                    if is_sep {
+                        val one_constraint: string = substring_se(constraint_str, constraint_start, constraint_idx);
+                        val colon_pos: i32 = find_char_from(one_constraint, ':', 0);
+                        if colon_pos > 0 {
+                            val param_name: string = substring_se(one_constraint, 0, colon_pos);
+                            val concrete_tp: string = substring_se(one_constraint, colon_pos + 1, str_len(one_constraint));
+                            StringBuilder.append_c(addr(sb_spec_name), "__");
+                            StringBuilder.append(addr(sb_spec_name), param_name);
+                            StringBuilder.append_c(addr(sb_spec_name), "_");
+                            StringBuilder.append(addr(sb_spec_name), concrete_tp);
+                        }
+                        constraint_start = constraint_idx + 1;
+                    }
+                    
+                    constraint_idx++;
+                }
 
                 val spec_func_name: string = StringBuilder.to_string(addr(sb_spec_name));
 
@@ -6425,10 +6452,41 @@ pub def generate_c(ast: ref ASTNode): string {
                 
                 mut gen_arena: Arena = Arena.create(1024);
                 StringBoolMap.set(addr(g_generated_functions), addr(gen_arena), spec_func_name, true);
+
+                mut type_mapping: StringStringMap = deref(StringStringMap.create(addr(gen_arena), 16));
+                mut tm_idx: i32 = 0;
+                mut tm_start: i32 = 0;
+                val tm_len: i32 = str_len(constraint_str);
+                
+                loop {
+                    if tm_idx > tm_len {
+                        break;
+                    }
+                    
+                    mut is_tm_sep: bool = false;
+                    if tm_idx == tm_len {
+                        is_tm_sep = true;
+                    } elif get_char(constraint_str, tm_idx) == ',' {
+                        is_tm_sep = true;
+                    }
+                    
+                    if is_tm_sep {
+                        val tm_constraint: string = substring_se(constraint_str, tm_start, tm_idx);
+                        val tm_colon: i32 = find_char_from(tm_constraint, ':', 0);
+                        if tm_colon > 0 {
+                            val tm_param: string = substring_se(tm_constraint, 0, tm_colon);
+                            val tm_concrete: string = substring_se(tm_constraint, tm_colon + 1, str_len(tm_constraint));
+                            StringStringMap.set(addr(type_mapping), addr(gen_arena), tm_param, tm_concrete);
+                        }
+                        tm_start = tm_idx + 1;
+                    }
+                    
+                    tm_idx++;
+                }
                 
                 mut spec_return_type: string = return_type;
-                if equals_c(return_type, type_param_name.data) {
-                    spec_return_type = concrete_type;
+                if StringStringMap.contains(addr(type_mapping), return_type) {
+                    spec_return_type = StringStringMap.get(addr(type_mapping), return_type);
                 }
                 
                 val mapped_ret: string = map_axe_type_to_c(spec_return_type);
@@ -6481,8 +6539,9 @@ pub def generate_c(ast: ref ASTNode): string {
                             val param_name: string = strip(substring_se(param, 0, colon_pos));
                             mut param_type: string = strip(substr(param, colon_pos + 1, str_len(param) - colon_pos - 1));
                             
-                            if equals_c(param_type, type_param_name.data) {
-                                param_type = concrete_type;
+                            // Check if param_type matches any type parameter in our mapping
+                            if StringStringMap.contains(addr(type_mapping), param_type) {
+                                param_type = StringStringMap.get(addr(type_mapping), param_type);
                             }
                             
                             val processed_type: string = process_parameter_type(param_type);
@@ -6518,10 +6577,11 @@ pub def generate_c(ast: ref ASTNode): string {
                         }
 
                         if is_branch_start {
-                            val branch_type: string = when_types.data[next_check_branch];
+                            val branch_constraint: string = when_types.data[next_check_branch];
                             val b_count: i32 = when_counts.data[next_check_branch];
                             
-                            val is_match: bool = equals_c(branch_type, concrete_type.data);
+                            // Compare the branch constraint with current constraint_str
+                            val is_match: bool = equals_c(branch_constraint, constraint_str.data);
                             
                             if is_match {
                                 mut bi: i32 = 0;
@@ -7831,6 +7891,25 @@ pub def generate_c(ast: ref ASTNode): string {
         }
         StringBuilder.append_c(addr(sb_loop), "}\n");
         return StringBuilder.to_string(addr(sb_loop));
+    }
+    
+    if equals_c(node_type, "WhenBranch") {
+        mut sb_when: StringBuilder = StringBuilder.init(1024);
+        
+        if ast.children != nil {
+            val wchildren: ref list(ASTNode) = ast.children;
+            mut wi: i32 = 0;
+            loop {
+                if wi >= len(deref(wchildren)) {
+                    break;
+                }
+                val wchild_code: string = generate_c(addr(wchildren.data[wi]));
+                StringBuilder.append(addr(sb_when), wchild_code);
+                wi++;
+            }
+        }
+        
+        return StringBuilder.to_string(addr(sb_when));
     }
 
     if equals_c(node_type, "Platform") {

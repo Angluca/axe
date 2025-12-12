@@ -271,6 +271,11 @@ pub model ASTNode {
             is_mutable: ref list(bool);
         };
         
+        when_branch: model {
+            type_params: ref list(string);      // e.g., ["T2", "T"]
+            concrete_types: ref list(string);   // e.g., ["i32", "IntList"]
+        };
+        
         /// Simple nodes with no additional data (Loop, Break, Continue, Test, Program, Parallel, Single)
         /// These just use node_type and children
         empty: i32;

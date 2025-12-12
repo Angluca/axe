@@ -2861,7 +2861,8 @@ def parse_function(ctx: ref ParserContext): ASTNode {
                 enforce_raw(false, err.data);
                 return func;
             }
-            ctx.pos++; // Skip type param name (we already know it from func.data.function.type_params)
+            val first_type_param: string = ctx.tokens.data[ctx.pos].value;
+            ctx.pos++; // Skip type param name
             skip_whitespace(ctx);
             
             // Expect 'is' keyword
@@ -2878,10 +2879,59 @@ def parse_function(ctx: ref ParserContext): ASTNode {
                 enforce_raw(false, err.data);
                 return func;
             }
-            val concrete_type: string = ctx.tokens.data[ctx.pos].value;
-            append(when_branch_types, concrete_type);
+            val first_concrete_type: string = ctx.tokens.data[ctx.pos].value;
             ctx.pos++;
             skip_whitespace(ctx);
+            
+            mut constraint_str: string = concat(first_type_param, str(":"));
+            constraint_str = concat(constraint_str, first_concrete_type);
+            
+            loop {
+                if ctx.pos >= len(ctx.tokens) {
+                    break;
+                }
+                
+                val next_tok: Token = ctx.tokens.data[ctx.pos];
+                if next_tok.token_type != TokenType.AND {
+                    break;
+                }
+                
+                ctx.pos++; // Skip 'and'
+                skip_whitespace(ctx);
+                
+                if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
+                    mut err: string = format_error(ctx, str("Expected type parameter after 'and'"));
+                    enforce_raw(false, err.data);
+                    return func;
+                }
+                val next_type_param: string = ctx.tokens.data[ctx.pos].value;
+                ctx.pos++;
+                skip_whitespace(ctx);
+                
+                if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IS {
+                    mut err: string = format_error(ctx, str("Expected 'is' after type parameter in 'and' clause"));
+                    enforce_raw(false, err.data);
+                    return func;
+                }
+                ctx.pos++; // Skip 'is'
+                skip_whitespace(ctx);
+                
+                if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
+                    mut err: string = format_error(ctx, str("Expected concrete type after 'is' in 'and' clause"));
+                    enforce_raw(false, err.data);
+                    return func;
+                }
+                val next_concrete_type: string = ctx.tokens.data[ctx.pos].value;
+                ctx.pos++;
+                skip_whitespace(ctx);
+                
+                constraint_str = concat(constraint_str, str(","));
+                constraint_str = concat(constraint_str, next_type_param);
+                constraint_str = concat(constraint_str, str(":"));
+                constraint_str = concat(constraint_str, next_concrete_type);
+            }
+            
+            append(when_branch_types, constraint_str);
             
             if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.LBRACE {
                 mut err: string = format_error(ctx, str("Expected '{' after type in when clause"));
@@ -3111,6 +3161,148 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         node.node_type = str("Continue");
         node.line = token.line;
         node.source_file = ctx.filename;
+        return node;
+    }
+    
+    if token_type == TokenType.WHEN {
+        val when_line: i32 = token.line;
+        consume(ctx); // Skip 'when'
+        skip_whitespace(ctx);
+        
+        mut type_params: list(string);
+        mut concrete_types: list(string);
+        
+        if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
+            mut err: string = format_error(ctx, str("Expected type parameter after 'when'"));
+            enforce_raw(false, err.data);
+            return node;
+        }
+        val first_type_param: string = ctx.tokens.data[ctx.pos].value;
+        append(type_params, first_type_param);
+        consume(ctx);
+        skip_whitespace(ctx);
+        
+        if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IS {
+            mut err: string = format_error(ctx, str("Expected 'is' after type parameter in when clause"));
+            enforce_raw(false, err.data);
+            return node;
+        }
+        consume(ctx); // Skip 'is'
+        skip_whitespace(ctx);
+        
+        if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
+            mut err: string = format_error(ctx, str("Expected concrete type after 'is' in when clause"));
+            enforce_raw(false, err.data);
+            return node;
+        }
+        val first_concrete_type: string = ctx.tokens.data[ctx.pos].value;
+        append(concrete_types, first_concrete_type);
+        consume(ctx);
+        skip_whitespace(ctx);
+        
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            
+            val next_tok: Token = ctx.tokens.data[ctx.pos];
+            if next_tok.token_type != TokenType.AND {
+                break;
+            }
+            
+            consume(ctx); // Skip 'and'
+            skip_whitespace(ctx);
+            
+            if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
+                mut err: string = format_error(ctx, str("Expected type parameter after 'and'"));
+                enforce_raw(false, err.data);
+                return node;
+            }
+            val next_type_param: string = ctx.tokens.data[ctx.pos].value;
+            append(type_params, next_type_param);
+            consume(ctx);
+            skip_whitespace(ctx);
+            
+            if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IS {
+                mut err: string = format_error(ctx, str("Expected 'is' after type parameter in 'and' clause"));
+                enforce_raw(false, err.data);
+                return node;
+            }
+            consume(ctx); // Skip 'is'
+            skip_whitespace(ctx);
+            
+            if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
+                mut err: string = format_error(ctx, str("Expected concrete type after 'is' in 'and' clause"));
+                enforce_raw(false, err.data);
+                return node;
+            }
+            val next_concrete_type: string = ctx.tokens.data[ctx.pos].value;
+            append(concrete_types, next_concrete_type);
+            consume(ctx);
+            skip_whitespace(ctx);
+        }
+        
+        if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.LBRACE {
+            mut err: string = format_error(ctx, str("Expected '{' after type in when clause"));
+            enforce_raw(false, err.data);
+            return node;
+        }
+        consume(ctx); // Skip '{'
+        
+        push_scope();
+        
+        mut when_children: list(ASTNode);
+        loop {
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            
+            skip_whitespace(ctx);
+            
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            
+            if ctx.tokens.data[ctx.pos].token_type == TokenType.RBRACE {
+                consume(ctx); // Skip '}'
+                break;
+            }
+            
+            val stmt: ASTNode = parse_statement_helper(ctx, scope);
+            if str_len(stmt.node_type) > 0 {
+                append(when_children, stmt);
+            }
+        }
+        
+        pop_scope();
+        
+        node.node_type = str("WhenBranch");
+        node.line = when_line;
+        node.source_file = ctx.filename;
+        
+        unsafe {
+            val tp_size: usize = C.sizeof(list(string));
+            val heap_type_params: ref list(string) = cast[ref list(string)](C.malloc(tp_size));
+            if heap_type_params != nil {
+                C.memcpy(heap_type_params, addr(type_params), tp_size);
+                node.data.when_branch.type_params = heap_type_params;
+            }
+            
+            val ct_size: usize = C.sizeof(list(string));
+            val heap_concrete_types: ref list(string) = cast[ref list(string)](C.malloc(ct_size));
+            if heap_concrete_types != nil {
+                C.memcpy(heap_concrete_types, addr(concrete_types), ct_size);
+                node.data.when_branch.concrete_types = heap_concrete_types;
+            }
+            
+            val children_size: usize = C.sizeof(list(ASTNode));
+            val heap_children: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(children_size));
+            if heap_children != nil {
+                C.memcpy(heap_children, addr(when_children), children_size);
+                node.children = heap_children;
+            }
+        }
+        
         return node;
     }
     
