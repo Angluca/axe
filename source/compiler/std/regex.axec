@@ -1,6 +1,7 @@
 use std.string (
     string
 );
+
 use external("pcre.h");
 
 /// Simple regex-like support built on substring search.
@@ -18,38 +19,46 @@ pub def is_match(re: regex, text: string): bool {
     return match(re.pattern, text);
 }
 
+extern def pcre_compile(pattern: ref char,
+    options: i32,
+    errptr: addr ref char,
+    erroffset: addr i32,
+    tableptr: ref void): ref pcre;
+extern def pcre_exec(code: ref pcre,
+    extra: ref void,
+    subject: ref char,
+    length: i32,
+    startoffset: i32,
+    options: i32,
+    ovector: ref i32,
+    ovecsize: i32): i32;
+extern def pcre_free(ptr: ref void);
+
 /// Returns true if the given text contains pattern as a substring.
 def match(pattern: string, text: string): bool {
-    mut result: bool = false;
+    foreign {pcre};
 
-    raw {
-        const char *error = NULL;
-        int erroffset = 0;
-        pcre *re = pcre_compile((const char*)pattern.data,
-                                0,
-                                &error,
-                                &erroffset,
-                                NULL);
-        if (re != NULL) {
-            int ovector[30];
-            int rc = pcre_exec(re,
-                               NULL,
-                               (const char*)text.data,
-                               (int)text.len,
-                               0,
-                               0,
-                               ovector,
-                               30);
-            if (rc >= 0) {
-                result = true;
-            } else {
-                result = false;
-            }
-            pcre_free(re);
+    mut result: bool = false;
+    mut arena: Arena = Arena.create(text.len + pattern.len + 1024);
+    val error: ref char = nil;
+    val err_offset: i32 = 0;
+    mut re: ref pcre = pcre_compile(cast[ref char](pattern.data), 0, addr(error), addr(err_offset), nil);
+
+    if re != nil {
+        val ovector: ref i32 = Arena.alloc_array(addr(arena), C.sizeof(i32), 30);
+        val rc: i32 = pcre_exec(
+            re, nil, cast[ref char](text.data), cast[i32](text.len), 0, 0, ovector, 30
+        );
+        if rc >= 0 {
+            result = true;
         } else {
             result = false;
         }
+        pcre_free(cast[ref void](re));
+    } else {
+        result = false;
     }
+
     return result;
 }
 
