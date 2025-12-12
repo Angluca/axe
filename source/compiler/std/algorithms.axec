@@ -16,6 +16,16 @@ def list_contains[T, T2](lst: T, value: T2): bool {
                 return true;
             }
         }
+        when T2 is float and T is FloatList {
+            if lst.data[i] == cast[float](value) {
+                return true;
+            }
+        }
+        when T2 is bool and T is BoolList {
+            if lst.data[i] == cast[bool](value) {
+                return true;
+            }
+        }
     }
     return false;
 }
