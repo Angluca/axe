@@ -100,9 +100,9 @@ def http_get(url: string): HttpResponse {
             header_chunk.size = 0;
             
             curl_easy_setopt(curl, CURLOPT_URL, url.data);
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, std__net__write_callback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&body_chunk);
-            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, write_callback);
+            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, std__net__write_callback);
             curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&header_chunk);
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
             curl_easy_setopt(curl, CURLOPT_USERAGENT, "axe-std.1.0");
@@ -161,9 +161,9 @@ def http_post(url: string, data: string): HttpResponse {
             curl_easy_setopt(curl, CURLOPT_URL, url.data);
             curl_easy_setopt(curl, CURLOPT_POST, 1L);
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.data);
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, std__net__write_callback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&body_chunk);
-            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, write_callback);
+            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, std__net__write_callback);
             curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&header_chunk);
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
             curl_easy_setopt(curl, CURLOPT_USERAGENT, "axe-std.1.0");
@@ -222,9 +222,9 @@ def http_put(url: string, data: string): HttpResponse {
             curl_easy_setopt(curl, CURLOPT_URL, url.data);
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.data);
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, std__net__write_callback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&body_chunk);
-            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, write_callback);
+            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, std__net__write_callback);
             curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&header_chunk);
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
             curl_easy_setopt(curl, CURLOPT_USERAGENT, "axe-std.1.0");
@@ -282,9 +282,9 @@ def http_delete(url: string): HttpResponse {
             
             curl_easy_setopt(curl, CURLOPT_URL, url.data);
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, std__net__write_callback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&body_chunk);
-            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, write_callback);
+            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, std__net__write_callback);
             curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&header_chunk);
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
             curl_easy_setopt(curl, CURLOPT_USERAGENT, "axe-std.1.0");
@@ -343,9 +343,9 @@ def http_patch(url: string, data: string): HttpResponse {
             curl_easy_setopt(curl, CURLOPT_URL, url.data);
             curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.data);
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, std__net__write_callback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&body_chunk);
-            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, write_callback);
+            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, std__net__write_callback);
             curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&header_chunk);
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
             curl_easy_setopt(curl, CURLOPT_USERAGENT, "axe-std.1.0");
@@ -399,7 +399,7 @@ def http_head(url: string): HttpResponse {
             
             curl_easy_setopt(curl, CURLOPT_URL, url.data);
             curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
-            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, write_callback);
+            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, std__net__write_callback);
             curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&header_chunk);
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
             curl_easy_setopt(curl, CURLOPT_USERAGENT, "axe-std.1.0");
@@ -605,7 +605,7 @@ def net_init(): bool {
 def net_cleanup() {
     platform windows {
         unsafe {
-            C.WSACleanup();
+            // C.WSACleanup();
         }
     }
 }
