@@ -54,7 +54,19 @@ def main() {
 
 ### Building from Source
 
-There are two ways to build from source without already having an `axe` binary, one involves cloning tag v0.0.0, and building with `dub build`, though you can also clone https://github.com/axelang/axe-bootstrap.git to get axe latest on POSIX systems. 
+There are two ways to build from source without already having an `axe` binary, one involves cloning tag v0.0.0, and building with `dub build`, though you can also clone https://github.com/axelang/axe-bootstrap.git to get axe latest on POSIX systems.
+
+Bootstrapping process:
+
+```bash
+git clone https://github.com/axelang/axe-bootstrap.git 
+cd axe-bootstrap
+./build_exp.sh
+cd ..
+git clone https://github.com/axelang/axe.git
+cp axe/source/compiler/std axe-bootstrap/std
+./axe-bootstrap/axe axe/source/compiler/axc.axe
+```
 
 If you already have an axe binary (recommended - download from release v0.0.5), the build process is simply:
 
