@@ -486,9 +486,21 @@ def infer_expression_type(expr: string): string {
         return str("char");
     }
     
-    // Numeric literal - check for decimal point for float
     val first_char: char = get_char(trimmed, 0);
-    if (first_char >= '0' and first_char <= '9') or first_char == '-' {
+    mut is_numeric: bool = false;
+    
+    if (first_char >= '0' and first_char <= '9') {
+        is_numeric = true;
+    } elif first_char == '-' {
+        if str_len(trimmed) > 1 {
+            val second_char: char = get_char(trimmed, 1);
+            if (second_char >= '0' and second_char <= '9') or second_char == '.' {
+                is_numeric = true;
+            }
+        }
+    }
+
+    if is_numeric {
         if find_char_from(trimmed, '.', 0) >= 0 {
             return str("f64");
         }
@@ -7148,7 +7160,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     val ptype: string = strip(substr(p, cp + 1, str_len(p) - cp - 1));
                     if str_len(pname) > 0 and str_len(ptype) > 0 {
                         validate_type_imported(ptype);
-                        StringStringMap.set(addr(g_var_types), addr(arena), pname, ptype);
+                        StringStringMap.set(addr(g_var_types), addr(func_arena), pname, ptype);
                     }
                 }
                 pi = pi + 1;
