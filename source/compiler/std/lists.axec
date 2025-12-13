@@ -126,7 +126,7 @@ test {
     IntList.print_all(my_list);
 
     println "Element at index 2:";
-    println IntList.get(my_list, 2);
+    println IntList.get(my_list, cast[usize](2));
 
     Arena.destroy(addr(arena));
 }

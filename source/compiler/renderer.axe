@@ -821,7 +821,7 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
 }
 
 /// Recursively collect function signatures from AST
-def collect_function_signatures(node: ref ASTNode, arena: ref Arena) {
+def collect_function_signatures(node: ref ASTNode, arena: ref Arena, prefix: string) {
     if node == nil {
         return;
     }
@@ -830,12 +830,23 @@ def collect_function_signatures(node: ref ASTNode, arena: ref Arena) {
         val func_name: string = node.data.function.name;
         val params: ref list(string) = node.data.function.params;
         val ret_type: string = node.data.function.return_type;
-        register_function_signature(func_name, params, ret_type, arena);
+        
+        mut reg_name: string = func_name;
+        if str_len(prefix) > 0 {
+            reg_name = concat(prefix, func_name);
+        }
+        
+        // DEBUG PRINT
+        if equals_c(func_name, "create") {
+            print "DEBUG: Registering function '"; print reg_name; print "'\n";
+        }
+
+        register_function_signature(reg_name, params, ret_type, arena);
         
         if node.data.function.is_generic {
-            StringBoolMap.set(addr(g_generic_functions), arena, func_name, true);
-            if StringStringMap.contains(addr(g_function_prefixes), func_name) {
-                val prefixed_name: string = StringStringMap.get(addr(g_function_prefixes), func_name);
+            StringBoolMap.set(addr(g_generic_functions), arena, reg_name, true);
+            if StringStringMap.contains(addr(g_function_prefixes), reg_name) {
+                val prefixed_name: string = StringStringMap.get(addr(g_function_prefixes), reg_name);
                 StringBoolMap.set(addr(g_generic_functions), arena, prefixed_name, true);
             }
         }
@@ -854,6 +865,25 @@ def collect_function_signatures(node: ref ASTNode, arena: ref Arena) {
         StringBoolMap.set(addr(g_overloads), arena, func_name, true);
     }
     
+    if equals_c(node.node_type, "Model") {
+        val model_name: string = node.data.model_node.name;
+
+        if node.children != nil {
+            val children: ref list(ASTNode) = node.children;
+            mut i: i32 = 0;
+            loop {
+                if i >= len(deref(children)) {
+                    break;
+                }
+                mut model_prefix: string = concat(model_name, str("."));
+                collect_function_signatures(addr(children.data[i]), arena, model_prefix);
+                i++;
+            }
+        }
+
+        return;
+    }
+
     if node.children != nil {
         val children: ref list(ASTNode) = node.children;
         mut i: i32 = 0;
@@ -861,7 +891,7 @@ def collect_function_signatures(node: ref ASTNode, arena: ref Arena) {
             if i >= len(deref(children)) {
                 break;
             }
-            collect_function_signatures(addr(children.data[i]), arena);
+            collect_function_signatures(addr(children.data[i]), arena, prefix);
             i++;
         }
     }
@@ -905,7 +935,7 @@ def collect_foreign_types(node: ref ASTNode) {
 /// Build the g_function_param_types map from the AST
 def build_function_signatures(ast: ref ASTNode) {
     mut arena: Arena = Arena.create(1024 * 1024);
-    collect_function_signatures(ast, addr(arena));
+    collect_function_signatures(ast, addr(arena), str(""));
 }
 
 /// Collect external imports from AST recursively.
@@ -2200,6 +2230,56 @@ def rewrite_generic_calls(expr: string): string {
                             }
                         }
                     }
+                    
+                    if m < expr_len and get_char(expr, m) == '(' {
+                        if StringStringMap.contains(addr(g_model_names), ident) or is_symbol_imported(ident) {
+                            mut sb_check: StringBuilder = StringBuilder.init(str_len(ident) + str_len(method_name) + 2);
+                            StringBuilder.append(addr(sb_check), ident);
+                            StringBuilder.append_c(addr(sb_check), ".");
+                            StringBuilder.append(addr(sb_check), method_name);
+                            val check_name: string = StringBuilder.to_string(addr(sb_check));
+                            StringBuilder.destroy(addr(sb_check));
+                            
+                            if StringStringMap.contains(addr(g_function_param_types), check_name) {
+                                val vm_start: i32 = m;
+                                mut vm_paren_depth: i32 = 0;
+                                mut vm_in_str: bool = false;
+                                mut vm_in_char: bool = false;
+                                mut vm_end: i32 = -1;
+                                mut vmi: i32 = vm_start;
+                                
+                                loop {
+                                    if vmi >= expr_len { break; }
+                                    val vc: char = get_char(expr, vmi);
+                                    if vc == '"' and !vm_in_char and !is_escaped_quote(expr, vmi) {
+                                        vm_in_str = !vm_in_str;
+                                    } elif vc == '\'' and !vm_in_str and !is_escaped_quote(expr, vmi) {
+                                        vm_in_char = !vm_in_char;
+                                    } elif !vm_in_str and !vm_in_char {
+                                        if vc == '(' {
+                                            vm_paren_depth = vm_paren_depth + 1;
+                                        } elif vc == ')' {
+                                            vm_paren_depth = vm_paren_depth - 1;
+                                            if vm_paren_depth == 0 {
+                                                vm_end = vmi;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    vmi++;
+                                }
+                                
+                                if vm_end > vm_start + 1 {
+                                    val vm_args: string = strip(substring_se(expr, vm_start + 1, vm_end));
+                                    validate_function_call(check_name, vm_args, 0);
+                                } else {
+                                    if vm_end > vm_start {
+                                        validate_function_call(check_name, str(""), 0);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
             
@@ -2225,47 +2305,61 @@ def rewrite_generic_calls(expr: string): string {
                         }
                     }
 
-                    if !is_generic_match {
-                         // Validate regular function calls
-                         if StringStringMap.contains(addr(g_function_param_types), ident) or 
-                            StringStringMap.contains(addr(g_function_prefixes), ident) {
-                             
-                             val v_start: i32 = k;
-                             mut v_paren_depth: i32 = 0;
-                             mut v_in_str: bool = false;
-                             mut v_in_char: bool = false;
-                             mut v_end: i32 = -1;
-                             
-                             mut vi: i32 = v_start;
-                             loop {
-                                 if vi >= expr_len { break; }
-                                 val vc: char = get_char(expr, vi);
-                                 
-                                 if vc == '"' and !v_in_char and !is_escaped_quote(expr, vi) {
-                                     v_in_str = !v_in_str;
-                                 } elif vc == '\'' and !v_in_str and !is_escaped_quote(expr, vi) {
-                                     v_in_char = !v_in_char;
-                                 } elif !v_in_str and !v_in_char {
-                                     if vc == '(' {
-                                         v_paren_depth = v_paren_depth + 1;
-                                     } elif vc == ')' {
-                                         v_paren_depth = v_paren_depth - 1;
-                                         if v_paren_depth == 0 {
-                                             v_end = vi;
-                                             break;
-                                         }
-                                     }
+                     if !is_generic_match {
+                         mut is_method_part: bool = false;
+                         mut back_scan: i32 = ident_start - 1;
+                         loop {
+                             if back_scan < 0 { break; }
+                             val bc: char = get_char(expr, back_scan);
+                             if bc != ' ' and bc != '\t' and bc != '\n' {
+                                 if bc == '.' or (bc == '>' and back_scan > 0 and get_char(expr, back_scan - 1) == '-') {
+                                     is_method_part = true;
                                  }
-                                 vi = vi + 1;
+                                 break;
                              }
+                             back_scan--;
+                         }
+                         
+
+                         if !is_method_part and (StringStringMap.contains(addr(g_function_param_types), ident) or 
+                            StringStringMap.contains(addr(g_function_prefixes), ident)) {
                              
-                             if v_end > v_start + 1 {
-                                 val v_args: string = strip(substring_se(expr, v_start + 1, v_end));
-                                 validate_function_call(ident, v_args, 0);
-                             } else {
-                                 if v_end > v_start {
-                                     validate_function_call(ident, str(""), 0);
-                                 }
+                            val v_start: i32 = k;
+                            mut v_paren_depth: i32 = 0;
+                            mut v_in_str: bool = false;
+                            mut v_in_char: bool = false;
+                            mut v_end: i32 = -1;
+                            mut vi: i32 = v_start;
+
+                            loop {
+                                if vi >= expr_len { break; }
+                                val vc: char = get_char(expr, vi);
+                                
+                                if vc == '"' and !v_in_char and !is_escaped_quote(expr, vi) {
+                                    v_in_str = !v_in_str;
+                                } elif vc == '\'' and !v_in_str and !is_escaped_quote(expr, vi) {
+                                    v_in_char = !v_in_char;
+                                } elif !v_in_str and !v_in_char {
+                                    if vc == '(' {
+                                        v_paren_depth = v_paren_depth + 1;
+                                    } elif vc == ')' {
+                                        v_paren_depth = v_paren_depth - 1;
+                                        if v_paren_depth == 0 {
+                                            v_end = vi;
+                                            break;
+                                        }
+                                    }
+                                }
+                                vi = vi + 1;
+                            }
+                            
+                            if v_end > v_start + 1 {
+                                val v_args: string = strip(substring_se(expr, v_start + 1, v_end));
+                                validate_function_call(ident, v_args, 0);
+                            } else {
+                                if v_end > v_start {
+                                    validate_function_call(ident, str(""), 0);
+                                }
                              }
                          }
                     }

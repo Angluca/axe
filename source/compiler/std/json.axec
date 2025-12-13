@@ -357,7 +357,7 @@ test {
         mut len: usize = get_len(arr_root);
         assert len == 5, "Array should have 5 elements";
         
-        mut first: char* = arr_get(arr_root, 0);
+        mut first: char* = arr_get(arr_root, cast[usize](0));
         assert is_num(first), "First element should be a number";
         assert get_int(first) == 1, "First element should be 1";
         

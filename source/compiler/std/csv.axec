@@ -366,21 +366,21 @@ test {
     
     assert doc.row_count == 3, "Should parse 3 rows";
     
-    mut row0: ref CsvRow = get_row(addr(doc), 0);
+    mut row0: ref CsvRow = get_row(addr(doc), cast[usize](0));
     assert row0 != nil, "Should get first row";
     assert row0.field_count == 3, "First row should have 3 fields";
     
-    mut field0: string = get_field(row0, 0);
+    mut field0: string = get_field(row0, cast[usize](0));
     assert field0.len == 4, "First field should be 'name'";
     
-    mut row1: ref CsvRow = get_row(addr(doc), 1);
+    mut row1: ref CsvRow = get_row(addr(doc), cast[usize](1));
     assert row1 != nil, "Should get second row";
     assert row1.field_count == 3, "Second row should have 3 fields";
     
-    mut name: string = get_field(row1, 0);
+    mut name: string = get_field(row1, cast[usize](0));
     assert name.len == 4, "Name should be 'John'";
     
-    mut age: string = get_field(row1, 1);
+    mut age: string = get_field(row1, cast[usize](1));
     assert age.len == 2, "Age should be '30'";
     
     mut quoted_csv: string = string.create("\"Smith, John\",30,\"New York, NY\"\n");
@@ -388,7 +388,7 @@ test {
     
     assert quoted_doc.row_count == 1, "Should parse 1 row with quoted fields";
     
-    mut quoted_row: ref CsvRow = get_row(addr(quoted_doc), 0);
+    mut quoted_row: ref CsvRow = get_row(addr(quoted_doc), cast[usize](0));
     assert quoted_row != nil, "Should get quoted row";
     assert quoted_row.field_count == 3, "Should have 3 fields despite internal commas";
     

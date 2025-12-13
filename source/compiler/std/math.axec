@@ -129,7 +129,7 @@ pub def pow(base: f64, exp: i32): f64 {
 /// Exponential series
 pub def exp(x: f64): f64 {
     if x < 0.0 {
-        return 1.0 / exp(-x);
+        return 1.0 / exp(cast[f64](-x));
     }
 
     mut n: i32 = 0;
