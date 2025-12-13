@@ -638,6 +638,22 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         }
     }
     
+    
+    val t_pos_lookup: i32 = find_substr(lookup_name, str("__T_"));
+    if t_pos_lookup > 0 {
+         val base_gen: string = substring_se(lookup_name, 0, t_pos_lookup);
+         if StringBoolMap.contains(addr(g_generic_functions), base_gen) {
+             lookup_name = base_gen;
+         } else {
+             if StringStringMap.contains(addr(g_function_prefixes), base_gen) {
+                 val pref_base: string = StringStringMap.get(addr(g_function_prefixes), base_gen);
+                 if StringBoolMap.contains(addr(g_generic_functions), pref_base) {
+                     lookup_name = pref_base;
+                 }
+             }
+         }
+    }
+    
     if !StringStringMap.contains(addr(g_function_param_types), lookup_name) {
         if StringBoolMap.contains(addr(g_overloads), lookup_name) 
             or StringBoolMap.contains(addr(g_extern_functions), lookup_name) 
@@ -1930,6 +1946,26 @@ def rewrite_ref_member_access(expr: string): string {
     return result;
 }
 
+/// Sanitize a string to be a valid C identifier part (replacing spaces, *, etc. with _)
+def sanitize_c_identifier(name: string): string {
+    mut sb: StringBuilder = StringBuilder.init(str_len(name) + 16);
+    mut i: i32 = 0;
+    val len: i32 = str_len(name);
+    loop {
+        if i >= len { break; }
+        val ch: char = get_char(name, i);
+        if (ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'Z') or (ch >= '0' and ch <= '9') or ch == '_' {
+            StringBuilder.append_char(addr(sb), ch);
+        } else {
+            StringBuilder.append_char(addr(sb), '_');
+        }
+        i++;
+    }
+    val result: string = StringBuilder.to_string(addr(sb));
+    StringBuilder.destroy(addr(sb));
+    return result;
+}
+
 /// Rewrite generic function calls of the form `func[Type](args)` into
 /// specialized function names like `func__T_Type(args)`.
 def rewrite_generic_calls(expr: string): string {
@@ -2044,7 +2080,7 @@ def rewrite_generic_calls(expr: string): string {
                          
                         StringBuilder.append(addr(sb), base_ident);
                         StringBuilder.append_c(addr(sb), "__T_");
-                        StringBuilder.append(addr(sb), type_arg);
+                        StringBuilder.append(addr(sb), sanitize_c_identifier(type_arg));
                         i = k;
                         continue;
                     }
@@ -2101,7 +2137,7 @@ def rewrite_generic_calls(expr: string): string {
                                 StringBuilder.append_c(addr(sb), "__");
                                 StringBuilder.append(addr(sb), method_name);
                                 StringBuilder.append_c(addr(sb), "__T_");
-                                StringBuilder.append(addr(sb), type_arg2);
+                                StringBuilder.append(addr(sb), sanitize_c_identifier(type_arg2));
                                 i = m;
                                 continue;
                             }
@@ -2158,7 +2194,7 @@ def rewrite_generic_calls(expr: string): string {
                             if str_len(inferred_type2) > 0 {
                                 StringBuilder.append(addr(sb), full_name);
                                 StringBuilder.append_c(addr(sb), "__T_");
-                                StringBuilder.append(addr(sb), inferred_type2);
+                                StringBuilder.append(addr(sb), sanitize_c_identifier(inferred_type2));
                                 i = m;
                                 continue;
                             }
@@ -2239,7 +2275,7 @@ def rewrite_generic_calls(expr: string): string {
                     
                         StringBuilder.append(addr(sb), base_ident2);
                         StringBuilder.append_c(addr(sb), "__T_");
-                        StringBuilder.append(addr(sb), inferred_type);
+                        StringBuilder.append(addr(sb), sanitize_c_identifier(inferred_type));
                         i = k;
                         continue;
                     }
@@ -6637,6 +6673,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 constraint_list_len = len(collected_constraints);
             }
             
+            
             loop {
                 if branch_idx >= constraint_list_len {
                     break;
@@ -6682,7 +6719,7 @@ pub def generate_c(ast: ref ASTNode): string {
                             StringBuilder.append_c(addr(sb_spec_name), "__");
                             StringBuilder.append(addr(sb_spec_name), param_name);
                             StringBuilder.append_c(addr(sb_spec_name), "_");
-                            StringBuilder.append(addr(sb_spec_name), concrete_tp);
+                            StringBuilder.append(addr(sb_spec_name), sanitize_c_identifier(concrete_tp));
                         }
                         constraint_start = constraint_idx + 1;
                     }
@@ -6734,6 +6771,11 @@ pub def generate_c(ast: ref ASTNode): string {
                 }
                 
                 mut spec_return_type: string = return_type;
+                
+                if str_len(spec_return_type) == 0 {
+                    spec_return_type = str("void");
+                }
+
                 if StringStringMap.contains(addr(type_mapping), return_type) {
                     spec_return_type = StringStringMap.get(addr(type_mapping), return_type);
                 }
@@ -7920,7 +7962,35 @@ pub def generate_c(ast: ref ASTNode): string {
     }
     
     if equals_c(node_type, "FunctionCall") {
-        val func_name: string = ast.data.func_call.function_name;
+        val func_name_ast: string = ast.data.func_call.function_name;
+        mut func_name: string = func_name_ast;
+
+        val t_pos_chk: i32 = find_substr(func_name, str("__T_"));
+        if t_pos_chk > 0 {
+             val base_chk: string = substring_se(func_name, 0, t_pos_chk);
+             val type_chk: string = substring_se(func_name, t_pos_chk + 4, str_len(func_name));
+             val type_arg_chk: string = strip(type_chk);
+             
+             mut target_base: string = base_chk;
+             if StringStringMap.contains(addr(g_function_prefixes), base_chk) {
+                 target_base = StringStringMap.get(addr(g_function_prefixes), base_chk);
+             }
+             
+             mut is_generic_base: bool = StringBoolMap.contains(addr(g_generic_functions), base_chk);
+             if !is_generic_base {
+                 is_generic_base = StringBoolMap.contains(addr(g_generic_functions), target_base);
+             }
+
+             if is_generic_base {
+                 val san_type_chk: string = sanitize_c_identifier(type_arg_chk);
+                 mut sb_fix: StringBuilder = StringBuilder.init(str_len(target_base) + str_len(san_type_chk) + 16);
+                 StringBuilder.append(addr(sb_fix), target_base);
+                 StringBuilder.append_c(addr(sb_fix), "__T_");
+                 StringBuilder.append(addr(sb_fix), san_type_chk);
+                 func_name = StringBuilder.to_string(addr(sb_fix));
+                 StringBuilder.destroy(addr(sb_fix));
+             }
+        }
         val has_module_sep: bool = str_contains_c(func_name, "__");
         val is_method_call: bool = find_char_from(func_name, '.', 0) >= 0;
         val is_c_call: bool = has_prefix(func_name, str("C."));

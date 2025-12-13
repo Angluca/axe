@@ -2876,16 +2876,31 @@ def parse_function(ctx: ref ParserContext): ASTNode {
             ctx.pos++; // Skip 'is'
             skip_whitespace(ctx);
             
-            if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
+            mut constraint_str: string = concat(first_type_param, str(":"));
+            
+            mut first_concrete_type: string = str("");
+            loop {
+                if ctx.pos >= len(ctx.tokens) { break; }
+                val t: Token = ctx.tokens.data[ctx.pos];
+                if t.token_type == TokenType.AND or t.token_type == TokenType.LBRACE {
+                    break;
+                }
+                if t.token_type == TokenType.REF {
+                    first_concrete_type = concat(first_concrete_type, str("ref "));
+                } elif t.token_type == TokenType.MUT {
+                    first_concrete_type = concat(first_concrete_type, str("mut "));
+                } else {
+                    first_concrete_type = concat(first_concrete_type, t.value);
+                }
+                consume(ctx);
+                skip_whitespace(ctx);
+            }
+            if str_len(first_concrete_type) == 0 {
                 mut err: string = format_error(ctx, str("Expected concrete type after 'is' in when clause"));
                 enforce_raw(false, err.data);
                 return func;
             }
-            val first_concrete_type: string = ctx.tokens.data[ctx.pos].value;
-            ctx.pos++;
-            skip_whitespace(ctx);
-            
-            mut constraint_str: string = concat(first_type_param, str(":"));
+
             constraint_str = concat(constraint_str, first_concrete_type);
             
             loop {
@@ -2918,14 +2933,28 @@ def parse_function(ctx: ref ParserContext): ASTNode {
                 ctx.pos++; // Skip 'is'
                 skip_whitespace(ctx);
                 
-                if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
+                mut next_concrete_type: string = str("");
+                loop {
+                    if ctx.pos >= len(ctx.tokens) { break; }
+                    val t: Token = ctx.tokens.data[ctx.pos];
+                    if t.token_type == TokenType.AND or t.token_type == TokenType.LBRACE {
+                        break;
+                    }
+                    if t.token_type == TokenType.REF {
+                        next_concrete_type = concat(next_concrete_type, str("ref "));
+                    } elif t.token_type == TokenType.MUT {
+                        next_concrete_type = concat(next_concrete_type, str("mut "));
+                    } else {
+                        next_concrete_type = concat(next_concrete_type, t.value);
+                    }
+                    consume(ctx);
+                    skip_whitespace(ctx);
+                }
+                if str_len(next_concrete_type) == 0 {
                     mut err: string = format_error(ctx, str("Expected concrete type after 'is' in 'and' clause"));
                     enforce_raw(false, err.data);
                     return func;
                 }
-                val next_concrete_type: string = ctx.tokens.data[ctx.pos].value;
-                ctx.pos++;
-                skip_whitespace(ctx);
                 
                 constraint_str = concat(constraint_str, str(","));
                 constraint_str = concat(constraint_str, next_type_param);
@@ -3182,15 +3211,30 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         consume(ctx); // Skip 'is'
         skip_whitespace(ctx);
         
-        if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
+        mut first_concrete_type: string = str("");
+        loop {
+            if ctx.pos >= len(ctx.tokens) { break; }
+            val t: Token = ctx.tokens.data[ctx.pos];
+            if t.token_type == TokenType.AND or t.token_type == TokenType.LBRACE {
+                break;
+            }
+            if t.token_type == TokenType.REF {
+                first_concrete_type = concat(first_concrete_type, str("ref "));
+            } elif t.token_type == TokenType.MUT {
+                first_concrete_type = concat(first_concrete_type, str("mut "));
+            } else {
+                first_concrete_type = concat(first_concrete_type, t.value);
+            }
+            consume(ctx);
+            skip_whitespace(ctx);
+        }
+        if str_len(first_concrete_type) == 0 {
             mut err: string = format_error(ctx, str("Expected concrete type after 'is' in when clause"));
             enforce_raw(false, err.data);
             return node;
         }
-        val first_concrete_type: string = ctx.tokens.data[ctx.pos].value;
+        
         append(concrete_types, first_concrete_type);
-        consume(ctx);
-        skip_whitespace(ctx);
         
         loop {
             if ctx.pos >= len(ctx.tokens) {
@@ -3223,15 +3267,30 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             consume(ctx); // Skip 'is'
             skip_whitespace(ctx);
             
-            if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.IDENTIFIER {
+            mut next_concrete_type: string = str("");
+            loop {
+                if ctx.pos >= len(ctx.tokens) { break; }
+                val t: Token = ctx.tokens.data[ctx.pos];
+                if t.token_type == TokenType.AND or t.token_type == TokenType.LBRACE {
+                    break;
+                }
+                if t.token_type == TokenType.REF {
+                    next_concrete_type = concat(next_concrete_type, str("ref "));
+                } elif t.token_type == TokenType.MUT {
+                    next_concrete_type = concat(next_concrete_type, str("mut "));
+                } else {
+                    next_concrete_type = concat(next_concrete_type, t.value);
+                }
+                consume(ctx);
+                skip_whitespace(ctx);
+            }
+            if str_len(next_concrete_type) == 0 {
                 mut err: string = format_error(ctx, str("Expected concrete type after 'is' in 'and' clause"));
                 enforce_raw(false, err.data);
                 return node;
             }
-            val next_concrete_type: string = ctx.tokens.data[ctx.pos].value;
+            
             append(concrete_types, next_concrete_type);
-            consume(ctx);
-            skip_whitespace(ctx);
         }
         
         if ctx.pos >= len(ctx.tokens) or ctx.tokens.data[ctx.pos].token_type != TokenType.LBRACE {
