@@ -201,7 +201,7 @@ pub model string {
 /// Optimized to use StringBuilder instead of O(n²) repeated concatenations.
 pub def replace_all(s: string, from: string, dest: string): string {
     if str_len(from) == 0 {
-        return substring_se(s, 0, str_len(s));
+        return substring_se(s, 0, cast[i32](str_len(s)));
     }
 
     mut sb: StringBuilder = StringBuilder.init(s.len + 64);
@@ -948,7 +948,7 @@ pub def lstrip(s: string): string {
         return string.create("");
     }
 
-    return substr(s, start, s.len - start);
+    return substr(s, cast[i32](start), s.len - start);
 }
 
 /// Strip trailing whitespace from a string.
@@ -974,7 +974,7 @@ pub def rstrip(s: string): string {
         return string.create("");
     }
 
-    return substr(s, 0, end);
+    return substr(s, 0, cast[i32](end));
 }
 
 /// String trailing and leading whitespace.
@@ -1012,7 +1012,7 @@ pub def strip(s: string): string {
             break;
         }
     }
-    return substr(s, start, end - start);
+    return substr(s, cast[i32](start), end - start);
 }
 
 /// Convenience function to convert a char* to a string.

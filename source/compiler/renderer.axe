@@ -381,7 +381,7 @@ def is_builtin_function(name: string): bool {
         or equals_c(name, "printf") or equals_c(name, "sprintf") or equals_c(name, "fprintf")
         or equals_c(name, "fopen") or equals_c(name, "fclose") or equals_c(name, "fread") or equals_c(name, "fwrite")
         or equals_c(name, "exit") or equals_c(name, "abort") or equals_c(name, "atexit")
-        or (name.len >= 2 and name.data[0] == 'C' and name.data[1] == '.');
+        or (name.len >= 2 and name.data[0] == 'C' and (name.data[1] == '.' or (name.data[1] == ' ' and find_char_from(name, '.', 1) > 0)));
 }
 
 /// Check if a symbol is valid (either builtin, imported, or a known model/enum)
@@ -795,14 +795,14 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
                 is_generic_func = true;
             }
         }
-
+        
         if !StringBoolMap.contains(addr(g_extern_functions), func_name) and !is_generic_func {
             if str_len(inferred_type) > 0 and !equals_c(inferred_type, "auto") and compare(mapped_inferred, mapped_expected) != 0 {
                 print(get_short_filename(g_current_source_file));
                 print ":";
                 print(i32_to_string(g_current_line));
                 print ": error: type mismatch in call to '";
-                print func_name;
+                print(replace_all(func_name, str("__"), str(".")));
                 print "': argument ";
                 print(i32_to_string(arg_idx + 1));
                 print " expects type '";
@@ -2223,6 +2223,51 @@ def rewrite_generic_calls(expr: string): string {
                         if StringBoolMap.contains(addr(g_generic_functions), suffix) {
                             is_generic_match = true;
                         }
+                    }
+
+                    if !is_generic_match {
+                         // Validate regular function calls
+                         if StringStringMap.contains(addr(g_function_param_types), ident) or 
+                            StringStringMap.contains(addr(g_function_prefixes), ident) {
+                             
+                             val v_start: i32 = k;
+                             mut v_paren_depth: i32 = 0;
+                             mut v_in_str: bool = false;
+                             mut v_in_char: bool = false;
+                             mut v_end: i32 = -1;
+                             
+                             mut vi: i32 = v_start;
+                             loop {
+                                 if vi >= expr_len { break; }
+                                 val vc: char = get_char(expr, vi);
+                                 
+                                 if vc == '"' and !v_in_char and !is_escaped_quote(expr, vi) {
+                                     v_in_str = !v_in_str;
+                                 } elif vc == '\'' and !v_in_str and !is_escaped_quote(expr, vi) {
+                                     v_in_char = !v_in_char;
+                                 } elif !v_in_str and !v_in_char {
+                                     if vc == '(' {
+                                         v_paren_depth = v_paren_depth + 1;
+                                     } elif vc == ')' {
+                                         v_paren_depth = v_paren_depth - 1;
+                                         if v_paren_depth == 0 {
+                                             v_end = vi;
+                                             break;
+                                         }
+                                     }
+                                 }
+                                 vi = vi + 1;
+                             }
+                             
+                             if v_end > v_start + 1 {
+                                 val v_args: string = strip(substring_se(expr, v_start + 1, v_end));
+                                 validate_function_call(ident, v_args, 0);
+                             } else {
+                                 if v_end > v_start {
+                                     validate_function_call(ident, str(""), 0);
+                                 }
+                             }
+                         }
                     }
                 }
 

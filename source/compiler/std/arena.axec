@@ -60,7 +60,7 @@ pub model Arena {
                 msg = concat_c(msg, " used=");
                 msg = concat(msg, i32_to_string(arena*.offset));
                 msg = concat_c(msg, " req=");
-                msg = concat(msg, i32_to_string(size));
+                msg = concat(msg, i32_to_string(cast[i32](size)));
                 msg = concat_c(msg, "\n");
                 panic(error.create(msg.data));
                 return nil;
