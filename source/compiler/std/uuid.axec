@@ -12,7 +12,6 @@ def generate_uuid(): string {
     result.data = nil;
     result.len  = 0;
     result.cap  = 0;
-
     result.data = cast[ref char](C.malloc(37));
     result.cap  = 37;
 
