@@ -772,7 +772,15 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         val mapped_inferred: string = map_axe_type_to_c(inferred_type);
         val mapped_expected: string = map_axe_type_to_c(expected_type);
         
-        if !StringBoolMap.contains(addr(g_extern_functions), func_name) and !StringBoolMap.contains(addr(g_generic_functions), func_name) {
+        mut is_generic_func: bool = StringBoolMap.contains(addr(g_generic_functions), func_name);
+        if !is_generic_func and StringStringMap.contains(addr(g_function_prefixes), func_name) {
+            val prefixed_func: string = StringStringMap.get(addr(g_function_prefixes), func_name);
+            if StringBoolMap.contains(addr(g_generic_functions), prefixed_func) {
+                is_generic_func = true;
+            }
+        }
+
+        if !StringBoolMap.contains(addr(g_extern_functions), func_name) and !is_generic_func {
             if str_len(inferred_type) > 0 and !equals_c(inferred_type, "auto") and compare(mapped_inferred, mapped_expected) != 0 {
                 print(get_short_filename(g_current_source_file));
                 print ":";
@@ -810,6 +818,10 @@ def collect_function_signatures(node: ref ASTNode, arena: ref Arena) {
         
         if node.data.function.is_generic {
             StringBoolMap.set(addr(g_generic_functions), arena, func_name, true);
+            if StringStringMap.contains(addr(g_function_prefixes), func_name) {
+                val prefixed_name: string = StringStringMap.get(addr(g_function_prefixes), func_name);
+                StringBoolMap.set(addr(g_generic_functions), arena, prefixed_name, true);
+            }
         }
     }
     
@@ -2025,7 +2037,12 @@ def rewrite_generic_calls(expr: string): string {
                     }
                     
                     if k < expr_len and get_char(expr, k) == '(' {
-                        StringBuilder.append(addr(sb), ident);
+                         mut base_ident: string = ident;
+                         if StringStringMap.contains(addr(g_function_prefixes), ident) {
+                             base_ident = StringStringMap.get(addr(g_function_prefixes), ident);
+                         }
+                         
+                        StringBuilder.append(addr(sb), base_ident);
                         StringBuilder.append_c(addr(sb), "__T_");
                         StringBuilder.append(addr(sb), type_arg);
                         i = k;
@@ -2123,6 +2140,18 @@ def rewrite_generic_calls(expr: string): string {
                                     }
                                     if has_decimal2 { inferred_type2 = str("f32"); }
                                     else { inferred_type2 = str("i32"); }
+                                } elif is_ident_start(first_ch2) {
+                                    mut var_end2: i32 = arg_start2;
+                                    loop {
+                                        if var_end2 >= expr_len { break; }
+                                        val vc2: char = get_char(expr, var_end2);
+                                        if !is_token_char(vc2) { break; }
+                                        var_end2++;
+                                    }
+                                    val arg_var_name2: string = substring_se(expr, arg_start2, var_end2);
+                                    if StringStringMap.contains(addr(g_var_types), arg_var_name2) {
+                                        inferred_type2 = StringStringMap.get(addr(g_var_types), arg_var_name2);
+                                    }
                                 }
                             }
                             
@@ -2139,7 +2168,29 @@ def rewrite_generic_calls(expr: string): string {
             }
             
             if k < expr_len and get_char(expr, k) == '(' {
-                if StringBoolMap.contains(addr(g_generic_functions), ident) {
+                mut is_generic_match: bool = StringBoolMap.contains(addr(g_generic_functions), ident);
+                if !is_generic_match {
+                    mut last_sep: i32 = -1;
+                    mut ji: i32 = 0;
+                    val ilen: i32 = str_len(ident);
+                    loop {
+                        if ji + 1 >= ilen { break; }
+                        val c1: char = get_char(ident, ji);
+                        val c2: char = get_char(ident, ji + 1);
+                        if c1 == '_' and c2 == '_' {
+                            last_sep = ji;
+                        }
+                        ji++;
+                    }
+                    if last_sep > 0 {
+                        val suffix: string = substring_se(ident, last_sep + 2, ilen);
+                        if StringBoolMap.contains(addr(g_generic_functions), suffix) {
+                            is_generic_match = true;
+                        }
+                    }
+                }
+
+                if is_generic_match {
                     mut arg_start: i32 = k + 1;
                     loop {
                         if arg_start >= expr_len { break; }
@@ -2165,11 +2216,28 @@ def rewrite_generic_calls(expr: string): string {
                             }
                             if has_decimal { inferred_type = str("f32"); }
                             else { inferred_type = str("i32"); }
+                        } elif is_ident_start(first_ch) {
+                            mut var_end: i32 = arg_start;
+                            loop {
+                                if var_end >= expr_len { break; }
+                                val vc: char = get_char(expr, var_end);
+                                if !is_token_char(vc) { break; }
+                                var_end++;
+                            }
+                            val arg_var_name: string = substring_se(expr, arg_start, var_end);
+                            if StringStringMap.contains(addr(g_var_types), arg_var_name) {
+                                inferred_type = StringStringMap.get(addr(g_var_types), arg_var_name);
+                            }
                         }
                     }
                     
                     if str_len(inferred_type) > 0 {
-                        StringBuilder.append(addr(sb), ident);
+                        mut base_ident2: string = ident;
+                        if StringStringMap.contains(addr(g_function_prefixes), ident) {
+                            base_ident2 = StringStringMap.get(addr(g_function_prefixes), ident);
+                        }
+                    
+                        StringBuilder.append(addr(sb), base_ident2);
                         StringBuilder.append_c(addr(sb), "__T_");
                         StringBuilder.append(addr(sb), inferred_type);
                         i = k;
@@ -6583,7 +6651,12 @@ pub def generate_c(ast: ref ASTNode): string {
                 val child_count: i32 = 0;
                 
                 mut sb_spec_name: StringBuilder = StringBuilder.init(256);
-                StringBuilder.append(addr(sb_spec_name), func_name);
+                
+                mut base_name_for_spec: string = func_name;
+                if StringStringMap.contains(addr(g_function_prefixes), func_name) {
+                    base_name_for_spec = StringStringMap.get(addr(g_function_prefixes), func_name);
+                }
+                StringBuilder.append(addr(sb_spec_name), base_name_for_spec);
                 mut constraint_idx: i32 = 0;
                 mut constraint_start: i32 = 0;
                 val constraint_len: i32 = str_len(constraint_str);
@@ -7854,17 +7927,28 @@ pub def generate_c(ast: ref ASTNode): string {
         
         if !has_module_sep and !is_method_call and !is_c_call and !is_builtin_function(func_name) {
             if !StringStringMap.contains(addr(g_function_prefixes), func_name) {
-                if !StringStringMap.contains(addr(g_function_param_types), func_name) {
+                mut is_specialized_generic: bool = false;
+                val t_pos: i32 = find_substr(func_name, str("__T_"));
+                if t_pos > 0 {
+                    val base_generic_name: string = substring_se(func_name, 0, t_pos);
+                    if StringBoolMap.contains(addr(g_generic_functions), base_generic_name) {
+                        is_specialized_generic = true;
+                    }
+                }
+
+                if !StringStringMap.contains(addr(g_function_param_types), func_name) and !is_specialized_generic {
                     val base_func: string = func_name;
                     if !is_symbol_imported(base_func) {
-                        print(get_short_filename(g_current_source_file));
-                        print ":";
-                        print(i32_to_string(g_current_line));
-                        print ": error: undefined symbol: ";
-                        print base_func;
-                        println ", perhaps missing 'use' statement?";
-                        unsafe {
-                            C.exit(1);
+                        if !StringBoolMap.contains(addr(g_generic_functions), func_name) {
+                            print(get_short_filename(g_current_source_file));
+                            print ":";
+                            print(i32_to_string(g_current_line));
+                            print ": error: undefined symbol: ";
+                            print base_func;
+                            println ", perhaps missing 'use' statement?";
+                            unsafe {
+                                C.exit(1);
+                            }
                         }
                     }
                 }
@@ -8004,10 +8088,6 @@ pub def generate_c(ast: ref ASTNode): string {
         mut emitted_name: string = func_name;
         if StringStringMap.contains(addr(g_function_prefixes), func_name) {
             emitted_name = StringStringMap.get(addr(g_function_prefixes), func_name);
-            debug_print_raw "\n[DBG-FUNCCALL]   Found prefix, emitting:";
-            debug_print_str emitted_name;
-        } else {
-            debug_print_raw "\n[DBG-FUNCCALL]   No prefix found, emitting as-is";
         }
 
         mut sb_call: StringBuilder = StringBuilder.init(512);
@@ -8028,13 +8108,23 @@ pub def generate_c(ast: ref ASTNode): string {
 
                 val raw_arg: string = args.data[arg_idx];
                 val processed_arg: string = process_expression(raw_arg);
-                StringBuilder.append(addr(sb_call), processed_arg);
+                val rewritten_arg: string = rewrite_generic_calls(processed_arg);
+                StringBuilder.append(addr(sb_call), rewritten_arg);
                 arg_idx++;
             }
         }
 
         StringBuilder.append_c(addr(sb_call), ");\n");
-        return StringBuilder.to_string(addr(sb_call));
+        mut final_call: string = StringBuilder.to_string(addr(sb_call));
+        StringBuilder.destroy(addr(sb_call));
+        
+        // Final pass: if this shit is a generic function call that hasn't been specialized (implicit call),
+        // try to specialize it now
+        if StringBoolMap.contains(addr(g_generic_functions), emitted_name) {
+            final_call = rewrite_generic_calls(final_call);
+        }
+        
+        return final_call;
     }
     
     if equals_c(node_type, "Print") {
@@ -8060,7 +8150,50 @@ pub def generate_c(ast: ref ASTNode): string {
             return StringBuilder.to_string(addr(sb_print));
         }
 
+        mut sb_print: StringBuilder = StringBuilder.init(1024);
+        
+        if len(messages) == 1 and len(flags) == 1 and !flags.data[0] {
+            StringBuilder.append_c(addr(sb_print), "printf(\"");
+            StringBuilder.append(addr(sb_print), messages.data[0]);
+            StringBuilder.append_c(addr(sb_print), "\");\n");
+        } else {
+             StringBuilder.append_c(addr(sb_print), "printf(\"");
+        }
+        
         result = strip_all_c_prefixes(result);
+        
+        result = rewrite_generic_calls(result);
+        
+        if str_len(result) == 0 {
+             StringBuilder.clear(addr(sb_print));
+             StringBuilder.append_c(addr(sb_print), "printf(\"");
+             mut i: i32 = 0;
+             loop {
+                 if i >= len(messages) { break; }
+                 if flags.data[i] {
+                     StringBuilder.append_c(addr(sb_print), "%s");
+                 } else {
+                     StringBuilder.append(addr(sb_print), messages.data[i]);
+                 }
+                 i++;
+             }
+             StringBuilder.append_c(addr(sb_print), "\"");
+             
+             i = 0;
+             loop {
+                 if i >= len(messages) { break; }
+                 if flags.data[i] {
+                     StringBuilder.append_c(addr(sb_print), ", ");
+                     val processed: string = process_expression(messages.data[i]);
+                     StringBuilder.append(addr(sb_print), processed);
+                 }
+                 i++;
+             }
+             StringBuilder.append_c(addr(sb_print), ");\n");
+             result = StringBuilder.to_string(addr(sb_print));
+        }
+        
+        StringBuilder.destroy(addr(sb_print));
         return result;
     }
     
