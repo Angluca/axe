@@ -1,5 +1,4 @@
 use std.string;
-use std.typecons;
 
 /// Print out some value with a newline
 overload println(x: generic) {
