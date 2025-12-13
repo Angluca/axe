@@ -19,12 +19,12 @@ pub model SHA256Digest {
 
 /// Right rotate a 32-bit unsigned integer
 pub def rotr(x: i32, n: i32): i32 {
-    return (((i32)x >> n) | ((i32)x << (32 - n)));    
+    return ((cast[i32](x) >> n) | (cast[i32](x) << (32 - n)));
 }
 
 /// Right shift with proper unsigned handling
 pub def shr(x: i32, n: i32): i32 {
-    return ((i32)x >> n);
+    return ((cast[i32](x) >> n));
 }
 
 /// SHA-256 Ch function: (x AND y) XOR (NOT x AND z)
@@ -129,7 +129,7 @@ pub def sha256_digest_empty(): SHA256Digest {
 }
 
 /// Process a single 512-bit block of data
-pub def sha256_process_block(block: i32*, h: i32*) {
+pub def sha256_process_block(block: ref i32, h: ref i32) {
     mut w: i32[64];
     
     for mut i = 0; i < 16; i++ {
@@ -190,7 +190,7 @@ pub def sha256(data: char*, len: i32): SHA256Digest {
     val bit_len: i32 = len * 8;
     val pad_len: i32 = (len + 8) / 64 * 64 + 64;
     
-    mut padded: i32[16] = [i32]{};
+    mut padded: i32[16];
     mut block_count: i32 = 0;
     mut byte_idx: i32 = 0;
     
@@ -218,7 +218,7 @@ pub def sha256(data: char*, len: i32): SHA256Digest {
             padded[i] = word;
         }
         
-        sha256_process_block(padded, h);
+        sha256_process_block(addr(padded), addr(h));
     }
     
     for mut i = 0; i < 8; i++ {
@@ -532,7 +532,7 @@ test {
     mut simple2: SHA256Digest = simple_hash("test", 4);
     assert sha256_equals(simple1, simple2) == true, "Simple hash should be consistent";
     
-    sha256_zero(ref digest1);
+    sha256_zero(addr(digest1));
     assert digest1.is_valid == false, "Zeroed digest should be marked invalid";
 
     mut arena: Arena = Arena.create(90000);
