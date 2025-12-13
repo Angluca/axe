@@ -8036,9 +8036,13 @@ pub def generate_c(ast: ref ASTNode): string {
         val call_args: ref list(string) = ast.data.func_call.args;
         if call_args != nil and len(deref(call_args)) > 0 {
             val args_str: string = strip(call_args.data[0]);
-            validate_function_call(func_name, args_str, 0);
+            if !is_c_call {
+                validate_function_call(func_name, args_str, 0);
+            }
         } else {
-            validate_function_call(func_name, str(""), 0);
+            if !is_c_call {
+                validate_function_call(func_name, str(""), 0);
+            }
         }
 
         if equals_c(func_name, "append") {

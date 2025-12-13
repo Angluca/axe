@@ -34,7 +34,6 @@ model HttpResponse {
     success: bool;
 }
 
-
 /// Memory struct for curl write callback
 model MemoryStruct {
     memory: char*;
@@ -605,7 +604,7 @@ def net_init(): bool {
 def net_cleanup() {
     platform windows {
         unsafe {
-            // C.WSACleanup();
+            C.WSACleanup();
         }
     }
 }
