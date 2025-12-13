@@ -4,56 +4,44 @@ use std.random;
 
 /// Generates a random UUID v4 string.
 /// Returns a string in the format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
-/// where x is any hexadecimal digit and y is one of 8, 9, A, or B.
+/// Where x is any hexadecimal digit and y is one of 8, 9, A, or B.
 def generate_uuid(): string {
     mut result: string;
     randomize();
 
-    raw {
-        result.data = NULL;
-        result.len  = 0;
-        result.cap  = 0;
-        
-        result.data = (char*)malloc(37);
-        result.cap = 37;
-        
-        if (result.data != NULL) {
-            char hex_chars[] = "0123456789abcdef";
-            int pos = 0;
-            
-            for (int i = 0; i < 8; i++) {
-                result.data[pos++] = hex_chars[rand() % 16];
+    result.data = nil;
+    result.len  = 0;
+    result.cap  = 0;
+
+    result.data = cast[ref char](C.malloc(37));
+    result.cap  = 37;
+
+    if result.data != nil {
+        val hex_chars: ref char = "0123456789abcdef";
+        val variant_chars: ref char = "89ab";
+
+        for mut i = 0 to 35 {
+            if i == 8 or i == 13 or i == 18 or i == 23 {
+                result.data[i] = '-';
             }
-            result.data[pos++] = '-';
-            
-            for (int i = 0; i < 4; i++) {
-                result.data[pos++] = hex_chars[rand() % 16];
+            elif i == 14 {
+                result.data[i] = '4';
             }
-            result.data[pos++] = '-';
-            
-            result.data[pos++] = '4';
-            for (int i = 0; i < 3; i++) {
-                result.data[pos++] = hex_chars[rand() % 16];
+            elif i == 19 {
+                result.data[i] = variant_chars[rand() % 4];
             }
-            result.data[pos++] = '-';
-            
-            char variant_chars[] = "89ab";
-            result.data[pos++] = variant_chars[rand() % 4];
-            for (int i = 0; i < 3; i++) {
-                result.data[pos++] = hex_chars[rand() % 16];
+            else {
+                result.data[i] = hex_chars[rand() % 16];
             }
-            result.data[pos++] = '-';
-            
-            for (int i = 0; i < 12; i++) {
-                result.data[pos++] = hex_chars[rand() % 16];
-            }
-            
-            result.data[pos] = '\0';
-            result.len = 36;
         }
+
+        result.data[36] = '\0';
+        result.len = 36;
     }
+
     return result;
 }
+
 
 /// Generates a random hexadecimal string of specified length.
 /// Useful for generating UUIDs of custom lengths or other random identifiers.
