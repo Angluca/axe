@@ -13,7 +13,7 @@ def main() {
     println x;  // Should be 12
     
     mut sum: i32 = 0;
-    mut n: i32 = 100;
+    val n: i32 = 100;
     
     parallel for mut i = 0 to n reduce(+:sum) {
         sum += i;

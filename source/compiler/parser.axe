@@ -6361,6 +6361,11 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             consume(ctx);
             
             push_scope();
+
+            if str_len(var_name) > 0 {
+                register_variable(var_name, is_mutable, 0, ctx.filename);
+                mark_variable_used(var_name); 
+            }
             
             mut init_str: string = str("");
             if str_len(var_name) > 0 {
@@ -6401,6 +6406,28 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             node.data.parallel_for.initialization = init_str;
             node.data.parallel_for.condition = condition;
             node.data.parallel_for.increment = increment;
+
+            scan_expression_for_usage(init_str);
+            scan_expression_for_usage(condition);
+            scan_expression_for_usage(increment);
+
+            mut r_idx: i32 = 0;
+            loop {
+                if r_idx >= len(reduction_clauses) {
+                    break;
+                }
+                val r_clause: string = reduction_clauses.data[r_idx];
+                scan_expression_for_usage(r_clause);
+                
+                val colon_pos: i32 = find_char_from(r_clause, ':', 0);
+                if colon_pos > 0 {
+                    val r_var: string = strip(substring_se(r_clause, colon_pos + 1, str_len(r_clause)));
+                    if str_len(r_var) > 0 {
+                        mark_variable_mutated(r_var);
+                    }
+                }
+                r_idx = r_idx + 1;
+            }
             
             unsafe {
                 val list_size: usize = C.sizeof(list(ASTNode));

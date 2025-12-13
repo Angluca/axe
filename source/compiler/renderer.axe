@@ -8474,6 +8474,46 @@ pub def generate_c(ast: ref ASTNode): string {
             init = strip(substr(init, 4, str_len(init) - 4));
         }
 
+        mut loop_var_name: string = str("");
+        mut loop_var_added: bool = false;
+
+        val eq_pos: i32 = find_char_from(init, '=', 0);
+        if eq_pos > 0 {
+            mut v_end: i32 = eq_pos - 1;
+            loop {
+                if v_end < 0 { break; }
+                val ch: char = get_char(init, v_end);
+                if ch != ' ' and ch != '\t' { break; }
+                v_end = v_end - 1;
+            }
+            
+            if v_end >= 0 {
+                mut v_start: i32 = v_end;
+                loop {
+                    if v_start < 0 { break; }
+                    val ch: char = get_char(init, v_start);
+                    if !((ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'Z') or (ch >= '0' and ch <= '9') or ch == '_') { 
+                        v_start = v_start + 1;
+                        break; 
+                    }
+                    if v_start == 0 { break; }
+                    v_start = v_start - 1;
+                }
+                
+                if v_end >= v_start {
+                     loop_var_name = substring_se(init, v_start, v_end + 1);
+                }
+            }
+        }
+
+        if str_len(loop_var_name) > 0 {
+            if !StringStringMap.contains(addr(g_var_types), loop_var_name) {
+                mut temp_arena: Arena = Arena.create(256);
+                StringStringMap.set(addr(g_var_types), addr(temp_arena), loop_var_name, str("i32"));
+                loop_var_added = true;
+            }
+        }
+
         mut sb_pheader: StringBuilder = StringBuilder.init(256);
         StringBuilder.append(addr(sb_pheader), init);
         
@@ -8535,6 +8575,11 @@ pub def generate_c(ast: ref ASTNode): string {
         }
 
         StringBuilder.append_c(addr(sb_pfor), "}\n");
+        
+        if loop_var_added {
+            StringStringMap.pop(addr(g_var_types), loop_var_name);
+        }
+
         return StringBuilder.to_string(addr(sb_pfor));
     }
     
