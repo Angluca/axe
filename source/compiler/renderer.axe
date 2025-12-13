@@ -5201,12 +5201,19 @@ pub def generate_c(ast: ref ASTNode): string {
         
         mut sb: StringBuilder = StringBuilder.init(1024 * 256);
         
-        StringBuilder.append_c(addr(sb), "#define nil ((void*)0)\n#include <stdio.h>\n#include <stdbool.h>\n#include <stdlib.h>\n#include <string.h>\n#include <stdint.h>\n#define len_ptr(x) ((x)->len)\n#define len_v(x) ((&(x))->len)\n#define len(x) len_v(x)\n");
+        StringBuilder.append_c(
+            addr(sb), 
+            "#define nil ((void*)0)\n#include <stdio.h>\n#include <stdbool.h>\n#include <stdlib.h>\n#include <string.h>\n#include <stdint.h>\n#define len_ptr(x) ((x)->len)\n#define len_v(x) ((&(x))->len)\n#define len(x) len_v(x)\n"
+        );
 
         platform windows {
             StringBuilder.append_c(addr(sb), "\n#define NOMINMAX\n#define NOGDI\n#define WIN32_LEAN_AND_MEAN\n#include <windows.h>\n");
         }
         
+        platform macos {
+            StringBuilder.append_c(addr(sb), "\n#include <ctype.h>\n#include <mach-o/dyld.h>\n");
+        }
+
         mut ghi: i32 = 0;
         loop {
             if ghi >= g_global_external_headers*.len {
