@@ -4,8 +4,7 @@ use std.time;
 /// Obtain random seed.
 pub def randomize(): void {
     unsafe {
-        val now: DateTime = now();
-        C.srand(cast[u32](now.epoch_ms));
+        C.srand(cast[u32](now().epoch_ms));
     }
 }
 
