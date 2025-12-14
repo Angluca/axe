@@ -189,10 +189,7 @@ pub def sha256(data: ref char, len: i32): SHA256Digest {
     
     val bit_len: i32 = len * 8;
     val pad_len: i32 = (len + 8) / 64 * 64 + 64;
-    
     mut padded: i32[16];
-    mut block_count: i32 = 0;
-    mut byte_idx: i32 = 0;
     
     for mut block_idx = 0; block_idx < (len + 72) / 64; block_idx++ {
         for mut i = 0; i < 16; i++ {
@@ -200,9 +197,7 @@ pub def sha256(data: ref char, len: i32): SHA256Digest {
             for mut j = 0; j < 4; j++ {
                 val pos: i32 = block_idx * 64 + i * 4 + j;
                 if pos < len {
-                    raw {
-                        word = (word << 8) | ((unsigned char)data[pos]);
-                    }
+                    word = (word << 8) | data[pos];
                 } elif pos == len {
                     word = (word << 8) | 0x80;
                 } elif pos >= pad_len - 8 {
