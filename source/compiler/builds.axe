@@ -684,6 +684,7 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
     if do_run {
         if !::quiet_mode {
             println(concat(str("Running: "), exe_filename));
+            println("");
         }
         val run_code: i32 = exec(exe_filename.data);
         if !::quiet_mode {
@@ -775,6 +776,9 @@ def get_output_filename(specified_output: string, input_filename: string): strin
         }
     }
     
+    platform windows {
+        result = replace_all(result, str("/"), str("\\"));
+    }
     return result;
 }
 
