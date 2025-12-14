@@ -65,7 +65,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-If you already have an axe binary (recommended - download from release v0.0.5), the build process is simply:
+If you already have an axe binary (Windows users can download the .zip from GitHub releases), the build process is simply:
 
 ```bash
 git clone https://github.com/axelang/axe.git
