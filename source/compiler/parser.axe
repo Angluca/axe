@@ -2479,6 +2479,10 @@ def parse_type(ctx: ref ParserContext): string {
             val tok: Token = peek(ctx);
             if (tok.token_type == TokenType.OPERATOR and equals_c(tok.value, "*")) or
                (tok.token_type == TokenType.STAR) {
+                val err: string = format_error(ctx, str("C-style pointer syntax is not allowed. Use 'ref T' instead."));
+                println err;
+                quit(1);
+                
                 consume(ctx);
                 type_name = concat(type_name, str("*"));
             } else {

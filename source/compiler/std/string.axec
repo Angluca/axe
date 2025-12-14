@@ -11,7 +11,7 @@ use std.io;
 /// StringBuilder for efficient string concatenation.
 /// Instead of O(n²) repeated allocations, uses amortized O(1) appends.
 pub model StringBuilder {
-    data: char*;
+    data: ref char;
     len: usize;
     cap: usize;
 
@@ -46,7 +46,7 @@ pub model StringBuilder {
             new_cap = new_cap * 2;
         }
         unsafe {
-            val new_data: char* = C.realloc(sb*.data, new_cap);
+            val new_data: ref char = C.realloc(sb*.data, new_cap);
             if new_data != nil {
                 sb*.data = new_data;
                 sb*.cap = new_cap;
@@ -94,7 +94,7 @@ pub model StringBuilder {
                     }
                     new_cap = new_cap * 2;
                 }
-                val new_data: char* = C.realloc(sb*.data, new_cap);
+                val new_data: ref char = C.realloc(sb*.data, new_cap);
                 if new_data != nil {
                     sb*.data = new_data;
                     sb*.cap = new_cap;
@@ -146,12 +146,12 @@ pub model StringBuilder {
 
 /// string model representing a dynamic string with length tracking.
 pub model string {
-    data: char*;
+    data: ref char;
     len: usize;
     cap: usize;
 
     /// Creates a new string from a char pointer.
-    pub def create(data: char*): string {
+    pub def create(data: ref char): string {
         mut result: string;
         unsafe {
             result.data = nil;
@@ -251,7 +251,7 @@ pub def replace_all(s: string, from: string, dest: string): string {
 /// Convert some i32 to a string.
 pub def i32_to_string(value: i32): string {
     unsafe {
-        mut buffer: char* = C.malloc(12);
+        mut buffer: ref char = C.malloc(12);
         C.sprintf(buffer, "%d", value);
         return string.create(buffer);
     }
@@ -365,7 +365,7 @@ pub def str_copy(src: string, desta: mut string): void {
 def concat_chr(a: mut string, b: char): string {
     unsafe {
         mut new_len: usize = a.len + 1;
-        mut new_data: char* = C.malloc(new_len + 1);
+        mut new_data: ref char = C.malloc(new_len + 1);
         if (new_data != NULL) {
             if (a.len > 0) {
                 C.memcpy(new_data, a.data, a.len);
@@ -420,7 +420,7 @@ pub def substring_se(s: string, start: i32, end: i32): string {
 pub def substring_scse(s: string, start: i32, end: i32): ref char {
     unsafe {
         mut len: i32 = end - start;
-        mut result: char* = C.malloc(len + 1);
+        mut result: ref char = C.malloc(len + 1);
         if (result != nil) {
             C.memcpy(result, s.data + start, len);
             result[len] = '\0';
@@ -434,7 +434,7 @@ pub def substring_scse(s: string, start: i32, end: i32): ref char {
 pub def substring_cse(s: ref char, start: i32, end: i32): ref char {
     unsafe {
         mut len: i32 = end - start;
-        mut result: char* = C.malloc(len + 1);
+        mut result: ref char = C.malloc(len + 1);
         if (result != nil) {
             C.memcpy(result, s + start, len);
             result[len] = '\0';
@@ -532,8 +532,8 @@ pub def concat(dest: string, src: string): string {
 }
 
 /// Finds first occurrence of character in string. Returns pointer or 0.
-pub def first_occurrence(s: string, c: i32): char* {
-    mut result: char* = nil;
+pub def first_occurrence(s: string, c: i32): ref char {
+    mut result: ref char = nil;
     unsafe {
         result = C.strchr(s.data, c);
     }
@@ -541,8 +541,8 @@ pub def first_occurrence(s: string, c: i32): char* {
 }
 
 /// Finds first occurrence of substring in string. Returns pointer or 0.
-pub def substring(haystack: string, needle: string): char* {
-    mut result: char* = nil;
+pub def substring(haystack: string, needle: string): ref char {
+    mut result: ref char = nil;
     unsafe {
         result = C.strstr(haystack.data, needle.data);
     }
@@ -605,8 +605,8 @@ pub def is_alphanum(c: i32): i32 {
 }
 
 /// Converts char* to uppercase.
-pub def to_upper_chrptr(s: char*): char* {
-    mut result: char* = nil;
+pub def to_upper_chrptr(s: ref char): ref char {
+    mut result: ref char = nil;
     unsafe {
         val len: usize = C.strlen(s);
         result = C.malloc(len + 1);
@@ -627,8 +627,8 @@ pub def to_upper_chrptr(s: char*): char* {
 }
 
 /// Converts char* to lowercase.
-pub def to_lower_chrptr(s: char*): char* {
-    mut result: char* = nil;
+pub def to_lower_chrptr(s: ref char): ref char {
+    mut result: ref char = nil;
     unsafe {
         val len: usize = C.strlen(s);
         result = C.malloc(len + 1);
@@ -667,8 +667,8 @@ pub def to_lower_chr(c: i32): i32 {
 }
 
 /// Allocates and copies a string. Caller must free the result.
-pub def str_dup(s: char*): char* {
-    mut result: char* = nil;
+pub def str_dup(s: ref char): ref char {
+    mut result: ref char = nil;
     unsafe {
         val len: usize = C.strlen(s);
         result = C.malloc(len + 1);
@@ -689,8 +689,8 @@ pub def str_ncmp(s1: char*, s2: char*, n: i32): i32 {
 }
 
 /// Copies at most n characters from source to destination.
-pub def str_ncopy(dest: char*, src: char*, n: i32): char* {
-    mut result: char* = nil;
+pub def str_ncopy(dest: ref char, src: ref char, n: i32): ref char {
+    mut result: ref char = nil;
     unsafe {
         result = C.strncpy(dest, src, cast[usize](n));
     }
@@ -698,7 +698,7 @@ pub def str_ncopy(dest: char*, src: char*, n: i32): char* {
 }
 
 /// Converts an integer to a string. Buffer must be at least 12 bytes.
-pub def int_to_str(value: i32, buffer: ref char): char* {
+pub def int_to_str(value: i32, buffer: ref char): ref char {
     unsafe {
         C.sprintf(buffer, "%d", value);
     }
@@ -706,7 +706,7 @@ pub def int_to_str(value: i32, buffer: ref char): char* {
 }
 
 /// Converts a long to a string. Buffer must be at least 21 bytes.
-pub def long_to_str(value: i64, buffer: char*): char* {
+pub def long_to_str(value: i64, buffer: ref char): ref char {
     unsafe {
         C.sprintf(buffer, "%ld", value);
     }
@@ -714,7 +714,7 @@ pub def long_to_str(value: i64, buffer: char*): char* {
 }
 
 /// Converts a float to a string. Buffer must be at least 32 bytes.
-pub def float_to_str(value: f32, buffer: char*): char* {
+pub def float_to_str(value: f32, buffer: ref char): ref char {
     unsafe {
         C.sprintf(buffer, "%f", value);
     }
@@ -722,7 +722,7 @@ pub def float_to_str(value: f32, buffer: char*): char* {
 }
 
 /// Converts a double to a string. Buffer must be at least 32 bytes.
-pub def double_to_str(value: f64, buffer: char*): char* {
+pub def double_to_str(value: f64, buffer: ref char): ref char {
     unsafe {
         C.sprintf(buffer, "%lf", value);
     }
@@ -1029,7 +1029,7 @@ test {
     assert(str_ncmp("hello", "help", 3) == 0, "first 3 chars of hello and help should match");
     
     mut arena: Arena = Arena.create(100);
-    mut buffer: char* = cast[ref char](Arena.alloc(addr(arena), 52));
+    mut buffer: ref char = cast[ref char](Arena.alloc(addr(arena), 52));
     
     int_to_str(42, buffer);
     assert(str_ncmp(buffer, "42", 2) == 0, "int_to_str(42) should produce 42");
