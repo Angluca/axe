@@ -131,7 +131,7 @@ def is_whitespace(ch: char): bool {
 
 /// Check if a character is an identifier character
 def is_ident_char(ch: char): bool {
-    if is_alphanum(ch) != 0 {
+    if is_alphanum(cast[i32](ch)) != 0 {
         return true;
     }
     if ch == '_' {

@@ -301,14 +301,14 @@ def extract_base_type(type_name: string): string {
     }
     
     if has_prefix(result, str("list(")) {
-        val close_paren: i32 = find_char_from(result, cast[char](41), 0);
+        val close_paren: i32 = find_char_from(result, cast[char](41), cast[usize](0));
         if close_paren > 5 {
-            result = strip(substring_se(result, 5, close_paren));
+            result = strip(substring_se(result, 5, cast[usize](close_paren)));
             return extract_base_type(result);
         }
     }
     
-    val br_idx: i32 = find_char_from(result, '[', 0);
+    val br_idx: i32 = find_char_from(result, '[', cast[usize](0));
     if br_idx > 0 {
         result = strip(substring_se(result, 0, br_idx));
     }
@@ -381,7 +381,7 @@ def is_builtin_function(name: string): bool {
         or equals_c(name, "printf") or equals_c(name, "sprintf") or equals_c(name, "fprintf")
         or equals_c(name, "fopen") or equals_c(name, "fclose") or equals_c(name, "fread") or equals_c(name, "fwrite")
         or equals_c(name, "exit") or equals_c(name, "abort") or equals_c(name, "atexit")
-        or (name.len >= 2 and name.data[0] == 'C' and (name.data[1] == '.' or (name.data[1] == ' ' and find_char_from(name, '.', 1) > 0)));
+        or (name.len >= 2 and name.data[0] == 'C' and (name.data[1] == '.' or (name.data[1] == ' ' and find_char_from(name, '.', cast[usize](1)) > 0)));
 }
 
 /// Check if a symbol is valid (either builtin, imported, or a known model/enum)
@@ -452,7 +452,7 @@ def register_function_signature(func_name: string, params: ref list(string), ret
             }
             StringBuilder.append_c(addr(sb_types), "...");
         } else {
-            val colon_pos: i32 = find_char_from(param, ':', 0);
+            val colon_pos: i32 = find_char_from(param, ':', cast[usize](0));
             if colon_pos >= 0 {
                 val param_type: string = strip(substr(param, colon_pos + 1, str_len(param) - colon_pos - 1));
                 if i > 0 {
@@ -501,7 +501,7 @@ def infer_expression_type(expr: string): string {
     }
 
     if is_numeric {
-        if find_char_from(trimmed, '.', 0) >= 0 {
+        if find_char_from(trimmed, '.', cast[usize](0)) >= 0 {
             return str("f64");
         }
         return str("i32");
@@ -523,7 +523,7 @@ def infer_expression_type(expr: string): string {
     }
 
     // Function call
-    val paren_idx: i32 = find_char_from(trimmed, '(', 0);
+    val paren_idx: i32 = find_char_from(trimmed, '(', cast[usize](0));
     if paren_idx > 0 and has_suffix(trimmed, str(")")) {
         val func_name: string = strip(substring_se(trimmed, 0, paren_idx));
         val args_start: i32 = paren_idx + 1;
@@ -619,7 +619,7 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         // First check if this argument itself is a function call
 
         val is_string_lit: bool = has_prefix(arg_expr, str("\"")) or has_prefix(arg_expr, str("'"));
-        val arg_paren: i32 = find_char_from(arg_expr, '(', 0);
+        val arg_paren: i32 = find_char_from(arg_expr, '(', cast[usize](0));
 
         if !is_string_lit and arg_paren > 0 {
             val nested_func: string = strip(substring_se(arg_expr, 0, arg_paren));
@@ -642,7 +642,7 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         return;
     }
 
-    val dot_pos: i32 = find_char_from(func_name, '.', 0);
+    val dot_pos: i32 = find_char_from(func_name, '.', cast[usize](0));
     if dot_pos > 0 {
         val base_name: string = strip(substring_se(func_name, 0, dot_pos));
         if is_symbol_imported(base_name) or StringStringMap.contains(addr(g_model_names), base_name) {
@@ -673,7 +673,8 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
             or StringBoolMap.contains(addr(g_function_return_types), lookup_name) 
             or StringBoolMap.contains(addr(g_function_param_types), lookup_name) 
             or StringBoolMap.contains(addr(g_emitted_prototypes), lookup_name)
-            or StringBoolMap.contains(addr(g_function_prefixes), lookup_name) {
+            or StringBoolMap.contains(addr(g_function_prefixes), lookup_name)
+            or equals_c(lookup_name, "len_v") {
             return;
         }
 
@@ -718,7 +719,7 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         if j >= str_len(expected_types_str) {
             break;
         }
-        val ch2: char = get_char(expected_types_str, j);
+        val ch2: char = get_char(expected_types_str, cast[i32](j));
         if ch2 == ',' {
             val built_type: string = StringBuilder.to_string(addr(sb_type));
             if str_len(strip(built_type)) > 0 {
@@ -1524,7 +1525,7 @@ def map_axe_type_to_c(axe_type: string): string {
     }
     
     if has_prefix(result, str("list(")) {
-        val close_paren: i32 = find_char_from(result, cast[char](41), 0);
+        val close_paren: i32 = find_char_from(result, cast[char](41), cast[usize](0));
         if close_paren > 5 {
             val inner_type: string = strip(substring_se(result, 5, close_paren));
             val converted: string = concat(inner_type, str("[999]"));
@@ -1570,10 +1571,10 @@ def map_axe_type_to_c(axe_type: string): string {
         return concat(mapped_base, str("*"));
     }
     
-    val br_idx: i32 = find_char_from(result, '[', 0);
-    if br_idx >= 0 and find_char_from(result, ']', br_idx) >= 0 {
+    val br_idx: i32 = find_char_from(result, '[', cast[usize](0));
+    if br_idx >= 0 and find_char_from(result, ']', cast[usize](br_idx)) >= 0 {
         val base_raw: string = strip(substring_se(result, 0, br_idx));
-        val suffix: string = substring_se(result, br_idx, str_len(result));
+        val suffix: string = substring_se(result, br_idx, cast[i32](str_len(result)));
         if str_len(base_raw) > 0 {
             val mapped_base2: string = map_axe_type_to_c(base_raw);
             return concat(mapped_base2, suffix);
@@ -3065,9 +3066,9 @@ def scan_for_list_types(node: ref ASTNode) {
     if equals_c(node.node_type, "Declaration") {
         val tname: string = node.data.declaration.type_name;
         if str_len(tname) > 0 {
-            val br: i32 = find_char_from(tname, '[', 0);
+            val br: i32 = find_char_from(tname, '[', cast[usize](0));
             if br >= 0 {
-                val suffix: string = substring_se(tname, br, str_len(tname));
+                val suffix: string = substring_se(tname, br, cast[i32](str_len(tname)));
                 if equals_c(suffix, "[999]") {
                     mut element: string = strip(substring_se(tname, 0, br));
                     if has_prefix(element, str("ref ")) {
@@ -3260,7 +3261,7 @@ def lookup_expression_type(expr: string): string {
     if str_len(e) > 0 {
         val c0: char = get_char(e, 0);
         if c0 >= '0' and c0 <= '9' {
-            if find_char_from(e, '.', 0) >= 0 {
+            if find_char_from(e, '.', cast[usize](0)) >= 0 {
                 return str("f64");
             }
             return str("i32");
@@ -3840,8 +3841,8 @@ def rewrite_adr(expr: string): string {
         }
         
         val var_name: string = strip(substring_se(result, paren_start, paren_end));
-        val has_bracket: bool = find_char_from(var_name, '[', 0) >= 0;
-        val has_dot: bool = find_char_from(var_name, '.', 0) >= 0;
+        val has_bracket: bool = find_char_from(var_name, '[', cast[usize](0)) >= 0;
+        val has_dot: bool = find_char_from(var_name, '.', cast[usize](0)) >= 0;
         mut replacement: string = str("");
 
         if has_bracket or has_dot {
@@ -3852,7 +3853,7 @@ def rewrite_adr(expr: string): string {
         }
         
         val before: string = substring_se(result, 0, start_idx);
-        val after: string = substring_se(result, paren_end + 1, str_len(result));
+        val after: string = substring_se(result, paren_end + 1, cast[i32](str_len(result)));
 
         result = concat(before, replacement);
         result = concat(result, after);
@@ -3915,7 +3916,7 @@ def rewrite_dereference(expr: string): string {
         replacement = concat_c(replacement, ")");
         
         val before: string = substring_se(result, 0, start_idx);
-        val after: string = substring_se(result, paren_end + 1, str_len(result));
+        val after: string = substring_se(result, paren_end + 1, cast[i32](str_len(result)));
         result = concat(before, replacement);
         result = concat(result, after);
     }
@@ -4044,7 +4045,7 @@ def rewrite_len_calls(expr: string): string {
         
         if find_substr(len_arg, str("->")) >= 0 {
             is_pointer = true;
-        } elif find_char_from(len_arg, '.', 0) >= 0 {
+        } elif find_char_from(len_arg, '.', cast[usize](0)) >= 0 {
             val len_arg_len: i32 = cast[i32](str_len(len_arg));
             mut last_dot: i32 = -1;
             mut di: i32 = 0;
@@ -4060,13 +4061,13 @@ def rewrite_len_calls(expr: string): string {
             
             if last_dot >= 0 {
                 mut field_name: string = strip(substring_se(len_arg, last_dot + 1, len_arg_len));
-                val bracket_pos: i32 = find_char_from(field_name, '[', 0);
+                val bracket_pos: i32 = find_char_from(field_name, '[', cast[usize](0));
 
                 if bracket_pos >= 0 {
                     field_name = strip(substring_se(field_name, 0, bracket_pos));
                 }
                 
-                val first_dot: i32 = find_char_from(len_arg, '.', 0);
+                val first_dot: i32 = find_char_from(len_arg, '.', cast[usize](0));
 
                 if first_dot >= 0 {
                     val base_var: string = strip(substring_se(len_arg, 0, first_dot));
@@ -4090,7 +4091,7 @@ def rewrite_len_calls(expr: string): string {
             }
         } else {
             mut base_var: string = len_arg;
-            val bracket_pos: i32 = find_char_from(base_var, '[', 0);
+            val bracket_pos: i32 = find_char_from(base_var, '[', cast[usize](0));
 
             if bracket_pos >= 0 {
                 base_var = strip(substring_se(base_var, 0, bracket_pos));
@@ -4115,7 +4116,7 @@ def rewrite_len_calls(expr: string): string {
         replacement = concat_c(replacement, ")");
         
         val before: string = substring_se(result, 0, start_idx);
-        val after: string = substring_se(result, paren_end + 1, str_len(result));
+        val after: string = substring_se(result, paren_end + 1, cast[i32](str_len(result)));
         
         result = concat(before, replacement);
         result = concat(result, after);
@@ -4183,7 +4184,7 @@ def rewrite_function_calls(expr: string): string {
             mut replaced_ident: string = ident;
             
             if str_len(ident) > 3 and get_char(ident, 0) == 'C' and get_char(ident, 1) == '_' and get_char(ident, 2) == '_' {
-                replaced_ident = substring_se(ident, 3, str_len(ident));
+                replaced_ident = substring_se(ident, 3, cast[i32](str_len(ident)));
             } elif k < expr_len and get_char(expr, k) == '(' {
                 val has_double_underscore: bool = find_substr(ident, str("__")) >= 0;
                 if !has_double_underscore and StringStringMap.contains(addr(g_function_prefixes), ident) {
@@ -4469,7 +4470,7 @@ def process_expression(expr: string): string {
         }
     }
 
-    val open_idx: i32 = find_char_from(trimmed, '(', 0);
+    val open_idx: i32 = find_char_from(trimmed, '(', cast[usize](0));
     if open_idx > 0 {
         val func_name_raw: string = strip(substring_se(trimmed, 0, open_idx));
         if equals_c(func_name_raw, "str") or has_suffix(func_name_raw, str("__str")) {
@@ -4550,7 +4551,7 @@ def process_expression(expr: string): string {
         debug_print_raw "\n[DBG-EXPR] no-sugar/no-C trimmed:";
         debug_print_str trimmed;
 
-        val single_quote_pos: i32 = find_char_from(trimmed, '\'', 0);
+        val single_quote_pos: i32 = find_char_from(trimmed, '\'', cast[usize](0));
         if single_quote_pos >= 0 {
             val addr_fixed_chars: string = rewrite_adr(trimmed);
             val deref_fixed_chars: string = rewrite_dereference(addr_fixed_chars);
@@ -4731,7 +4732,7 @@ def process_expression(expr: string): string {
     }
 
     if has_c_prefix {
-        result = substring_se(result, c_prefix_end, str_len(result));
+        result = substring_se(result, c_prefix_end, cast[i32](str_len(result)));
     }
 
     result = strip_all_c_prefixes(result);
@@ -5048,7 +5049,7 @@ def generate_function_prototype(ast: ref ASTNode): string {
             }
 
             val param: string = params.data[param_idx];
-            val colon_pos: i32 = find_char_from(param, ':', 0);
+            val colon_pos: i32 = find_char_from(param, ':', cast[usize](0));
 
             if colon_pos >= 0 {
                 val param_name: string = strip(substring_se(param, 0, colon_pos));
@@ -5091,7 +5092,7 @@ def generate_global_decl(ast: ref ASTNode): string {
     if str_len(type_name) == 0 {
         mut trimmed_init: string = strip(initializer);
         if has_prefix(trimmed_init, str("new ")) {
-            trimmed_init = substring_se(trimmed_init, 4, str_len(trimmed_init));
+            trimmed_init = substring_se(trimmed_init, 4, cast[i32](str_len(trimmed_init)));
             trimmed_init = strip(trimmed_init);
             mut end_pos: i32 = -1;
             mut i: i32 = 0;
@@ -5115,7 +5116,7 @@ def generate_global_decl(ast: ref ASTNode): string {
                 mapped_type = map_axe_type_to_c(type_name);
             }
         } else {
-            val brace_pos: i32 = find_char_from(trimmed_init, '{', 0);
+            val brace_pos: i32 = find_char_from(trimmed_init, '{', cast[usize](0));
             if brace_pos > 0 {
                 val inferred_name2: string = strip(substring_se(trimmed_init, 0, brace_pos));
                 if str_len(inferred_name2) > 0 {
@@ -5164,9 +5165,9 @@ def generate_global_decl(ast: ref ASTNode): string {
     }
 
     mut array_suffix: string = str("");
-    val br: i32 = find_char_from(type_name, '[', 0);
+    val br: i32 = find_char_from(type_name, '[', cast[usize](0));
     if br >= 0 {
-        val suffix: string = substring_se(type_name, br, str_len(type_name));
+        val suffix: string = substring_se(type_name, br, cast[i32](str_len(type_name)));
         if !equals_c(suffix, "[999]") {
             val base_raw: string = strip(substring_se(type_name, 0, br));
             if str_len(base_raw) > 0 {
@@ -5197,10 +5198,10 @@ def generate_global_decl(ast: ref ASTNode): string {
 
     if str_len(initializer) > 0 {
         val trimmed: string = strip(initializer);
-        val brace_idx: i32 = find_char_from(trimmed, '{', 0);
+        val brace_idx: i32 = find_char_from(trimmed, '{', cast[usize](0));
         if brace_idx >= 0 {
             val type_part: string = strip(substring_se(trimmed, 0, brace_idx));
-            val brace_part: string = substring_se(trimmed, brace_idx, str_len(trimmed));
+            val brace_part: string = substring_se(trimmed, brace_idx, cast[i32](str_len(trimmed)));
             if str_len(type_part) > 0 {
                 result = concat_c(result, " = ");
                 result = concat(result, brace_part);
@@ -5643,8 +5644,8 @@ pub def generate_c(ast: ref ASTNode): string {
                 val cnode: ref ASTNode = addr(children.data[i_more]);
                 if equals_c(cnode.node_type, "Function") {
                     val ret_type: string = cnode.data.function.return_type;
-                    val br: i32 = find_char_from(ret_type, '[', 0);
-                    if br >= 0 and find_char_from(ret_type, ']', br) >= 0 {
+                    val br: i32 = find_char_from(ret_type, '[', cast[usize](0));
+                    if br >= 0 and find_char_from(ret_type, ']', cast[usize](br)) >= 0 {
                         mut elementType: string = strip(substring_se(ret_type, 0, br));
                         if has_prefix(elementType, str("ref ")) {
                             elementType = strip(substr(elementType, 4, str_len(elementType) - 4));
@@ -5662,8 +5663,8 @@ pub def generate_c(ast: ref ASTNode): string {
                                 break;
                             }
                             val ftype: string = field_types.data[fidx];
-                            val br2: i32 = find_char_from(ftype, '[', 0);
-                            if br2 >= 0 and find_char_from(ftype, ']', br2) >= 0 {
+                            val br2: i32 = find_char_from(ftype, '[', cast[usize](0));
+                            if br2 >= 0 and find_char_from(ftype, ']', cast[usize](br2)) >= 0 {
                                 mut elemCandidate: string = strip(substring_se(ftype, 0, br2));
                                 if has_prefix(elemCandidate, str("ref ")) {
                                     elemCandidate = strip(substr(elemCandidate, 4, str_len(elemCandidate) - 4));
@@ -5682,8 +5683,8 @@ pub def generate_c(ast: ref ASTNode): string {
                                 break;
                             }
                             val utype: string = union_member_types.data[uidx];
-                            val ubr: i32 = find_char_from(utype, '[', 0);
-                            if ubr >= 0 and find_char_from(utype, ']', ubr) >= 0 {
+                            val ubr: i32 = find_char_from(utype, '[', cast[usize](0));
+                            if ubr >= 0 and find_char_from(utype, ']', cast[usize](ubr)) >= 0 {
                                 mut uElemCandidate: string = strip(substring_se(utype, 0, ubr));
                                 if has_prefix(uElemCandidate, str("ref ")) {
                                     uElemCandidate = strip(substr(uElemCandidate, 4, str_len(uElemCandidate) - 4));
@@ -6481,8 +6482,8 @@ pub def generate_c(ast: ref ASTNode): string {
 
                                     if close_idx >= 0 and get_char(last_line, close_idx) == ')' {
                                         mut tmp: string = str("");
-                                        tmp = concat(tmp, substring_se(last_line, 0, close_idx));
-                                        tmp = concat(tmp, substring_se(last_line, close_idx + 1, str_len(last_line)));
+                                        tmp = concat(tmp, substring_se(last_line, 0, cast[i32](close_idx)));
+                                        tmp = concat(tmp, substring_se(last_line, close_idx + 1, cast[i32](str_len(last_line))));
                                         line_fixed = tmp;
                                     }
                                 }
@@ -6575,8 +6576,8 @@ pub def generate_c(ast: ref ASTNode): string {
 
                                 if close_idx2 >= 0 and get_char(line, close_idx2) == ')' {
                                     mut tmp2: string = str("");
-                                    tmp2 = concat(tmp2, substring_se(line, 0, close_idx2));
-                                    tmp2 = concat(tmp2, substring_se(line, close_idx2 + 1, str_len(line)));
+                                    tmp2 = concat(tmp2, substring_se(line, 0, cast[i32](close_idx2)));
+                                    tmp2 = concat(tmp2, substring_se(line, close_idx2 + 1, cast[i32](str_len(line))));
                                     line_fixed2 = tmp2;
                                 }
                             }
@@ -6651,10 +6652,10 @@ pub def generate_c(ast: ref ASTNode): string {
 
                     mut mapped_type: string = map_axe_type_to_c(type_name);
                     mut array_suffix: string = str("");
-                    val br: i32 = find_char_from(type_name, '[', 0);
+                    val br: i32 = find_char_from(type_name, '[', cast[usize](0));
 
                     if br >= 0 {
-                        val suffix: string = substring_se(type_name, br, str_len(type_name));
+                        val suffix: string = substring_se(type_name, br, cast[i32](str_len(type_name)));
                         if !equals_c(suffix, "[999]") {
                             val base_raw: string = strip(substring_se(type_name, 0, br));
                             if str_len(base_raw) > 0 {
@@ -6870,10 +6871,10 @@ pub def generate_c(ast: ref ASTNode): string {
                     
                     if is_sep {
                         val one_constraint: string = substring_se(constraint_str, constraint_start, constraint_idx);
-                        val colon_pos: i32 = find_char_from(one_constraint, ':', 0);
+                        val colon_pos: i32 = find_char_from(one_constraint, ':', cast[usize](0));
                         if colon_pos > 0 {
                             val param_name: string = substring_se(one_constraint, 0, colon_pos);
-                            val concrete_tp: string = substring_se(one_constraint, colon_pos + 1, str_len(one_constraint));
+                            val concrete_tp: string = substring_se(one_constraint, colon_pos + 1, cast[i32](str_len(one_constraint)));
                             StringBuilder.append_c(addr(sb_spec_name), "__");
                             StringBuilder.append(addr(sb_spec_name), param_name);
                             StringBuilder.append_c(addr(sb_spec_name), "_");
@@ -6916,10 +6917,10 @@ pub def generate_c(ast: ref ASTNode): string {
                     
                     if is_tm_sep {
                         val tm_constraint: string = substring_se(constraint_str, tm_start, tm_idx);
-                        val tm_colon: i32 = find_char_from(tm_constraint, ':', 0);
+                        val tm_colon: i32 = find_char_from(tm_constraint, ':', cast[usize](0));
                         if tm_colon > 0 {
                             val tm_param: string = substring_se(tm_constraint, 0, tm_colon);
-                            val tm_concrete: string = substring_se(tm_constraint, tm_colon + 1, str_len(tm_constraint));
+                            val tm_concrete: string = substring_se(tm_constraint, tm_colon + 1, cast[i32](str_len(tm_constraint)));
                             StringStringMap.set(addr(type_mapping), addr(gen_arena), tm_param, tm_concrete);
                         }
                         tm_start = tm_idx + 1;
@@ -6982,7 +6983,7 @@ pub def generate_c(ast: ref ASTNode): string {
                         }
                         
                         val param: string = params.data[param_idx];
-                        val colon_pos: i32 = find_char_from(param, ':', 0);
+                        val colon_pos: i32 = find_char_from(param, ':', cast[usize](0));
                         
                         if colon_pos >= 0 {
                             val param_name: string = strip(substring_se(param, 0, colon_pos));
@@ -7154,10 +7155,10 @@ pub def generate_c(ast: ref ASTNode): string {
                     break;
                 }
                 val p: string = fn_params.data[pi];
-                val cp: i32 = find_char_from(p, ':', 0);
+                val cp: i32 = find_char_from(p, ':', cast[usize](0));
                 if cp >= 0 {
                     val pname: string = strip(substring_se(p, 0, cp));
-                    val ptype: string = strip(substr(p, cp + 1, str_len(p) - cp - 1));
+                    val ptype: string = strip(substr(p, cp + 1, cast[i32](str_len(p) - cp - 1)));
                     if str_len(pname) > 0 and str_len(ptype) > 0 {
                         validate_type_imported(ptype);
                         StringStringMap.set(addr(g_var_types), addr(func_arena), pname, ptype);
@@ -7244,11 +7245,11 @@ pub def generate_c(ast: ref ASTNode): string {
                 }
                 
                 val param: string = params.data[param_idx];
-                val colon_pos: i32 = find_char_from(param, ':', 0);
+                val colon_pos: i32 = find_char_from(param, ':', cast[usize](0));
 
                 if colon_pos >= 0 {
                     val param_name: string = strip(substring_se(param, 0, colon_pos));
-                    val param_type: string = strip(substr(param, colon_pos + 1, str_len(param) - colon_pos - 1));
+                    val param_type: string = strip(substr(param, colon_pos + 1, cast[i32](str_len(param) - colon_pos - 1)));
                     val processed_type: string = process_parameter_type(param_type);
                     
                     StringBuilder.append(addr(sb_func), processed_type);
@@ -7292,12 +7293,12 @@ pub def generate_c(ast: ref ASTNode): string {
 
         mut trimmed_ret: string = strip(expr);
 
-        val paren_pos_ret: i32 = find_char_from(trimmed_ret, '(', 0);
+        val paren_pos_ret: i32 = find_char_from(trimmed_ret, '(', cast[usize](0));
         if paren_pos_ret > 0 {
             val call_name_ret: string = strip(substring_se(trimmed_ret, 0, paren_pos_ret));
             if StringStringMap.contains(addr(g_function_prefixes), call_name_ret) {
                 val full_name_ret: string = StringStringMap.get(addr(g_function_prefixes), call_name_ret);
-                val rest_ret: string = substring_se(trimmed_ret, paren_pos_ret, str_len(trimmed_ret));
+                val rest_ret: string = substring_se(trimmed_ret, paren_pos_ret, cast[i32](str_len(trimmed_ret)));
                 mut sb_tmp: StringBuilder = StringBuilder.init(str_len(full_name_ret) + str_len(rest_ret));
                 StringBuilder.append(addr(sb_tmp), full_name_ret);
                 StringBuilder.append(addr(sb_tmp), rest_ret);
@@ -7309,10 +7310,10 @@ pub def generate_c(ast: ref ASTNode): string {
 
         mut processed: string = str("");
 
-        val brace_pos_ret: i32 = find_char_from(trimmed_ret, '{', 0);
-        if brace_pos_ret > 0 and get_char(trimmed_ret, str_len(trimmed_ret) - 1) == '}' {
+        val brace_pos_ret: i32 = find_char_from(trimmed_ret, '{', cast[usize](0));
+        if brace_pos_ret > 0 and get_char(trimmed_ret, cast[i32](str_len(trimmed_ret) - 1)) == '}' {
             val prefix_ret: string = strip(substring_se(trimmed_ret, 0, brace_pos_ret));
-            val inner_ret: string = substring_se(trimmed_ret, brace_pos_ret + 1, str_len(trimmed_ret) - 1);
+            val inner_ret: string = substring_se(trimmed_ret, brace_pos_ret + 1, cast[i32](str_len(trimmed_ret) - 1));
 
             if str_len(prefix_ret) > 0 {
                 val canon_ret: string = canonical_model_c_name(prefix_ret);
@@ -7349,10 +7350,10 @@ pub def generate_c(ast: ref ASTNode): string {
                         } elif ch_ret == ',' and depth_ret == 0 {
                             mut part_ret: string = strip(StringBuilder.to_string(addr(sb_current_ret)));
                             if str_len(part_ret) > 0 {
-                                val colon_pos_ret2: i32 = find_char_from(part_ret, ':', 0);
+                                val colon_pos_ret2: i32 = find_char_from(part_ret, ':', cast[usize](0));
                                 if colon_pos_ret2 >= 0 {
                                     val field_name_ret: string = strip(substring_se(part_ret, 0, colon_pos_ret2));
-                                    val value_expr_ret: string = strip(substr(part_ret, colon_pos_ret2 + 1, str_len(part_ret) - colon_pos_ret2 - 1));
+                                    val value_expr_ret: string = strip(substr(part_ret, colon_pos_ret2 + 1, cast[i32](str_len(part_ret) - colon_pos_ret2 - 1)));
                                     if str_len(field_name_ret) > 0 and str_len(value_expr_ret) > 0 {
                                         if !first_field_ret {
                                             StringBuilder.append_c(addr(sb_init_ret), ", ");
@@ -7376,10 +7377,10 @@ pub def generate_c(ast: ref ASTNode): string {
                     mut part_last_ret: string = strip(StringBuilder.to_string(addr(sb_current_ret)));
                     StringBuilder.destroy(addr(sb_current_ret));
                     if str_len(part_last_ret) > 0 {
-                        val colon_pos_last_ret: i32 = find_char_from(part_last_ret, ':', 0);
+                        val colon_pos_last_ret: i32 = find_char_from(part_last_ret, ':', cast[usize](0));
                         if colon_pos_last_ret >= 0 {
                             val field_name_last_ret: string = strip(substring_se(part_last_ret, 0, colon_pos_last_ret));
-                            val value_expr_last_ret: string = strip(substr(part_last_ret, colon_pos_last_ret + 1, str_len(part_last_ret) - colon_pos_last_ret - 1));
+                            val value_expr_last_ret: string = strip(substr(part_last_ret, colon_pos_last_ret + 1, cast[i32](str_len(part_last_ret) - colon_pos_last_ret - 1)));
                             if str_len(field_name_last_ret) > 0 and str_len(value_expr_last_ret) > 0 {
                                 if !first_field_ret {
                                     StringBuilder.append_c(addr(sb_init_ret), ", ");
@@ -7434,7 +7435,7 @@ pub def generate_c(ast: ref ASTNode): string {
         if str_len(type_name) == 0 {
             mut trimmed_init: string = strip(initializer);
             if has_prefix(trimmed_init, str("new ")) {
-                trimmed_init = substring_se(trimmed_init, 4, str_len(trimmed_init));
+                trimmed_init = substring_se(trimmed_init, 4, cast[i32](str_len(trimmed_init)));
                 trimmed_init = strip(trimmed_init);
 
                 mut end_pos: i32 = -1;
@@ -7459,7 +7460,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     mapped_type = map_axe_type_to_c(type_name);
                 }
             } else {
-                val brace_pos: i32 = find_char_from(trimmed_init, '{', 0);
+                val brace_pos: i32 = find_char_from(trimmed_init, '{', cast[usize](0));
                 if brace_pos > 0 {
                     val inferred_name2: string = strip(substring_se(trimmed_init, 0, brace_pos));
                     if str_len(inferred_name2) > 0 {
@@ -7520,9 +7521,9 @@ pub def generate_c(ast: ref ASTNode): string {
         }
 
         mut array_suffix: string = str("");
-        val br: i32 = find_char_from(type_name, '[', 0);
+        val br: i32 = find_char_from(type_name, '[', cast[usize](0));
         if br >= 0 {
-            val suffix: string = substring_se(type_name, br, str_len(type_name));
+            val suffix: string = substring_se(type_name, br, cast[i32](str_len(type_name)));
             if !equals_c(suffix, "[999]") {
                 val base_raw: string = strip(substring_se(type_name, 0, br));
                 if str_len(base_raw) > 0 {
@@ -7608,10 +7609,10 @@ pub def generate_c(ast: ref ASTNode): string {
                 StringBuilder.append(addr(sb_decl), i32_to_string(element_count));
                 StringBuilder.append_c(addr(sb_decl), "}");
             } elif has_prefix(trimmed, str("new ")) {
-                trimmed = substring_se(trimmed, 4, str_len(trimmed));
+                trimmed = substring_se(trimmed, 4, cast[i32](str_len(trimmed)));
                 trimmed = strip(trimmed);
 
-                val first_paren: i32 = find_char_from(trimmed, '(', 0);
+                val first_paren: i32 = find_char_from(trimmed, '(', cast[usize](0));
                 if first_paren < 0 {
                     StringBuilder.append_c(addr(sb_decl), " = {0}");
                 } else {
@@ -7658,10 +7659,10 @@ pub def generate_c(ast: ref ASTNode): string {
                             } elif ch == ',' and depth == 0 {
                                 mut part: string = strip(StringBuilder.to_string(addr(sb_current)));
                                 if str_len(part) > 0 {
-                                    val colon_pos: i32 = find_char_from(part, ':', 0);
+                                    val colon_pos: i32 = find_char_from(part, ':', cast[usize](0));
                                     if colon_pos >= 0 {
                                         val field_name: string = strip(substring_se(part, 0, colon_pos));
-                                        val value_expr: string = strip(substr(part, colon_pos + 1, str_len(part) - colon_pos - 1));
+                                        val value_expr: string = strip(substr(part, colon_pos + 1, cast[i32](str_len(part) - colon_pos - 1)));
                                         if str_len(field_name) > 0 and str_len(value_expr) > 0 {
                                             if !first_field {
                                                 StringBuilder.append_c(addr(sb_decl), ", ");
@@ -7684,10 +7685,10 @@ pub def generate_c(ast: ref ASTNode): string {
                         mut part_last: string = strip(StringBuilder.to_string(addr(sb_current)));
                         StringBuilder.destroy(addr(sb_current));
                         if str_len(part_last) > 0 {
-                            val colon_pos_last: i32 = find_char_from(part_last, ':', 0);
+                            val colon_pos_last: i32 = find_char_from(part_last, ':', cast[usize](0));
                             if colon_pos_last >= 0 {
                                 val field_name_last: string = strip(substring_se(part_last, 0, colon_pos_last));
-                                val value_expr_last: string = strip(substr(part_last, colon_pos_last + 1, str_len(part_last) - colon_pos_last - 1));
+                                val value_expr_last: string = strip(substr(part_last, colon_pos_last + 1, cast[i32](str_len(part_last) - colon_pos_last - 1)));
                                 if str_len(field_name_last) > 0 and str_len(value_expr_last) > 0 {
                                     if !first_field {
                                         StringBuilder.append_c(addr(sb_decl), ", ");
@@ -7709,10 +7710,10 @@ pub def generate_c(ast: ref ASTNode): string {
                     }
                 }
             } else {
-                val brace_pos: i32 = find_char_from(trimmed, '{', 0);
+                val brace_pos: i32 = find_char_from(trimmed, '{', cast[usize](0));
                 if brace_pos > 0 and get_char(trimmed, str_len(trimmed) - 1) == '}' {
                     val prefix: string = strip(substring_se(trimmed, 0, brace_pos));
-                    val inner: string = substring_se(trimmed, brace_pos + 1, str_len(trimmed) - 1);
+                    val inner: string = substring_se(trimmed, brace_pos + 1, cast[i32](str_len(trimmed) - 1));
 
                     if (str_len(type_name) == 0 or equals_c(prefix, type_name.data)) {
                         StringBuilder.append_c(addr(sb_decl), " = {");
@@ -7739,10 +7740,10 @@ pub def generate_c(ast: ref ASTNode): string {
                             } elif ch2 == ',' and depth2 == 0 {
                                 mut part2: string = strip(StringBuilder.to_string(addr(sb_current2)));
                                 if str_len(part2) > 0 {
-                                    val colon_pos2: i32 = find_char_from(part2, ':', 0);
+                                    val colon_pos2: i32 = find_char_from(part2, ':', cast[usize](0));
                                     if colon_pos2 >= 0 {
                                         val field_name2: string = strip(substring_se(part2, 0, colon_pos2));
-                                        val value_expr2: string = strip(substr(part2, colon_pos2 + 1, str_len(part2) - colon_pos2 - 1));
+                                        val value_expr2: string = strip(substr(part2, colon_pos2 + 1, cast[i32](str_len(part2) - colon_pos2 - 1)));
                                         if str_len(field_name2) > 0 and str_len(value_expr2) > 0 {
                                             if !first_field2 {
                                                 StringBuilder.append_c(addr(sb_decl), ", ");
@@ -7765,10 +7766,10 @@ pub def generate_c(ast: ref ASTNode): string {
                         mut part_last2: string = strip(StringBuilder.to_string(addr(sb_current2)));
                         StringBuilder.destroy(addr(sb_current2));
                         if str_len(part_last2) > 0 {
-                            val colon_pos_last2: i32 = find_char_from(part_last2, ':', 0);
+                            val colon_pos_last2: i32 = find_char_from(part_last2, ':', cast[usize](0));
                             if colon_pos_last2 >= 0 {
                                 val field_name_last2: string = strip(substring_se(part_last2, 0, colon_pos_last2));
-                                val value_expr_last2: string = strip(substr(part_last2, colon_pos_last2 + 1, str_len(part_last2) - colon_pos_last2 - 1));
+                                val value_expr_last2: string = strip(substr(part_last2, colon_pos_last2 + 1, cast[i32](str_len(part_last2) - colon_pos_last2 - 1)));
                                 if str_len(field_name_last2) > 0 and str_len(value_expr_last2) > 0 {
                                     if !first_field2 {
                                         StringBuilder.append_c(addr(sb_decl), ", ");
@@ -7793,12 +7794,12 @@ pub def generate_c(ast: ref ASTNode): string {
                         StringBuilder.append(addr(sb_decl), processed_init2);
                     }
                 } else {
-                    val paren_pos: i32 = find_char_from(trimmed, '(', 0);
+                    val paren_pos: i32 = find_char_from(trimmed, '(', cast[usize](0));
                     if paren_pos > 0 {
                         val call_name_raw: string = strip(substring_se(trimmed, 0, paren_pos));
                         if StringStringMap.contains(addr(g_function_prefixes), call_name_raw) {
                             val full_name: string = StringStringMap.get(addr(g_function_prefixes), call_name_raw);
-                            val rest: string = substring_se(trimmed, paren_pos, str_len(trimmed));
+                            val rest: string = substring_se(trimmed, paren_pos, cast[i32](str_len(trimmed)));
                             trimmed = concat(full_name, rest);
                         }
                     }
@@ -7970,7 +7971,7 @@ pub def generate_c(ast: ref ASTNode): string {
                         rebuilt = concat(rebuilt, str("_"));
                         rebuilt = concat(rebuilt, member);
                         if m < str_len(processed_expr) {
-                            val suffix: string = substring_se(processed_expr, m, str_len(processed_expr));
+                            val suffix: string = substring_se(processed_expr, m, cast[i32](str_len(processed_expr)));
                             rebuilt = concat(rebuilt, suffix);
                         }
                         out_rhs = rebuilt;
@@ -7980,10 +7981,10 @@ pub def generate_c(ast: ref ASTNode): string {
         }
 
         if has_prefix(processed_expr, str("->")) {
-            val eq_pos: i32 = find_char_from(processed_expr, '=', 0);
+            val eq_pos: i32 = find_char_from(processed_expr, '=', cast[usize](0));
             if eq_pos > 0 {
                 val lhs_suffix: string = substring_se(processed_expr, 0, eq_pos);
-                val rhs_suffix: string = substring_se(processed_expr, eq_pos + 1, str_len(processed_expr));
+                val rhs_suffix: string = substring_se(processed_expr, eq_pos + 1, cast[i32](str_len(processed_expr)));
 
                 out_lhs = concat(fixed_var, lhs_suffix);
                 out_rhs = strip(rhs_suffix);
@@ -8031,8 +8032,8 @@ pub def generate_c(ast: ref ASTNode): string {
         mut access_op: string = str(".");
         mut is_pointer: bool = false;
         val trimmed_obj: string = strip(object_name);
-        val arrow_pos: i32 = find_char_from(trimmed_obj, '-', 0);
-        if arrow_pos >= 0 and find_char_from(trimmed_obj, '>', arrow_pos) >= 0 {
+        val arrow_pos: i32 = find_char_from(trimmed_obj, '-', cast[usize](0));
+        if arrow_pos >= 0 and find_char_from(trimmed_obj, '>', cast[usize](arrow_pos)) >= 0 {
             is_pointer = true;
         } else {
             if StringStringMap.contains(addr(g_var_types), trimmed_obj) {
@@ -8126,7 +8127,7 @@ pub def generate_c(ast: ref ASTNode): string {
         val t_pos_chk: i32 = find_substr(func_name, str("__T_"));
         if t_pos_chk > 0 {
              val base_chk: string = substring_se(func_name, 0, t_pos_chk);
-             val type_chk: string = substring_se(func_name, t_pos_chk + 4, str_len(func_name));
+             val type_chk: string = substring_se(func_name, t_pos_chk + 4, cast[i32](str_len(func_name)));
              val type_arg_chk: string = strip(type_chk);
              
              mut target_base: string = base_chk;
@@ -8150,7 +8151,7 @@ pub def generate_c(ast: ref ASTNode): string {
              }
         }
         val has_module_sep: bool = str_contains_c(func_name, "__");
-        val is_method_call: bool = find_char_from(func_name, '.', 0) >= 0;
+        val is_method_call: bool = find_char_from(func_name, '.', cast[usize](0)) >= 0;
         val is_c_call: bool = has_prefix(func_name, str("C."));
         
         if !has_module_sep and !is_method_call and !is_c_call and !is_builtin_function(func_name) {
@@ -8235,7 +8236,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 
                 if comma_pos > 0 {
                     var_name = strip(substring_se(args_str, 0, comma_pos));
-                    value = strip(substring_se(args_str, comma_pos + 1, str_len(args_str)));
+                    value = strip(substring_se(args_str, comma_pos + 1, cast[i32](str_len(args_str))));
                     args_extracted = true;
                 }
             }
@@ -8628,7 +8629,7 @@ pub def generate_c(ast: ref ASTNode): string {
         mut loop_var_name: string = str("");
         mut loop_var_added: bool = false;
 
-        val eq_pos: i32 = find_char_from(init, '=', 0);
+        val eq_pos: i32 = find_char_from(init, '=', cast[usize](0));
         if eq_pos > 0 {
             mut v_end: i32 = eq_pos - 1;
             loop {
@@ -9121,14 +9122,14 @@ pub def generate_c(ast: ref ASTNode): string {
                                             }
                                         }
 
-                                        val n_bracket_pos: i32 = find_char_from(mapped_nested_type, '[', 0);
+                                        val n_bracket_pos: i32 = find_char_from(mapped_nested_type, '[', cast[usize](0));
                                         if n_bracket_pos >= 0 {
-                                            nested_array_part = substring_se(mapped_nested_type, n_bracket_pos, str_len(mapped_nested_type));
+                                            nested_array_part = substring_se(mapped_nested_type, n_bracket_pos, cast[i32](str_len(mapped_nested_type)));
                                             mapped_nested_type = substring_se(mapped_nested_type, 0, n_bracket_pos);
                                         }
 
                                         if has_prefix(mapped_nested_type, str("ref ")) {
-                                            mapped_nested_type = concat(strip(substring_se(mapped_nested_type, 4, str_len(mapped_nested_type))), str("*"));
+                                            mapped_nested_type = concat(strip(substring_se(mapped_nested_type, 4, cast[i32](str_len(mapped_nested_type)))), str("*"));
                                         }
 
                                         val c_nested_model_name: string = canonical_model_c_name(mapped_nested_type);
@@ -9164,14 +9165,14 @@ pub def generate_c(ast: ref ASTNode): string {
                                     }
                                 }
 
-                                val m_bracket_pos: i32 = find_char_from(mapped_member_type, '[', 0);
+                                val m_bracket_pos: i32 = find_char_from(mapped_member_type, '[', cast[usize](0));
                                 if m_bracket_pos >= 0 {
-                                    member_array_part = substring_se(mapped_member_type, m_bracket_pos, str_len(mapped_member_type));
+                                    member_array_part = substring_se(mapped_member_type, m_bracket_pos, cast[i32](str_len(mapped_member_type)));
                                     mapped_member_type = substring_se(mapped_member_type, 0, m_bracket_pos);
                                 }
 
                                 if has_prefix(mapped_member_type, str("ref ")) {
-                                    mapped_member_type = concat(strip(substring_se(mapped_member_type, 4, str_len(mapped_member_type))), str("*"));
+                                    mapped_member_type = concat(strip(substring_se(mapped_member_type, 4, cast[i32](str_len(mapped_member_type)))), str("*"));
                                 }
 
                                 val c_member_model_name: string = canonical_model_c_name(mapped_member_type);
@@ -9208,14 +9209,14 @@ pub def generate_c(ast: ref ASTNode): string {
                         }
                     }
 
-                    val bracket_pos: i32 = find_char_from(mapped_type, '[', 0);
+                    val bracket_pos: i32 = find_char_from(mapped_type, '[', cast[usize](0));
                     if bracket_pos >= 0 {
-                        array_part = substring_se(mapped_type, bracket_pos, str_len(mapped_type));
+                        array_part = substring_se(mapped_type, bracket_pos, cast[i32](str_len(mapped_type)));
                         mapped_type = substring_se(mapped_type, 0, bracket_pos);
                     }
 
                     if has_prefix(mapped_type, str("ref ")) {
-                        mapped_type = concat(strip(substring_se(mapped_type, 4, str_len(mapped_type))), str("*"));
+                        mapped_type = concat(strip(substring_se(mapped_type, 4, cast[i32](str_len(mapped_type)))), str("*"));
                     }
 
                     val c_model_name: string = canonical_model_c_name(mapped_type);

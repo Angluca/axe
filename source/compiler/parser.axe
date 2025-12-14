@@ -607,8 +607,8 @@ def scan_expression_for_addr(expr: string) {
                         
                         // Extract just the variable name (before any . or *)
                         mut var_name: string = arg;
-                        val dot_pos: i32 = find_char_from(var_name, '.', 0);
-                        val star_pos: i32 = find_char_from(var_name, '*', 0);
+                        val dot_pos: i32 = find_char_from(var_name, '.', cast[usize](0));
+                        val star_pos: i32 = find_char_from(var_name, '*', cast[usize](0));
                         if dot_pos > 0 {
                             var_name = strip(substring_se(var_name, 0, dot_pos));
                         } elif star_pos > 0 {
@@ -2636,14 +2636,14 @@ def parse_function(ctx: ref ParserContext): ASTNode {
         
         val buffer: char[64] = {};
         dbg = str("  ctx.pos = ");
-        dbg = concat_c(dbg, int_to_str(ctx.pos, buffer));
+        dbg = concat_c(dbg, int_to_str(ctx.pos, cast[ref char](buffer)));
         dbg = concat(dbg, str(" / "));
-        dbg = concat_c(dbg, int_to_str(len(ctx.tokens), buffer));
+        dbg = concat_c(dbg, int_to_str(len(ctx.tokens), cast[ref char](buffer)));
         debug_print_str dbg;
 
         if ctx.pos < len(ctx.tokens) {
             dbg = str("  current token type = ");
-            dbg = concat_c(dbg, int_to_str(ctx.tokens.data[ctx.pos].token_type, buffer));
+            dbg = concat_c(dbg, int_to_str(ctx.tokens.data[ctx.pos].token_type, cast[ref char](buffer)));
             dbg = concat(dbg, str(", value = '"));
             dbg = concat(dbg, ctx.tokens.data[ctx.pos].value);
             dbg = concat(dbg, str("'"));
@@ -2671,10 +2671,10 @@ def parse_function(ctx: ref ParserContext): ASTNode {
             val buffer2: char[64] = {};
 
             dbg = str("    [");
-            dbg = concat_c(dbg, int_to_str(i_dbg, buffer2));
+            dbg = concat_c(dbg, int_to_str(i_dbg, cast[ref char](buffer2)));
 
             dbg = concat(dbg, str("] type="));
-            dbg = concat_c(dbg, int_to_str(tok_dbg.token_type, buffer2));
+            dbg = concat_c(dbg, int_to_str(tok_dbg.token_type, cast[ref char](buffer2)));
             dbg = concat(dbg, str(", value='"));
             dbg = concat(dbg, tok_dbg.value);
             dbg = concat(dbg, str("'"));
@@ -4208,14 +4208,14 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             val to_pos: i32 = find_substr(init, str(" to "));
             if to_pos >= 0 {
                 val var_part: string = strip(substring_se(init, 0, to_pos));
-                val end_part: string = strip(substring_se(init, to_pos + 4, str_len(init)));
+                val end_part: string = strip(substring_se(init, to_pos + 4, cast[usize](str_len(init))));
                 mut var_name: string = str("i");
-                val eq_pos: i32 = find_char_from(var_part, '=', 0);
+                val eq_pos: i32 = find_char_from(var_part, '=', cast[usize](0));
                 if eq_pos > 0 {
                     val before_eq: string = strip(substring_se(var_part, 0, eq_pos));
                     mut name_part: string = before_eq;
                     if has_prefix(name_part, str("mut ")) {
-                        name_part = strip(substring_se(name_part, 4, str_len(name_part)));
+                        name_part = strip(substring_se(name_part, 4, cast[usize](str_len(name_part))));
                     }
                     if str_len(name_part) > 0 {
                         var_name = name_part;
@@ -4439,9 +4439,9 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     val trimmed_init_val: string = strip(initializer);
 
                     if str_len(type_name) == 0 {
-                        val brace_pos_val: i32 = find_char_from(trimmed_init_val, '{', 0);
+                        val brace_pos_val: i32 = find_char_from(trimmed_init_val, '{', cast[usize](0));
                         if brace_pos_val > 0 {
-                            val inferred_name_brace: string = strip(substring_se(trimmed_init_val, 0, brace_pos_val));
+                            val inferred_name_brace: string = strip(substring_se(trimmed_init_val, 0, cast[usize](brace_pos_val)));
                             if str_len(inferred_name_brace) > 0 {
                                 type_name = inferred_name_brace;
                             }
@@ -4613,7 +4613,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
 
                     mut trimmed_init_mut: string = strip(initializer);
                     if str_len(type_name) == 0 and has_prefix(trimmed_init_mut, str("new ")) {
-                        trimmed_init_mut = substring_se(trimmed_init_mut, 4, str_len(trimmed_init_mut));
+                        trimmed_init_mut = substring_se(trimmed_init_mut, 4, cast[usize](str_len(trimmed_init_mut)));
                         trimmed_init_mut = strip(trimmed_init_mut);
 
                         mut end_pos_mut: i32 = -1;
@@ -4678,8 +4678,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
 
 
         if str_len(initializer) > 0 {
-            val has_dot: bool = find_char_from(initializer, '.', 0) >= 0;
-            val has_paren: bool = find_char_from(initializer, '(', 0) >= 0;
+            val has_dot: bool = find_char_from(initializer, '.', cast[usize](0)) >= 0;
+            val has_paren: bool = find_char_from(initializer, '(', cast[usize](0)) >= 0;
             val is_constructor: bool = has_dot and has_paren;
             
             if !is_constructor {
@@ -6063,7 +6063,7 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             val prefix_fix: string = str("_state = ");
             if compare(ident_name, str("fixed")) == 0 and has_prefix(trimmed_assign, prefix_fix) {
                 ident_name = str("fixed_state");
-                trimmed_assign = substring_se(trimmed_assign, str_len(prefix_fix), str_len(trimmed_assign));
+                trimmed_assign = substring_se(trimmed_assign, cast[usize](str_len(prefix_fix)), cast[usize](str_len(trimmed_assign)));
                 expr = trimmed_assign;
             }
 
@@ -6419,9 +6419,9 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                 val r_clause: string = reduction_clauses.data[r_idx];
                 scan_expression_for_usage(r_clause);
                 
-                val colon_pos: i32 = find_char_from(r_clause, ':', 0);
+                val colon_pos: i32 = find_char_from(r_clause, ':', cast[usize](0));
                 if colon_pos > 0 {
-                    val r_var: string = strip(substring_se(r_clause, colon_pos + 1, str_len(r_clause)));
+                    val r_var: string = strip(substring_se(r_clause, colon_pos + 1, cast[usize](str_len(r_clause))));
                     if str_len(r_var) > 0 {
                         mark_variable_mutated(r_var);
                     }

@@ -85,15 +85,15 @@ def main() {
             continue;
         }
         if has_prefix(arg, str("-I")) and str_len(arg) > 2 {
-            val inc_path: string = substring_se(arg, 2, str_len(arg));
+            val inc_path: string = substring_se(arg, 2, cast[i32](str_len(arg)));
             StringList.push(inc_paths, addr(arena), inc_path);
         }
         if has_prefix(arg, str("-L")) and str_len(arg) > 2 {
-            val lib_path: string = substring_se(arg, 2, str_len(arg));
+            val lib_path: string = substring_se(arg, 2, cast[i32](str_len(arg)));
             StringList.push(lib_paths, addr(arena), lib_path);
         }
         if has_prefix(arg, str("-l")) and str_len(arg) > 2 {
-            val lib_name: string = substring_se(arg, 2, str_len(arg));
+            val lib_name: string = substring_se(arg, 2, cast[i32](str_len(arg)));
             StringList.push(link_libs, addr(arena), lib_name);
         }
         i++;
