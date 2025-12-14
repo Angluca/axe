@@ -1,0 +1,9 @@
+use std.io;
+
+def some_func() {
+    println("hello.");
+}
+
+def main() {
+    some_func();
+}
