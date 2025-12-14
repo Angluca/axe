@@ -145,25 +145,27 @@ def get_real(value: char*): f64 {
     return result;
 }
 
+extern def yyjson_get_str(value: ref char): ref char;
+extern def yyjson_get_len(value: ref char): usize;
+
 /// Get string value
 def get_str(value: char*): string {
     mut result: string;
-    raw {
-        result.data = NULL;
-        result.len = 0;
-        result.cap = 0;
-        
-        if (value != NULL) {
-            const char* str = yyjson_get_str((yyjson_val*)value);
-            if (str != NULL) {
-                size_t len = yyjson_get_len((yyjson_val*)value);
-                result.data = (char*)malloc(len + 1);
-                if (result.data != NULL) {
-                    memcpy(result.data, str, len);
-                    result.data[len] = '\0';
-                    result.len = len;
-                    result.cap = len + 1;
-                }
+
+    result.data = nil;
+    result.len = 0;
+    result.cap = 0;
+
+    if value != nil {
+        val str: ref char = yyjson_get_str(cast[ref yyjson_val](value));
+        if str != nil {
+            mut length: usize = yyjson_get_len(cast[ref yyjson_val](value));
+            result.data = cast[ref char](C.malloc(length + 1));
+            if result.data != nil {
+                C.memcpy(result.data, str, length);
+                result.data[length] = '\0';
+                result.len = length;
+                result.cap = length + 1;
             }
         }
     }
