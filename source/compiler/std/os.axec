@@ -311,8 +311,8 @@ platform posix {
 
     def stat_is_dir(st: usize): i32 {
         unsafe {
-            val sb: $(stat) = st;
-            return C.S_ISDIR(sb*.st_mode);
+            val sb: ref $(stat) = cast[ref struct stat](st);
+            return C.S_ISDIR(sb.st_mode);
         }
     }
 }
@@ -481,8 +481,8 @@ pub def rm_dir_recursive(path: string): bool {
 platform posix {
     def stat_is_reg(st: usize): i32 {
         unsafe {
-            val sb: $(stat) = st;
-            return C.S_ISREG(sb*.st_mode);
+            val sb: ref $(stat) = cast[ref struct stat](st);
+            return C.S_ISREG(sb.st_mode);
         }
     }
 }
