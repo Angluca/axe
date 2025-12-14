@@ -447,7 +447,7 @@ pub def substring_cse(s: ref char, start: i32, end: i32): ref char {
 pub def equals_c(a: string, b: ref char): bool {
     mut result: i32 = 0;
     unsafe {
-        result = C.strcmp((char*)a.data, (char*)b);
+        result = C.strcmp(cast[ref char](a.data), cast[ref char](b));
     }
     return result == 0;
 }
