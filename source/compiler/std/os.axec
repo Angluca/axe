@@ -254,38 +254,33 @@ pub def is_symbolic_link(path: string): bool {
     mut val out: bool = false;
 
     platform posix {
-        raw {
-            struct stat sb;
-            if (lstat(path.data, &sb) == 0) {
-                out = S_ISLNK(sb.st_mode);
-            }
+        mut sb: $(stat);
+        if C.lstat(path.data, addr(sb)) == 0 {
+            out = C.S_ISLNK(sb.st_mode);
         }
     }
 
     platform windows {
         return false;
     }
+
     return out;
 }
 
 /// Delete a file.
 pub def delete_file(path: string): bool {
-    mut val ok: bool = false;
-    raw {
-        if (remove(path.data) == 0) {
-            ok = true;
-        }
+    mut ok: bool = false;
+    if C.remove(path.data) == 0 {
+        ok = true;
     }
     return ok;
 }
 
 /// Delete some directory. It must be empty.
 pub def rm_dir(path: string): bool {
-    mut val ok: bool = false;
-    raw {
-        if (rmdir(path.data) == 0) {
-            ok = true;
-        }
+    mut ok: bool = false;
+    if C.rmdir(path.data) == 0 {
+        ok = true;
     }
     return ok;
 }
@@ -316,10 +311,8 @@ platform posix {
 
     def stat_is_dir(st: usize): i32 {
         unsafe {
-            raw {
-                struct stat* s = (struct stat*)st;
-                return S_ISDIR(s->st_mode);
-            }
+            val sb: $(stat) = st;
+            return C.S_ISDIR(sb*.st_mode);
         }
     }
 }
@@ -488,10 +481,8 @@ pub def rm_dir_recursive(path: string): bool {
 platform posix {
     def stat_is_reg(st: usize): i32 {
         unsafe {
-            raw {
-                struct stat* s = (struct stat*)st;
-                return S_ISREG(s->st_mode);
-            }
+            val sb: $(stat) = st;
+            return C.S_ISREG(sb*.st_mode);
         }
     }
 }
