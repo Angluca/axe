@@ -191,19 +191,14 @@ pub def read_file(path: string): string {
 /// Write a string to a file, replacing its contents.
 /// Returns true on success.
 pub def write_file(path: string, contents: string): bool {
-    mut val ok: bool = false;
-
-    raw {
-        FILE *f = fopen(path.data, "wb");
-        if (!f) {
-            return false;
-        }
-        fwrite(contents.data, 1, contents.len, f);
-        fclose(f);
-        ok = true;
+    foreign {FILE};
+    mut f: ref FILE = C.fopen(path.data, "wb");
+    if !f {
+        return false;
     }
-
-    return ok;
+    C.fwrite(contents.data, 1, contents.len, f);
+    C.fclose(f);
+    return true;
 }
 
 use external("sys/stat.h");
@@ -211,7 +206,7 @@ use external("sys/types.h");
 
 /// Determine if a path is a directory.
 pub def is_directory(path: string): bool {
-    mut val out: bool = false;
+    mut out: bool = false;
 
     platform posix {
         raw {
