@@ -121,8 +121,7 @@ mut g_current_source_file: string;
 /// Current source line number
 mut g_current_line: i32;
 
-/// Current type mapping for generic function specialization
-/// Used by WhenBranch nodes to check if their constraints match
+/// Current type mapping for generic function specialization. Used by WhenBranch nodes to check if their constraints match
 mut g_current_type_mapping: ref StringStringMap;
 
 /// Whether to emit #line directives
