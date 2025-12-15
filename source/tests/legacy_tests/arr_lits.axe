@@ -2,18 +2,18 @@ use std.io (
     print_i32
 );
 
-def arr_length(a: i32[]): usize {
+def arr_length(a: list(i32)): usize {
     return 4;
 }
 
-def func_that_takes_arr_literal(a: i32[]) {
+def func_that_takes_arr_literal(a: list(i32)) {
     for mut i = 0; i < arr_length(a); i++ {
-        print_i32(a[i]);
+        print_i32(a.data[i]);
         print " ";
     }
     println "";
 }
 
 def main() {
-    func_that_takes_arr_literal([i32]{10, 20, 30, 40}); //should become (int32_t[]){10, 20, 30, 40}
+    func_that_takes_arr_literal([i32][10, 20, 30, 40]);
 }

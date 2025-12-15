@@ -3028,6 +3028,110 @@ def rewrite_casts(expr: string): string {
     return result;
 }
 
+/// Rewrite Axe array literals [type][values] to C array literals (type[]){values}
+def rewrite_array_literals(expr: string): string {
+    mut sb: StringBuilder = StringBuilder.init(str_len(expr) + 64);
+    mut i: i32 = 0;
+    mut in_string: bool = false;
+    mut in_char_literal: bool = false;
+    val expr_len: i32 = cast[i32](str_len(expr));
+
+    loop {
+        if i >= expr_len {
+            break;
+        }
+
+        val ch: char = get_char(expr, i);
+
+        if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
+            in_char_literal = !in_char_literal;
+            StringBuilder.append_char(addr(sb), ch);
+            i++;
+            continue;
+        }
+
+        if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
+            in_string = !in_string;
+            StringBuilder.append_char(addr(sb), ch);
+            i++;
+            continue;
+        }
+
+        if !in_string and !in_char_literal and ch == '[' {
+            val type_start: i32 = i + 1;
+            mut type_end: i32 = -1;
+            mut bracket_depth: i32 = 1;
+            mut p: i32 = type_start;
+            loop {
+                if p >= expr_len {
+                    break;
+                }
+                val cp: char = get_char(expr, p);
+                if cp == '[' {
+                    bracket_depth++;
+                } elif cp == ']' {
+                    bracket_depth--;
+                    if bracket_depth == 0 {
+                        type_end = p;
+                        break;
+                    }
+                }
+                p++;
+            }
+
+            if type_end > type_start {
+                val type_str: string = strip(substring_se(expr, type_start, type_end));
+                val next_pos: i32 = type_end + 1;
+                if next_pos < expr_len and get_char(expr, next_pos) == '[' {
+                    val values_start: i32 = next_pos + 1;
+                    mut values_end: i32 = -1;
+                    bracket_depth = 1;
+                    p = values_start;
+                    loop {
+                        if p >= expr_len {
+                            break;
+                        }
+                        val cp: char = get_char(expr, p);
+                        if cp == '[' {
+                            bracket_depth++;
+                        } elif cp == ']' {
+                            bracket_depth--;
+                            if bracket_depth == 0 {
+                                values_end = p;
+                                break;
+                            }
+                        }
+                        p++;
+                    }
+
+                    if values_end > values_start {
+                        val values_str: string = strip(substring_se(expr, values_start, values_end));
+                        val c_type: string = map_axe_type_to_c(type_str);
+                        mut array_lit: StringBuilder = StringBuilder.init(str_len(c_type) + str_len(values_str) + 16);
+                        StringBuilder.append_char(addr(array_lit), '(');
+                        StringBuilder.append(addr(array_lit), c_type);
+                        StringBuilder.append_c(addr(array_lit), "[]){");
+                        StringBuilder.append(addr(array_lit), values_str);
+                        StringBuilder.append_c(addr(array_lit), "}");
+                        val result: string = StringBuilder.to_string(addr(array_lit));
+                        StringBuilder.destroy(addr(array_lit));
+                        StringBuilder.append(addr(sb), result);
+                        i = values_end + 1;
+                        continue;
+                    }
+                }
+            }
+        }
+
+        StringBuilder.append_char(addr(sb), ch);
+        i++;
+    }
+
+    val result: string = StringBuilder.to_string(addr(sb));
+    StringBuilder.destroy(addr(sb));
+    return result;
+}
+
 /// Add a list element type to tracking structures (map + ordered list)
 def add_list_element(c_elem: string) {
     if str_len(c_elem) == 0 {
@@ -4512,6 +4616,7 @@ def process_expression(expr: string): string {
     }
 
     trimmed = rewrite_casts(trimmed);
+    trimmed = rewrite_array_literals(trimmed);
 
     loop {
         if i >= str_len(trimmed) {
