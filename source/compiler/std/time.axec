@@ -40,7 +40,7 @@ pub def now(): DateTime {
         unsafe {
             mut tv: $(timeval);
             C.gettimeofday(addr(tv), nil);
-            mut epoch_ms : i64 = cast[i64](tv.tv_sec) * 1000 + cast[i64](tv.tv_usec) / 1000;
+            mut epoch_ms: i64 = cast[i64](tv.tv_sec) * 1000 + cast[i64](tv.tv_usec) / 1000;
             mut t: time_t = tv.tv_sec;
             mut local_tm: ref $(tm) = C.localtime(addr(t));
 

@@ -8,7 +8,7 @@ def arr_length(a: list(i32)): usize {
 
 def func_that_takes_arr_literal(a: list(i32)) {
     for mut i = 0; i <= arr_length(a); i++ {
-        print_i32(a*.data[i]);
+        print_i32(a.data[i]);
         print " ";
     }
     println "";
