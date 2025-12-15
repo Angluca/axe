@@ -633,16 +633,8 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         return;
     }
 
-    if equals_c(func_name, "add") {
-        println($"Called for {func_name} with args: {args_str} at depth {depth}");
-    }
-
     // Skip validation for builtin functions as they are polymorphic or handled specially
     if is_builtin_function(func_name) {
-            
-        if equals_c(func_name, "add") {
-            println($"DEBUG22: Validating call to '{func_name}')");
-        }
         return;
     }
     
@@ -686,9 +678,6 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         i++;
     }
 
-    if equals_c(func_name, "add") {
-        println($"DEBUG235: Validating call to '{func_name}");
-    }
     val final_arg: string = StringBuilder.to_string(addr(sb_arg));
     if str_len(strip(final_arg)) > 0 {
         append(arg_list, strip(final_arg));
@@ -724,14 +713,7 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         lookup_name = StringStringMap.get(addr(g_function_prefixes), func_name);
     }
     
-    if equals_c(func_name, "add") {
-        println($"DEBUG236: Validating call to '{func_name}");
-    }
-
     if has_prefix(func_name, str("cast")) {
-        if equals_c(func_name, "add") {
-            println($"23: Validating call to '{func_name}' with {len(arg_list)} args against expected)");
-        }
         return;
     }
 
@@ -766,20 +748,6 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         }
     }
         
-    if equals_c(func_name, "add") {
-        println($"DEBUG239: Validating call to '{func_name}");
-        println($"\n\nFUNC_NAME: {func_name}");
-        println($"LOOKUP_NAME: {lookup_name}");
-        println("\n\nC. one:");
-        println(has_prefix(func_name, str("C.")));
-        
-        println("\n\nC. two:");
-        println(has_prefix(func_name, str("C .")));
-
-        println("\n\nC. three");
-        println(has_prefix(lookup_name, str("C__")));
-    }
-
     if has_prefix(func_name, str("C."))
         or has_prefix(func_name, str("C ."))
         or has_prefix(lookup_name, str("C__")) {
@@ -803,17 +771,19 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
     val expected_types_str: string = StringStringMap.get(addr(g_function_param_types), lookup_name);
     if str_len(expected_types_str) == 0 {
         if len(arg_list) > 0 {
-             print(get_short_filename(g_current_source_file));
-             print ":";
-             print(i32_to_string(g_current_line));
-             print ": error: function '";
-             print func_name;
-             print "' expects 0 argument(s), but ";
-             print(i32_to_string(len(arg_list)));
-             println " were provided";
-             unsafe {
-                 C.exit(1);
-             }
+            if !has_prefix(func_name, str("__INTERPOLATED__")) {
+                print(get_short_filename(g_current_source_file));
+                print ":";
+                print(i32_to_string(g_current_line));
+                print ": error: function '";
+                print func_name;
+                print "' expects 0 argument(s), but ";
+                print(i32_to_string(len(arg_list)));
+                println " were provided";
+                unsafe {
+                    C.exit(1);
+                }
+            }
         }
         return;
     }
@@ -896,16 +866,6 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         println($"DEBUG24: Validating call to '{func_name}");
     }
 
-    if len(arg_list) > 0 {
-        print "DEBUG: validate_function_call: ";
-        print func_name;
-        print " args=";
-        print(i32_to_string(len(arg_list)));
-        print " expected_types_str='";
-        print expected_types_str;
-        println "'";
-    }
-
     loop {
         if arg_idx >= len(arg_list) {
             break;
@@ -957,6 +917,10 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
 
         if !StringBoolMap.contains(addr(g_extern_functions), func_name) and !is_generic_func {
             if str_len(inferred_type) > 0 and !equals_c(inferred_type, "auto") and compare(mapped_inferred, mapped_expected) != 0 {
+                if has_prefix(inferred_type, expected_type) {
+                    arg_idx++;
+                    continue;
+                }
                 print(get_short_filename(g_current_source_file));
                 print ":";
                 print(i32_to_string(g_current_line));

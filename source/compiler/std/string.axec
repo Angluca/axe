@@ -555,7 +555,7 @@ pub def str_contains(s: string, substr: string): bool {
 }
 
 /// Checks if string contains substring.
-pub def str_contains_c(s: string, substr: char*): bool {
+pub def str_contains_c(s: string, substr: ref char): bool {
     return substring(s, str(substr)) != 0;
 }
 
@@ -569,7 +569,7 @@ pub def str_to_int(s: string): i32 {
 }
 
 /// Converts string to long integer.
-pub def str_to_long(s: char*): i64 {
+pub def str_to_long(s: ref char): i64 {
     mut result: i64 = 0;
     unsafe {
         result = C.atol(s);
@@ -680,7 +680,7 @@ pub def str_dup(s: ref char): ref char {
 }
 
 /// Compares first n characters of two strings. Returns 0 if equal.
-pub def str_ncmp(s1: char*, s2: char*, n: i32): i32 {
+pub def str_ncmp(s1: ref char, s2: ref char, n: i32): i32 {
     mut result: i32 = 0;
     unsafe {
         result = C.strncmp(s1, s2, cast[usize](n));
