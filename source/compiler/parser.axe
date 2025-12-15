@@ -3634,6 +3634,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             consume(ctx);
         }
         
+        scan_expression_for_usage(switch_expr);
+        
         if !expect(ctx, TokenType.LBRACE) {
             mut err: string = format_error(ctx, str("Expected '{' after switch expression"));
             enforce_raw(false, err.data);
