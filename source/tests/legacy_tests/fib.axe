@@ -14,7 +14,7 @@ def fib(n: i32): i32 {
             break;
         }
 
-        mut temp: i32 = a + b;
+        val temp: i32 = a + b;
         a = b;
         b = temp;
 
