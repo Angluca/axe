@@ -732,7 +732,20 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
              }
          }
     }
-    
+
+    val dot_pos_lookup: i32 = find_char_from(func_name, '.', cast[usize](0));
+    if dot_pos_lookup > 0 {
+        val base_name_lookup: string = strip(substring_se(func_name, 0, dot_pos_lookup));
+        if equals_c(base_name_lookup, "C") {
+            return;
+        }
+    }
+    if find_substr(func_name, str("C.")) >= 0 
+        or find_substr(func_name, str("C .")) >= 0 
+        or has_prefix(lookup_name, str("C__")) {
+        return;
+    }
+
     if !StringStringMap.contains(addr(g_function_param_types), lookup_name) {
         if StringBoolMap.contains(addr(g_overloads), lookup_name) 
             or StringBoolMap.contains(addr(g_extern_functions), lookup_name) 
@@ -860,9 +873,6 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         val inferred_type: string = infer_expression_type(arg_expr);
         val expected_type: string = expected_types.data[arg_idx];
 
-        // Debug: show raw argument and inferred type
-        print("[DBG-ARG] func="); print(replace_all(func_name, str("__"), str("."))); print(" arg="); print(i32_to_string(arg_idx + 1)); print(" expr="); print(arg_expr); print(" inferred="); print(inferred_type); println("");
-        
         if equals_c(expected_type, "...") {
             arg_idx++;
             continue;
@@ -879,12 +889,6 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
             }
         }
         
-        if !StringBoolMap.contains(addr(g_extern_functions), func_name) and !is_generic_func {
-            // Debug: print addr-related types
-        if str_len(inferred_type) > 0 and has_prefix(inferred_type, str("ref ")) {
-            print("[DBG] func="); print(replace_all(func_name, str("__"), str("."))); print(" arg="); print(i32_to_string(arg_idx + 1)); print(" inferred="); print(inferred_type); print(" expected="); print(expected_type); println("");
-        }
-
         // If caller passed an address (addr(...)) but the parameter doesn't expect a ref, emit a specific error.
         if str_len(inferred_type) > 0 and has_prefix(inferred_type, str("ref ")) and !has_prefix(expected_type, str("ref ")) {
             print(get_short_filename(g_current_source_file));
@@ -923,11 +927,11 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
                 }
             }
         }
-        }
-
         arg_idx++;
     }
 }
+
+
 
 /// Recursively collect function signatures from AST
 def collect_function_signatures(node: ref ASTNode, arena: ref Arena, prefix: string) {
@@ -8467,16 +8471,27 @@ pub def generate_c(ast: ref ASTNode): string {
 
                 if !StringStringMap.contains(addr(g_function_param_types), func_name) and !is_specialized_generic {
                     val base_func: string = func_name;
-                    if !is_symbol_imported(base_func) {
-                        if !StringBoolMap.contains(addr(g_generic_functions), func_name) {
-                            print(get_short_filename(g_current_source_file));
-                            print ":";
-                            print(i32_to_string(g_current_line));
-                            print ": error: undefined symbol: ";
-                            print base_func;
-                            println ", perhaps missing 'use' statement?";
-                            unsafe {
-                                C.exit(1);
+                    mut is_c_like: bool = false;
+                    if find_substr(base_func, str("C.")) >= 0 {
+                        is_c_like = true;
+                    } elif find_substr(base_func, str("C .")) >= 0 {
+                        is_c_like = true;
+                    } elif find_substr(base_func, str("C__")) >= 0 {
+                        is_c_like = true;
+                    }
+
+                    if !is_c_like {
+                        if !is_symbol_imported(base_func) {
+                            if !StringBoolMap.contains(addr(g_generic_functions), func_name) {
+                                print(get_short_filename(g_current_source_file));
+                                print ":";
+                                print(i32_to_string(g_current_line));
+                                print ": error: undefined symbol: ";
+                                print base_func;
+                                println ", perhaps missing 'use' statement?";
+                                unsafe {
+                                    C.exit(1);
+                                }
                             }
                         }
                     }

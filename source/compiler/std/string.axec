@@ -1016,7 +1016,7 @@ pub def strip(s: string): string {
 }
 
 /// Convenience function to convert a char* to a string.
-pub def str(data: char*): string {
+pub def str(data: ref char): string {
     return string.create(data);
 }
 
