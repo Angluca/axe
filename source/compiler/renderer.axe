@@ -445,7 +445,7 @@ def register_function_signature(func_name: string, params: ref list(string), ret
         StringStringMap.set(addr(g_function_param_types), arena, func_name, str(""));
         return;
     }
-    
+
     mut sb_types: StringBuilder = StringBuilder.init(256);
     mut i: i32 = 0;
     loop {
@@ -453,7 +453,7 @@ def register_function_signature(func_name: string, params: ref list(string), ret
             break;
         }
         val param: string = params.data[i];
-        
+
         if equals_c(param, "...") {
             if i > 0 {
                 StringBuilder.append_c(addr(sb_types), ",");
@@ -633,8 +633,16 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         return;
     }
 
+    if equals_c(func_name, "add") {
+        println($"Called for {func_name} with args: {args_str} at depth {depth}");
+    }
+
     // Skip validation for builtin functions as they are polymorphic or handled specially
     if is_builtin_function(func_name) {
+            
+        if equals_c(func_name, "add") {
+            println($"DEBUG22: Validating call to '{func_name}')");
+        }
         return;
     }
     
@@ -678,6 +686,9 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         i++;
     }
 
+    if equals_c(func_name, "add") {
+        println($"DEBUG235: Validating call to '{func_name}");
+    }
     val final_arg: string = StringBuilder.to_string(addr(sb_arg));
     if str_len(strip(final_arg)) > 0 {
         append(arg_list, strip(final_arg));
@@ -713,7 +724,14 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         lookup_name = StringStringMap.get(addr(g_function_prefixes), func_name);
     }
     
+    if equals_c(func_name, "add") {
+        println($"DEBUG236: Validating call to '{func_name}");
+    }
+
     if has_prefix(func_name, str("cast")) {
+        if equals_c(func_name, "add") {
+            println($"23: Validating call to '{func_name}' with {len(arg_list)} args against expected)");
+        }
         return;
     }
 
@@ -724,7 +742,6 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
             return;
         }
     }
-    
     
     val t_pos_lookup: i32 = find_substr(lookup_name, str("__T_"));
     if t_pos_lookup > 0 {
@@ -748,40 +765,41 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
             return;
         }
     }
-    if find_substr(func_name, str("C.")) >= 0 
-        or find_substr(func_name, str("C .")) >= 0 
+        
+    if equals_c(func_name, "add") {
+        println($"DEBUG239: Validating call to '{func_name}");
+        println($"\n\nFUNC_NAME: {func_name}");
+        println($"LOOKUP_NAME: {lookup_name}");
+        println("\n\nC. one:");
+        println(has_prefix(func_name, str("C.")));
+        
+        println("\n\nC. two:");
+        println(has_prefix(func_name, str("C .")));
+
+        println("\n\nC. three");
+        println(has_prefix(lookup_name, str("C__")));
+    }
+
+    if has_prefix(func_name, str("C."))
+        or has_prefix(func_name, str("C ."))
         or has_prefix(lookup_name, str("C__")) {
         return;
     }
-
+    
     if !StringStringMap.contains(addr(g_function_param_types), lookup_name) {
-        if StringBoolMap.contains(addr(g_overloads), lookup_name) 
-            or StringBoolMap.contains(addr(g_extern_functions), lookup_name) 
-            or StringBoolMap.contains(addr(g_generic_functions), lookup_name) 
-            or StringBoolMap.contains(addr(g_function_return_types), lookup_name) 
-            or StringBoolMap.contains(addr(g_function_param_types), lookup_name) 
+        if StringBoolMap.contains(addr(g_overloads), lookup_name)
+            or StringBoolMap.contains(addr(g_extern_functions), lookup_name)
+            or StringBoolMap.contains(addr(g_generic_functions), lookup_name)
             or StringBoolMap.contains(addr(g_emitted_prototypes), lookup_name)
             or StringBoolMap.contains(addr(g_function_prefixes), lookup_name)
             or equals_c(lookup_name, "len_v") {
             return;
         }
-
-        if g_current_source_file.data != nil {
-            print(get_short_filename(g_current_source_file));
-        } else {
-            print "(null)";
-        }
-        print ":";
-        print(i32_to_string(g_current_line));
-        print ": error: undefined function: '";
-        print func_name;
-        println "'";
-        unsafe {
-            C.exit(1);
-        }
-        return;
     }
     
+    if equals_c(func_name, "add") {
+        println($"DEBUG241: Validating call to '{func_name}");
+    }
     val expected_types_str: string = StringStringMap.get(addr(g_function_param_types), lookup_name);
     if str_len(expected_types_str) == 0 {
         if len(arg_list) > 0 {
@@ -799,7 +817,10 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         }
         return;
     }
-    
+        
+    if equals_c(func_name, "add") {
+        println($"DEBUG242: Validating call to '{func_name}");
+    }
     mut expected_types: list(string);
     mut sb_type: StringBuilder = StringBuilder.init(128);
     mut j: usize = 0;
@@ -833,6 +854,9 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         }
     }
     
+    if equals_c(func_name, "add") {
+        println($"DEBUG23: Validating call to '{func_name}");
+    }
     mut arg_count_ok: bool = false;
     if is_variadic {
         if len(arg_list) >= len(expected_types) - 1 {
@@ -866,6 +890,21 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
     }
     
     mut arg_idx: i32 = 0;
+
+    
+    if equals_c(func_name, "add") {
+        println($"DEBUG24: Validating call to '{func_name}");
+    }
+
+    if len(arg_list) > 0 {
+        print "DEBUG: validate_function_call: ";
+        print func_name;
+        print " args=";
+        print(i32_to_string(len(arg_list)));
+        print " expected_types_str='";
+        print expected_types_str;
+        println "'";
+    }
 
     loop {
         if arg_idx >= len(arg_list) {
@@ -1379,6 +1418,65 @@ def replace_keyword_outside_strings(expr: string, keyword: string, replacement: 
         i++;
     }
     
+    val result: string = StringBuilder.to_string(addr(sb));
+    StringBuilder.destroy(addr(sb));
+    return result;
+}
+
+/// Replace all occurrences of `old_sub` with `replacement` but only when
+/// they occur outside string and character literals.
+def replace_substr_outside_strings(expr: string, old_sub: string, replacement: string): string {
+    val expr_len: i32 = cast[i32](str_len(expr));
+    val old_len: i32 = cast[i32](str_len(old_sub));
+    if expr_len == 0 or old_len == 0 {
+        return expr;
+    }
+
+    mut sb: StringBuilder = StringBuilder.init(cast[usize](expr_len + 32));
+    mut in_string: bool = false;
+    mut in_char_literal: bool = false;
+    mut i: i32 = 0;
+
+    loop {
+        if i >= expr_len {
+            break;
+        }
+
+        val ch: char = get_char(expr, i);
+
+        if ch == '\'' and !in_string and !is_escaped_quote(expr, i) {
+            in_char_literal = !in_char_literal;
+            StringBuilder.append_char(addr(sb), ch);
+            i++;
+            continue;
+        }
+
+        if ch == '"' and !in_char_literal and !is_escaped_quote(expr, i) {
+            in_string = !in_string;
+            StringBuilder.append_char(addr(sb), ch);
+            i++;
+            continue;
+        }
+
+        if in_string or in_char_literal {
+            StringBuilder.append_char(addr(sb), ch);
+            i++;
+            continue;
+        }
+
+        if i + old_len <= expr_len {
+            val candidate: string = substring_se(expr, i, i + old_len);
+            if compare(candidate, old_sub) == 0 {
+                StringBuilder.append(addr(sb), replacement);
+                i = i + old_len;
+                continue;
+            }
+        }
+
+        StringBuilder.append_char(addr(sb), ch);
+        i++;
+    }
+
     val result: string = StringBuilder.to_string(addr(sb));
     StringBuilder.destroy(addr(sb));
     return result;
@@ -3805,12 +3903,35 @@ def strip_all_c_prefixes(s: string): string {
     mut sb: StringBuilder = StringBuilder.init(str_len(s) + 16);
     mut i: i32 = 0;
     val s_len: i32 = cast[i32](str_len(s));
+    mut in_string: bool = false;
+    mut in_char_literal: bool = false;
+
     loop {
         if i >= s_len {
             break;
         }
 
         val ch: char = get_char(s, i);
+
+        if ch == '\'' and !in_string and !is_escaped_quote(s, i) {
+            in_char_literal = !in_char_literal;
+            StringBuilder.append_char(addr(sb), ch);
+            i++;
+            continue;
+        }
+
+        if ch == '"' and !in_char_literal and !is_escaped_quote(s, i) {
+            in_string = !in_string;
+            StringBuilder.append_char(addr(sb), ch);
+            i++;
+            continue;
+        }
+
+        if in_string or in_char_literal {
+            StringBuilder.append_char(addr(sb), ch);
+            i++;
+            continue;
+        }
 
         if ch == 'C' {
             mut prev_idx: i32 = i - 1;
@@ -3854,6 +3975,21 @@ def strip_all_c_prefixes(s: string): string {
                     }
 
                     i = k;
+                    continue;
+                }
+
+                if k < s_len and get_char(s, k) == '_' and k + 1 < s_len and get_char(s, k + 1) == '_' {
+                    mut k2: i32 = k;
+                    loop {
+                        if k2 >= s_len {
+                            break;
+                        }
+                        if get_char(s, k2) != '_' {
+                            break;
+                        }
+                        k2 = k2 + 1;
+                    }
+                    i = k2;
                     continue;
                 }
             }
@@ -6910,9 +7046,9 @@ pub def generate_c(ast: ref ASTNode): string {
 
     if equals_c(node_type, "Program") {
         result = strip_all_c_prefixes(result);
-        result = replace_all(result, str("C . "), str(""));
-        result = replace_all(result, str("C."), str(""));
-        result = replace_all(result, str("C__"), str(""));
+        result = replace_substr_outside_strings(result, str("C . "), str(""));
+        result = replace_substr_outside_strings(result, str("C."), str(""));
+        result = replace_substr_outside_strings(result, str("C__"), str(""));
         result = collapse_duplicate_segments(result);
         result = rewrite_method_calls(result);
         result = rewrite_function_prefixes(result);
@@ -8510,7 +8646,21 @@ pub def generate_c(ast: ref ASTNode): string {
         // Type check function call arguments (including nested calls)
         val call_args: ref list(string) = ast.data.func_call.args;
         if call_args != nil and len(deref(call_args)) > 0 {
-            val args_str: string = strip(call_args.data[0]);
+            mut combined_args: StringBuilder = StringBuilder.init(256);
+            mut arg_idx: i32 = 0;
+            loop {
+                if arg_idx >= len(deref(call_args)) {
+                    break;
+                }
+                val arg: string = call_args.data[arg_idx];
+                if arg_idx > 0 {
+                    StringBuilder.append_c(addr(combined_args), ",");
+                }
+                StringBuilder.append(addr(combined_args), arg);
+                arg_idx++;
+            }
+            val args_str: string = StringBuilder.to_string(addr(combined_args));
+            StringBuilder.destroy(addr(combined_args));
             if !is_c_call {
                 validate_function_call(func_name, args_str, 0);
             }
@@ -8612,7 +8762,7 @@ pub def generate_c(ast: ref ASTNode): string {
                                         break;
                                     }
                                 }
-                                paren_pos = paren_pos + 1;
+                                paren_pos++;
                             }
                             element_type = strip(substr(var_type, 5, paren_pos - 5));
                         } elif has_suffix(element_type, str("[999]")) {
