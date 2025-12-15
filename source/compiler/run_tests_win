@@ -11,8 +11,7 @@ if (-not (Test-Path "./axc.exe")) {
 $failed = 0
 $counts = @{ total = 0; passed = 0; failed = 0 }
 $failedFiles = @()
-
-$folders = @("..\\tests\\legacy_tests", "..\\tests\\self_tests")
+$folders = @("..\\tests\\self_tests", "..\\tests\\legacy_tests")
 
 Write-Host "=== Axe compiler PowerShell test runner ==="
 
