@@ -407,6 +407,14 @@ def validate_type_imported(type_name: string) {
     if str_len(base_type) == 0 {
         return;
     }
+
+    if is_builtin_type(base_type) {
+        return;
+    }
+
+    if find_char_from(base_type, '_', cast[usize](0)) >= 0 {
+        return;
+    }
     
     if !is_valid_symbol(base_type) {
         if g_current_source_file.data != nil {
