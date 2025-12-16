@@ -1,8 +1,12 @@
 model Test {
     data: union {
         function: i32;
-        macro: i32;
-        opaque: i32;
+        macro_node: i32;
+        opaque_node: i32;
         extern_node: i32;
     };
+}
+
+def main() {
+    
 }
