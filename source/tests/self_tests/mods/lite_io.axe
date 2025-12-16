@@ -3,3 +3,7 @@ def print(str: ref char) {
         C.printf(str);
     }
 }
+
+def main() {
+    print("yo.");   
+}
