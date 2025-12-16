@@ -1,9 +1,11 @@
+use std.io;
+
 model Counter {
     value: i32,
 }
 
 def main() {
-    mut val counter: Counter;
+    mut counter: Counter;
     counter.value = 5;
     counter.value++;
     println counter.value;
