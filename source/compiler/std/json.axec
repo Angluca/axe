@@ -21,14 +21,14 @@ extern def yyjson_is_num(value: char*): bool;
 extern def yyjson_is_str(value: char*): bool;
 
 /// Parse a JSON string and return a document
-def parse(json_str: string): ref char {
+pub def parse_json(json_str: string): ref char {
     mut doc: ref char = nil;
     doc = cast[ref char](yyjson_read(json_str.data, json_str.len, 0));
     return doc;
 }
 
 /// Free a JSON document
-def free_doc(doc: ref char) {
+pub def free_json_doc(doc: ref char) {
     if doc != nil {
         yyjson_doc_free(cast[ref yyjson_doc](doc));
     }
@@ -297,7 +297,7 @@ def write_file(path: string, doc: ref char): bool {
 
 test {
     mut json_str: string = string.create("{\"name\":\"John\",\"age\":30,\"active\":true}");
-    mut doc: ref char = parse(json_str);
+    mut doc: ref char = parse_json(json_str);
     
     assert doc != nil, "Should parse valid JSON";
     
@@ -327,11 +327,11 @@ test {
         mut active: bool = get_bool(active_val);
         assert active, "active should be true";
         
-        free_doc(doc);
+        free_json_doc(doc);
     }
     
     mut arr_str: string = string.create("[1,2,3,4,5]");
-    mut arr_doc: ref char = parse(arr_str);
+    mut arr_doc: ref char = parse_json(arr_str);
     
     assert arr_doc != nil, "Should parse JSON array";
     
@@ -346,6 +346,6 @@ test {
         assert is_num(first), "First element should be a number";
         assert get_int(first) == 1, "First element should be 1";
         
-        free_doc(arr_doc);
+        free_json_doc(arr_doc);
     }
 }
