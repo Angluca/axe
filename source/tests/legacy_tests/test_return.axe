@@ -1,7 +1,13 @@
+use std.string;
+
 model Test {
     data: union {
         return_node: model {
             expr: string;
         };
     };
+}
+
+def main() {
+
 }
