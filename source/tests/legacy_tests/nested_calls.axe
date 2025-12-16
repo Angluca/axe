@@ -1,4 +1,6 @@
-def thing_of(x: i32): long {
+use std.io;
+
+def thing_of(x: i32): i64 {
     return 0;
 }
 
