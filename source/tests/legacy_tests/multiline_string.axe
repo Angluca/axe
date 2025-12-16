@@ -1,7 +1,7 @@
 use std.io(println);
 
 def main() {
-    mut message: ref char = `This is a
+    val message: ref char = `This is a
 multiline string
 with multiple lines`;
     
