@@ -211,44 +211,45 @@ def http_put(url: string, data: string): HttpResponse {
     response.headers.len = 0;
     response.headers.cap = 0;
 
-    mut curl: ref CURL = C.curl_easy_init();
-    if curl != nil {
-        mut body_chunk: MemoryStruct;
-        body_chunk.memory = cast[ref char](C.malloc(1));
-        body_chunk.size = 0;
-        mut header_chunk: MemoryStruct;
-        header_chunk.memory = cast[ref char](C.malloc(1));
-        header_chunk.size = 0;
+    unsafe {
+        mut curl: ref CURL = C.curl_easy_init();
+        if curl != nil {
+            mut body_chunk: MemoryStruct;
+            body_chunk.memory = cast[ref char](C.malloc(1));
+            body_chunk.size = 0;
+            mut header_chunk: MemoryStruct;
+            header_chunk.memory = cast[ref char](C.malloc(1));
+            header_chunk.size = 0;
 
-        C.curl_easy_setopt(curl, CURLOPT_URL, url.data);
-        C.curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-        C.curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.data);
-        C.curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, std__net__write_callback);
-        C.curl_easy_setopt(curl, CURLOPT_WRITEDATA, cast[ref void](addr(body_chunk)));
-        C.curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, std__net__write_callback);
-        C.curl_easy_setopt(curl, CURLOPT_HEADERDATA, cast[ref void](addr(header_chunk)));
-        C.curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-        C.curl_easy_setopt(curl, CURLOPT_USERAGENT, "axe-std.1.0");
+            C.curl_easy_setopt(curl, CURLOPT_URL, url.data);
+            C.curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+            C.curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.data);
+            C.curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, std__net__write_callback);
+            C.curl_easy_setopt(curl, CURLOPT_WRITEDATA, cast[ref void](addr(body_chunk)));
+            C.curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, std__net__write_callback);
+            C.curl_easy_setopt(curl, CURLOPT_HEADERDATA, cast[ref void](addr(header_chunk)));
+            C.curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+            C.curl_easy_setopt(curl, CURLOPT_USERAGENT, "axe-std.1.0");
 
-        val res: CURLcode = C.curl_easy_perform(curl);
-        if res == CURLE_OK {
-            mut response_code: i64 = 0;
-            C.curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, addr(response_code));
-            response.status_code = cast[i32](response_code);
-            response.success = true;
-            response.body.data = body_chunk.memory;
-            response.body.len = body_chunk.size;
-            response.body.cap = body_chunk.size + 1;
-            response.headers.data = header_chunk.memory;
-            response.headers.len = header_chunk.size;
-            response.headers.cap = header_chunk.size + 1;
-        } else {
-            C.free(cast[ref void](body_chunk.memory));
-            C.free(cast[ref void](header_chunk.memory));
+            val res: CURLcode = C.curl_easy_perform(curl);
+            if res == CURLE_OK {
+                mut response_code: i64 = 0;
+                C.curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, addr(response_code));
+                response.status_code = cast[i32](response_code);
+                response.success = true;
+                response.body.data = body_chunk.memory;
+                response.body.len = body_chunk.size;
+                response.body.cap = body_chunk.size + 1;
+                response.headers.data = header_chunk.memory;
+                response.headers.len = header_chunk.size;
+                response.headers.cap = header_chunk.size + 1;
+            } else {
+                C.free(cast[ref void](body_chunk.memory));
+                C.free(cast[ref void](header_chunk.memory));
+            }
+            C.curl_easy_cleanup(curl);
         }
-        C.curl_easy_cleanup(curl);
     }
-    
     return response;
 }
 
