@@ -7909,6 +7909,7 @@ test {
     assert str_contains_c(stmt32.data.array_access.index, "i"), "Expected first index to contain 'i'";
     assert str_contains_c(stmt32.data.array_access.index2, "j"), "Expected second index to contain 'j'";
 
+    initialize_all();
     println "\nTest 33: A complete program parse";
     mut tokens37: list(Token) = lex(str(`use std.io;
         
