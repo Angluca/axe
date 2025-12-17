@@ -602,7 +602,7 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
         }
     }
     
-    if has_imported_module(str("std/net")) or has_imported_module(str("net.axec")) or find_substr(filename, str("net.axec")) >= 0 {
+    if has_imported_module(str("std/net")) or has_imported_module(str("net.axe")) or find_substr(filename, str("net.axe")) >= 0 {
         compile_cmd = concat_c(compile_cmd, " -DCURL_STATICLIB -I");
         compile_cmd = concat(compile_cmd, toolchain_root);
         compile_cmd = concat_c(compile_cmd, "/external/curl/include");
@@ -620,7 +620,7 @@ def compile_file(filename: string, is_axec: bool, output_filename: string): bool
         }
     }
     
-    if has_imported_module(str("std/json")) or has_imported_module(str("json.axec")) or find_substr(filename, str("json.axec")) >= 0 {
+    if has_imported_module(str("std/json")) or has_imported_module(str("json.axe")) or find_substr(filename, str("json.axe")) >= 0 {
         compile_cmd = concat_c(compile_cmd, " -I");
         compile_cmd = concat(compile_cmd, toolchain_root);
         compile_cmd = concat_c(compile_cmd, "/external/yyjson/include");
@@ -806,9 +806,9 @@ def get_output_filename(specified_output: string, input_filename: string): strin
 /// Conditions:
 ///   - The AST contains parallel constructs (blocks/loops), or
 ///   - The root module imports std.parallelism, or
-///   - We are compiling the parallelism.axec module itself.
+///   - We are compiling the parallelism.axe module itself.
 def should_link_openmp(ast: ref ASTNode, filename: string): bool {
-    if has_suffix(filename, str("parallelism.axec")) {
+    if has_suffix(filename, str("parallelism.axe")) {
         return true;
     }
 

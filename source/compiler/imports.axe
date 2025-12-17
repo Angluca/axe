@@ -166,7 +166,7 @@ def make_module_path(base_dir: string, use_module: string): string {
             i++;
         }
 
-        val rel: string = concat(path_rest, str(".axec"));
+        val rel: string = concat(path_rest, str(".axe"));
         val axe_home: string = get_env(str("AXE_HOME"));
 
         if str_len(axe_home) > 0 {
@@ -828,7 +828,7 @@ pub def process_imports(ast: ref ASTNode, base_dir: string, is_axec: bool, curre
             mut import_is_axec: bool = false;
             if str_len(module_path) >= 5 {
                 val ext: string = substring_se(module_path, cast[i32](str_len(module_path) - 5), cast[i32](str_len(module_path)));
-                if equals_c(ext, ".axec") {
+                if equals_c(ext, ".axe") {
                     import_is_axec = true;
                 }
             }
@@ -836,7 +836,7 @@ pub def process_imports(ast: ref ASTNode, base_dir: string, is_axec: bool, curre
             mut import_ast: ASTNode = parse(addr(toks), import_is_axec, false, use_mod, module_path);
             val import_base: string = get_dir_from_path(module_path);
 
-            if !child.data.use_node.import_all && child.data.use_node.imports != nil {
+            if !child.data.use_node.import_all and child.data.use_node.imports != nil {
                 val import_children: ref list(ASTNode) = import_ast.children;
                 if import_children != nil {
                     mut j: i32 = 0;

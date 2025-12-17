@@ -142,11 +142,11 @@ def main() {
         set_quiet_mode(true);
     }
 
-    if !has_suffix(source_file, str(".axe")) and !has_suffix(source_file, str(".axec")) {
+    if !has_suffix(source_file, str(".axe")) and !has_suffix(source_file, str(".axe")) {
         source_file = concat(source_file, str(".axe"));
     }
 
-    val is_axec: bool = has_suffix(source_file, str(".axec"));
+    val is_axec: bool = has_suffix(source_file, str(".axe"));
     
     if !is_file(source_file) {
         println($"Error: File '{source_file}' not found");
