@@ -485,7 +485,7 @@ def url_encode(input: string): string {
             C.curl_easy_cleanup(curl);
         }
     }
-    
+
     return result;
 }
 
@@ -541,12 +541,12 @@ def is_server_error_status(status_code: i32): bool {
 
 /// Free the memory allocated for an HttpResponse
 def free_response(response: HttpResponse) {
-    raw {
-        if (response.body.data != NULL) {
-            free(response.body.data);
+    unsafe {
+        if response.body.data != nil {
+            C.free(response.body.data);
         }
-        if (response.headers.data != NULL) {
-            free(response.headers.data);
+        if response.headers.data != nil {
+            C.free(response.headers.data);
         }
     }
 }
