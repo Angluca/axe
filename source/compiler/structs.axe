@@ -49,6 +49,7 @@ pub model ASTNode {
     // This allows each node to store only the data relevant to its type
     data: union {
         overload_node: model {
+            is_public: bool;
             name: string;
             param_name: string;
             call_expr: string;
@@ -196,6 +197,7 @@ pub model ASTNode {
         };
         
         enum_node: model {
+            is_public: bool;
             name: string;
             values: list(string);
         };

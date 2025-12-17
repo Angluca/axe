@@ -378,7 +378,13 @@ def build_exported_name_map(imported: ref ASTNode): StringBoolMap {
                 StringBoolMap.set(addr(m), addr(arena), child.data.model_node.name, true);
             }
         } elif equals_c(child.node_type, "Enum") {
-            StringBoolMap.set(addr(m), addr(arena), child.data.enum_node.name, true);
+            if child.data.enum_node.is_public {
+                StringBoolMap.set(addr(m), addr(arena), child.data.enum_node.name, true);
+            }
+        } elif equals_c(child.node_type, "Overload") {
+            if child.data.overload_node.is_public {
+                StringBoolMap.set(addr(m), addr(arena), child.data.overload_node.name, true);
+            }
         }
         i++;
     }
@@ -729,6 +735,11 @@ def merge_imported_module(program: ref ASTNode, imported: ref ASTNode, use_modul
         } elif equals_c(child.node_type, "Enum") {
             val enum_name: string = child.data.enum_node.name;
             
+            if !child.data.enum_node.is_public {
+                i++;
+                continue;
+            }
+
             if check_symbol_exists_in_program(program, enum_name) {
                 print "error: imported symbol '";
                 print enum_name;
@@ -739,7 +750,7 @@ def merge_imported_module(program: ref ASTNode, imported: ref ASTNode, use_modul
                     C.exit(1);
                 }
             }
-            
+
             register_imported_symbol(enum_name);
             prefix_enum_node(addr(child), module_prefix);
         } elif equals_c(child.node_type, "Declaration") {
@@ -773,6 +784,24 @@ def merge_imported_module(program: ref ASTNode, imported: ref ASTNode, use_modul
                 }
             }
         } elif equals_c(child.node_type, "Overload") {
+            val ovl_name: string = child.data.overload_node.name;
+            if !child.data.overload_node.is_public {
+                i++;
+                continue;
+            }
+
+            if check_symbol_exists_in_program(program, ovl_name) {
+                print "error: imported symbol '";
+                print ovl_name;
+                print "' from module '";
+                print use_module;
+                println "' shadows a local declaration";
+                unsafe {
+                    C.exit(1);
+                }
+            }
+
+            register_imported_symbol(ovl_name);
             prefix_types_in_node(addr(child), module_prefix, addr(exported));
         }
 
@@ -914,6 +943,48 @@ pub def process_imports(ast: ref ASTNode, base_dir: string, is_axec: bool, curre
                                     break;
                                 }
                                 k++;
+                            }
+
+                            if is_requested and !import_child.data.enum_node.is_public {
+                                if has_prefix(use_mod, str("std.")) {
+                                    // allow std compatibility
+                                } else {
+                                    print "error: cannot import non-public enum '";
+                                    print enum_name;
+                                    print "' from module '";
+                                    print use_mod;
+                                    println "'";
+                                    unsafe {
+                                        C.exit(1);
+                                    }
+                                }
+                            }
+                        } elif equals_c(import_child.node_type, "Overload") {
+                            val ovl_name: string = import_child.data.overload_node.name;
+                            mut is_requested2: bool = false;
+                            mut kk: i32 = 0;
+                            loop {
+                                if kk >= len(deref(child.data.use_node.imports)) {
+                                    break;
+                                }
+                                if compare(child.data.use_node.imports*.data[kk], ovl_name) == 0{
+                                    is_requested2 = true;
+                                    break;
+                                }
+                                kk++;
+                            }
+
+                            if is_requested2 and !import_child.data.overload_node.is_public {
+                                if !has_prefix(use_mod, str("std.")) {
+                                    print "error: cannot import non-public overload '";
+                                    print ovl_name;
+                                    print "' from module '";
+                                    print use_mod;
+                                    println "'";
+                                    unsafe {
+                                        C.exit(1);
+                                    }
+                                }
                             }
                         }
 

@@ -7,7 +7,7 @@ use std.string;
 use std.lists;
 
 /// Token types enumeration
-enum TokenType {
+pub enum TokenType {
     IDENTIFIER,
     NUMBER,
     STR,

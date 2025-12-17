@@ -1,7 +1,7 @@
 use std.string;
 
 /// Print out some value with a newline
-overload println(x: generic) {
+pub overload println(x: generic) {
     string       => println_str;
     ref char     => println_chrptr;
     val ref char => println_chrptr;
@@ -14,7 +14,7 @@ overload println(x: generic) {
 }(x);
 
 /// Print out some value with no newline
-overload print(x: generic) {
+pub overload print(x: generic) {
     string       => print_str;
     ref char     => print_chrptr;
     val ref char => print_chrptr;

@@ -1938,6 +1938,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
 
         mut enum_node: ASTNode;
         enum_node.node_type = str("Enum");
+        enum_node.data.enum_node.is_public = ctx.expecting_public;
         enum_node.data.enum_node.name = enum_name;
 
         unsafe {
@@ -2251,6 +2252,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         
         mut overload_node: ASTNode;
         overload_node.node_type = str("Overload");
+        overload_node.data.overload_node.is_public = ctx.expecting_public;
         overload_node.data.overload_node.name = overload_name.value;
         overload_node.data.overload_node.param_name = param_name;
         overload_node.data.overload_node.call_expr = call_expr;
