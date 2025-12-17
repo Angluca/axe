@@ -600,7 +600,7 @@ def infer_expression_type(expr: string): string {
     // Function call
     val paren_idx: i32 = find_char_from(trimmed, '(', cast[usize](0));
     if paren_idx > 0 and has_suffix(trimmed, str(")")) {
-        val func_name: string = strip(substring_se(trimmed, 0, paren_idx));
+        mut func_name: string = strip(substring_se(trimmed, 0, paren_idx));
         val args_start: i32 = paren_idx + 1;
         val args_end: i32 = str_len(trimmed) - 1;
         if args_end > args_start {
@@ -611,10 +611,24 @@ def infer_expression_type(expr: string): string {
         }
 
         mut lookup_name: string = func_name;
-        if StringStringMap.contains(addr(g_function_prefixes), func_name) {
+        val br_sq: i32 = find_char_from(func_name, '[', cast[usize](0));
+        if br_sq > 0 {
+            val br_sq_end: i32 = find_char_from(func_name, ']', cast[usize](br_sq));
+            if br_sq_end > br_sq {
+                val base_fn: string = strip(substring_se(func_name, 0, br_sq));
+                val type_arg: string = strip(substring_se(func_name, br_sq + 1, br_sq_end));
+                mut mangled: string = concat(base_fn, str("__T_"));
+                mangled = concat(mangled, type_arg);
+                lookup_name = mangled;
+            }
+        }
+
+        if StringStringMap.contains(addr(g_function_prefixes), lookup_name) {
+            lookup_name = StringStringMap.get(addr(g_function_prefixes), lookup_name);
+        } elif StringStringMap.contains(addr(g_function_prefixes), func_name) {
             lookup_name = StringStringMap.get(addr(g_function_prefixes), func_name);
         }
-        
+
         if StringStringMap.contains(addr(g_function_return_types), lookup_name) {
             return StringStringMap.get(addr(g_function_return_types), lookup_name);
         }
@@ -3709,14 +3723,39 @@ def process_interpolated_string(interp_content: string, return_struct: bool): st
 
         if i_part < len(expressions) {
             val e: string = expressions.data[i_part];
-            val etype: string = lookup_expression_type(e);
             val processed_e: string = process_expression(e);
+            val lookup_et: string = lookup_expression_type(e);
+            mut etype: string = lookup_et;
+            if str_len(etype) == 0 {
+                etype = infer_expression_type(e);
+            }
+            mut mapped_etype: string = map_axe_type_to_c(etype);
+            val proc_paren: i32 = find_char_from(processed_e, '(', cast[usize](0));
+            if proc_paren > 0 {
+                val proc_fn: string = strip(substring_se(processed_e, 0, proc_paren));
+                val tpos_spec: i32 = find_substr(proc_fn, str("__T_"));
+                if tpos_spec > 0 {
+                    val type_arg_spec: string = strip(substring_se(proc_fn, tpos_spec + 4, cast[i32](str_len(proc_fn))));
+                    if str_len(type_arg_spec) > 0 {
+                        mapped_etype = map_axe_type_to_c(type_arg_spec);
+                        etype = type_arg_spec;
+                    }
+                }
 
-            if str_len(etype) > 0 and (equals_c(etype, "string") or has_suffix(etype, str("_string")) or equals_c(etype, "std__string__string")) {
+                if StringStringMap.contains(addr(g_function_return_types), proc_fn) {
+                    val ret_sig: string = StringStringMap.get(addr(g_function_return_types), proc_fn);
+                    if str_len(ret_sig) > 0 {
+                        mapped_etype = map_axe_type_to_c(ret_sig);
+                        etype = ret_sig;
+                    }
+                }
+            }
+
+            if str_len(etype) > 0 and (equals_c(etype, "string") or has_suffix(etype, str("_string")) or equals_c(mapped_etype, "std__string__string")) {
                 code = concat_c(code, "{ struct std__string__string _s = ");
                 code = concat(code, processed_e);
                 code = concat_c(code,  "; memcpy(_axe_interp_p, _s.data, _s.len); _axe_interp_p += _s.len; } ");
-            } elif str_len(etype) > 0 and (has_prefix(etype, str("ref char")) or has_suffix(etype, str("char*"))) {
+            } elif str_len(etype) > 0 and (has_prefix(etype, str("ref char")) or has_suffix(mapped_etype, str("char*")) or has_suffix(etype, str("char*"))) {
                 code = concat_c(code, "memcpy(_axe_interp_p, ");
                 code = concat(code, processed_e);
                 code = concat_c(code, ", strlen(");
@@ -3725,7 +3764,7 @@ def process_interpolated_string(interp_content: string, return_struct: bool): st
                 code = concat(code, processed_e);
                 code = concat_c(code, "); ");
             } else {
-                val format_spec: string = get_type_format_specifier(etype);
+                val format_spec: string = get_type_format_specifier(mapped_etype);
                 if equals_c(format_spec, "%s") {
                     code = concat_c(code, "memcpy(_axe_interp_p, ");
                     code = concat(code, processed_e);
