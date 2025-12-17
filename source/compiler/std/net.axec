@@ -321,60 +321,57 @@ def http_delete(url: string): HttpResponse {
 def http_patch(url: string, data: string): HttpResponse {
     mut response: HttpResponse;
     
-    raw {
-        response.status_code = 0;
-        response.success = false;
-        response.body.data = NULL;
-        response.body.len = 0;
-        response.body.cap = 0;
-        response.headers.data = NULL;
-        response.headers.len = 0;
-        response.headers.cap = 0;
-        
-        CURL *curl = curl_easy_init();
-        if (curl) {
-            MemoryStruct body_chunk;
-            body_chunk.memory = (char*)malloc(1);
+    response.status_code = 0;
+    response.success = false;
+    response.body.data = nil;
+    response.body.len = 0;
+    response.body.cap = 0;
+    response.headers.data = nil;
+    response.headers.len = 0;
+    response.headers.cap = 0;
+
+    mut curl: ref CURL = C.curl_easy_init();
+
+    unsafe {
+        if curl != nil {
+            mut body_chunk: MemoryStruct;
+            body_chunk.memory = cast[ref char](C.malloc(1));
             body_chunk.size = 0;
-            
-            MemoryStruct header_chunk;
-            header_chunk.memory = (char*)malloc(1);
+
+            mut header_chunk: MemoryStruct;
+            header_chunk.memory = cast[ref char](C.malloc(1));
             header_chunk.size = 0;
-            
-            curl_easy_setopt(curl, CURLOPT_URL, url.data);
-            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.data);
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, std__net__write_callback);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&body_chunk);
-            curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, std__net__write_callback);
-            curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&header_chunk);
-            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-            curl_easy_setopt(curl, CURLOPT_USERAGENT, "axe-std.1.0");
-            
-            CURLcode res = curl_easy_perform(curl);
-            
-            if (res == CURLE_OK) {
-                long response_code;
-                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-                response.status_code = (int32_t)response_code;
+
+            C.curl_easy_setopt(curl, CURLOPT_URL, url.data);
+            C.curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
+            C.curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.data);
+            C.curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, std__net__write_callback);
+            C.curl_easy_setopt(curl, CURLOPT_WRITEDATA, cast[ref void](addr(body_chunk)));
+            C.curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, std__net__write_callback);
+            C.curl_easy_setopt(curl, CURLOPT_HEADERDATA, cast[ref void](addr(header_chunk)));
+            C.curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+            C.curl_easy_setopt(curl, CURLOPT_USERAGENT, "axe-std.1.0");
+
+            val res: CURLcode = C.curl_easy_perform(curl);
+            if res == CURLE_OK {
+                mut response_code: i64 = 0;
+                C.curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, addr(response_code));
+                response.status_code = cast[i32](response_code);
                 response.success = true;
-                
                 response.body.data = body_chunk.memory;
                 response.body.len = body_chunk.size;
                 response.body.cap = body_chunk.size + 1;
-                
                 response.headers.data = header_chunk.memory;
                 response.headers.len = header_chunk.size;
                 response.headers.cap = header_chunk.size + 1;
             } else {
-                free(body_chunk.memory);
-                free(header_chunk.memory);
+                C.free(cast[ref void](body_chunk.memory));
+                C.free(cast[ref void](header_chunk.memory));
             }
-            
-            curl_easy_cleanup(curl);
+            C.curl_easy_cleanup(curl);
         }
     }
-    
+   
     return response;
 }
 
