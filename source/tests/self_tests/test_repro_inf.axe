@@ -1,0 +1,8 @@
+use std.io;
+use std.random;
+
+test {
+    randomize();
+    val secret = random(1, 100);
+    println $"{secret}";
+}
