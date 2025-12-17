@@ -678,45 +678,49 @@ def server_create(port: i32): WebServer {
     return server;
 }
 
+foreign {
+    SO_RCVTIMEO,
+    SO_SNDTIMEO
+}
+
 /// Accept a client connection
 def server_accept(server: WebServer): Socket {
     mut client: Socket;
     
-    raw {
+    unsafe {
         client.is_valid = false;
         client.fd = -1;
-        
-        if (!server.socket.is_valid) {
+
+        if !server.socket.is_valid {
             return client;
         }
-        
-        #ifdef _WIN32
-            struct sockaddr_in client_addr;
-            int addr_len = sizeof(client_addr);
-            SOCKET client_sock = accept((SOCKET)server.socket.fd, (struct sockaddr*)&client_addr, &addr_len);
-            
-            if (client_sock != INVALID_SOCKET) {
-                client.fd = (int32_t)client_sock;
+
+        platform windows {
+            mut client_addr: $(sockaddr_in);
+            mut addr_len: i32 = C.sizeof($(sockaddr_in));
+            mut client_sock: SOCKET = C.accept(cast[SOCKET](server.socket.fd), cast[ref $(sockaddr)](addr(client_addr)), addr(addr_len));
+            if client_sock != INVALID_SOCKET {
+                client.fd = cast[i32](client_sock);
                 client.is_valid = true;
-                DWORD timeout = server.config.timeout_seconds * 1000;
-                setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
-                setsockopt(client_sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
+                mut timeout: u_long = cast[u_long](server.config.timeout_seconds * 1000);
+                C.setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, cast[val ref char](addr(timeout)), C.sizeof(u_long));
+                C.setsockopt(client_sock, SOL_SOCKET, SO_SNDTIMEO, cast[val ref char](addr(timeout)), C.sizeof(u_long));
             }
-        #else
-            struct sockaddr_in client_addr;
-            socklen_t addr_len = sizeof(client_addr);
-            int client_sock = accept(server.socket.fd, (struct sockaddr*)&client_addr, &addr_len);
-            
-            if (client_sock >= 0) {
+        }
+        platform posix {
+            mut client_addr: $(sockaddr_in);
+            mut addr_len: socklen_t = C.sizeof($(sockaddr_in));
+            mut client_sock: i32 = C.accept(server.socket.fd, cast[ref $(sockaddr)](addr(client_addr)), addr(addr_len));
+            if client_sock >= 0 {
                 client.fd = client_sock;
                 client.is_valid = true;
-                struct timeval timeout;
+                mut timeout: $(timeval);
                 timeout.tv_sec = server.config.timeout_seconds;
                 timeout.tv_usec = 0;
-                setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-                setsockopt(client_sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+                C.setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, addr(timeout), C.sizeof($(timeval)));
+                C.setsockopt(client_sock, SOL_SOCKET, SO_SNDTIMEO, addr(timeout), C.sizeof($(timeval)));
             }
-        #endif
+        }
     }
     
     return client;
