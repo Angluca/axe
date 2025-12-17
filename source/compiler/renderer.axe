@@ -6712,6 +6712,191 @@ pub def generate_c(ast: ref ASTNode): string {
                 val proto_child: ref ASTNode = addr(children.data[i_proto]);
                 if equals_c(proto_child.node_type, "Function") {
                     if proto_child.data.function.is_generic {
+                        val when_types: ref list(string) = proto_child.data.function.when_branch_types;
+                        mut collected_constraints: list(string);
+                        mut has_top_level_when: bool = false;
+                        if when_types != nil and len(deref(when_types)) > 0 {
+                            has_top_level_when = true;
+                        }
+
+                        if !has_top_level_when {
+                            if proto_child.children != nil {
+                                mut scan_stack: list(i64);
+                                val root_children: ref list(ASTNode) = proto_child.children;
+                                mut ri: i32 = 0;
+                                loop {
+                                    if ri >= len(deref(root_children)) { break; }
+                                    append(scan_stack, cast[i64](addr(root_children.data[ri])));
+                                    ri++;
+                                }
+
+                                loop {
+                                    if len(scan_stack) == 0 { break; }
+                                    val scan_node: ref ASTNode = cast[ref ASTNode](scan_stack.data[len(scan_stack) - 1]);
+                                    scan_stack.len = scan_stack.len - 1;
+
+                                    if equals_c(scan_node.node_type, "WhenBranch") {
+                                        val tp_list: ref list(string) = scan_node.data.when_branch.type_params;
+                                        val ct_list: ref list(string) = scan_node.data.when_branch.concrete_types;
+                                        if tp_list != nil and ct_list != nil {
+                                            mut constraint_str: string = str("");
+                                            mut cti: i32 = 0;
+                                            loop {
+                                                if cti >= len(deref(tp_list)) { break; }
+                                                if cti > 0 { constraint_str = concat(constraint_str, str(",")); }
+                                                constraint_str = concat(constraint_str, tp_list.data[cti]);
+                                                constraint_str = concat(constraint_str, str(":"));
+                                                constraint_str = concat(constraint_str, ct_list.data[cti]);
+                                                cti++;
+                                            }
+                                            mut found: bool = false;
+                                            mut fi: i32 = 0;
+                                            loop {
+                                                if fi >= len(collected_constraints) { break; }
+                                                if equals_c(collected_constraints.data[fi], constraint_str.data) {
+                                                    found = true;
+                                                    break;
+                                                }
+                                                fi++;
+                                            }
+                                            if !found {
+                                                append(collected_constraints, constraint_str);
+                                            }
+                                        }
+                                    }
+
+                                    if scan_node.children != nil {
+                                        val sub_children: ref list(ASTNode) = scan_node.children;
+                                        mut sci: i32 = 0;
+                                        loop {
+                                            if sci >= len(deref(sub_children)) { break; }
+                                            append(scan_stack, cast[i64](addr(sub_children.data[sci])));
+                                            sci++;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        mut constraint_list_len: i32 = 0;
+                        if has_top_level_when {
+                            constraint_list_len = len(deref(when_types));
+                        } else {
+                            constraint_list_len = len(collected_constraints);
+                        }
+
+                        mut branch_idx2: i32 = 0;
+                        loop {
+                            if branch_idx2 >= constraint_list_len { break; }
+                            mut constraint_str2: string = str("");
+                            if has_top_level_when {
+                                constraint_str2 = when_types.data[branch_idx2];
+                            } else {
+                                constraint_str2 = collected_constraints.data[branch_idx2];
+                            }
+
+                            mut sb_spec_name2: StringBuilder = StringBuilder.init(256);
+                            mut base_name_for_spec2: string = proto_child.data.function.name;
+                            if StringStringMap.contains(addr(g_function_prefixes), base_name_for_spec2) {
+                                base_name_for_spec2 = StringStringMap.get(addr(g_function_prefixes), base_name_for_spec2);
+                            }
+                            StringBuilder.append(addr(sb_spec_name2), base_name_for_spec2);
+
+                            mut constraint_idx2: i32 = 0;
+                            mut constraint_start2: i32 = 0;
+                            val constraint_len2: i32 = str_len(constraint_str2);
+                            loop {
+                                if constraint_idx2 > constraint_len2 { break; }
+                                mut is_sep2: bool = false;
+                                if constraint_idx2 == constraint_len2 {
+                                    is_sep2 = true;
+                                } elif get_char(constraint_str2, constraint_idx2) == ',' {
+                                    is_sep2 = true;
+                                }
+                                if is_sep2 {
+                                    val one_constraint2: string = substring_se(constraint_str2, constraint_start2, constraint_idx2);
+                                    val colon_pos2: i32 = find_char_from(one_constraint2, ':', cast[usize](0));
+                                    if colon_pos2 > 0 {
+                                        val param_name2: string = substring_se(one_constraint2, 0, colon_pos2);
+                                        val concrete_tp2: string = substring_se(one_constraint2, colon_pos2 + 1, cast[i32](str_len(one_constraint2)));
+                                        StringBuilder.append_c(addr(sb_spec_name2), "__");
+                                        StringBuilder.append(addr(sb_spec_name2), param_name2);
+                                        StringBuilder.append_c(addr(sb_spec_name2), "_");
+                                        StringBuilder.append(addr(sb_spec_name2), sanitize_c_identifier(concrete_tp2));
+                                    }
+                                    constraint_start2 = constraint_idx2 + 1;
+                                }
+                                constraint_idx2++;
+                            }
+
+                            val spec_func_name2: string = StringBuilder.to_string(addr(sb_spec_name2));
+                            StringBuilder.destroy(addr(sb_spec_name2));
+
+                            mut spec_arena: Arena = Arena.create(256);
+                            mut tm_idx2: i32 = 0;
+                            mut tm_start2: i32 = 0;
+                            val tm_len2: i32 = str_len(constraint_str2);
+                            mut type_mapping2: StringStringMap = deref(StringStringMap.create(addr(spec_arena), 8));
+                            loop {
+                                if tm_idx2 > tm_len2 { break; }
+                                mut is_tm_sep2: bool = false;
+                                if tm_idx2 == tm_len2 { is_tm_sep2 = true; }
+                                elif get_char(constraint_str2, tm_idx2) == ',' { is_tm_sep2 = true; }
+                                if is_tm_sep2 {
+                                    val tm_constraint2: string = substring_se(constraint_str2, tm_start2, tm_idx2);
+                                    val tm_colon2: i32 = find_char_from(tm_constraint2, ':', cast[usize](0));
+                                    if tm_colon2 > 0 {
+                                        val tm_param2: string = substring_se(tm_constraint2, 0, tm_colon2);
+                                        val tm_concrete2: string = substring_se(tm_constraint2, tm_colon2 + 1, cast[i32](str_len(tm_constraint2)));
+                                        StringStringMap.set(addr(type_mapping2), addr(spec_arena), tm_param2, tm_concrete2);
+                                    }
+                                    tm_start2 = tm_idx2 + 1;
+                                }
+                                tm_idx2++;
+                            }
+
+                            mut sb_proto2: StringBuilder = StringBuilder.init(512);
+                            mut spec_return_type2: string = proto_child.data.function.return_type;
+                            if str_len(spec_return_type2) == 0 { spec_return_type2 = str("void"); }
+                            if StringStringMap.contains(addr(type_mapping2), spec_return_type2) {
+                                spec_return_type2 = StringStringMap.get(addr(type_mapping2), spec_return_type2);
+                            }
+                            val mapped_ret2: string = map_axe_type_to_c(spec_return_type2);
+                            StringBuilder.append(addr(sb_proto2), mapped_ret2);
+                            StringBuilder.append_char(addr(sb_proto2), ' ');
+                            StringBuilder.append(addr(sb_proto2), spec_func_name2);
+                            StringBuilder.append_c(addr(sb_proto2), "(");
+                            val params2: ref list(string) = proto_child.data.function.params;
+                            if params2 != nil {
+                                mut pidx2: i32 = 0;
+                                loop {
+                                    if pidx2 >= len(deref(params2)) { break; }
+                                    if pidx2 > 0 { StringBuilder.append_c(addr(sb_proto2), ", "); }
+                                    val param2: string = params2.data[pidx2];
+                                    val colon_pos_p2: i32 = find_char_from(param2, ':', cast[usize](0));
+                                    if colon_pos_p2 >= 0 {
+                                        val param_name_p2: string = strip(substring_se(param2, 0, colon_pos_p2));
+                                        mut param_type_p2: string = strip(substr(param2, colon_pos_p2 + 1, str_len(param2) - colon_pos_p2 - 1));
+                                        if StringStringMap.contains(addr(type_mapping2), param_type_p2) {
+                                            param_type_p2 = StringStringMap.get(addr(type_mapping2), param_type_p2);
+                                        }
+                                        val processed_param_type_p2: string = process_parameter_type(param_type_p2);
+                                        StringBuilder.append(addr(sb_proto2), processed_param_type_p2);
+                                        StringBuilder.append_char(addr(sb_proto2), ' ');
+                                        StringBuilder.append(addr(sb_proto2), param_name_p2);
+                                    } else {
+                                        StringBuilder.append(addr(sb_proto2), param2);
+                                    }
+                                    pidx2++;
+                                }
+                            }
+                            StringBuilder.append_c(addr(sb_proto2), ");\n");
+                            StringBuilder.append(addr(sb_prog), StringBuilder.to_string(addr(sb_proto2)));
+                            StringBuilder.destroy(addr(sb_proto2));
+
+                            branch_idx2++;
+                        }
+
                         i_proto++;
                         continue;
                     }
