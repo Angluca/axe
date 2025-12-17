@@ -184,7 +184,7 @@ pub def json_get_len(value: ref char): usize {
 /// Get a value from an object by key
 pub def json_obj_get(obj: ref char, key: string): ref char {
     mut result: ref char = nil;
-    if obj != nil && key.data != nil {
+    if obj != nil and key.data != nil {
         result = yyjson_obj_get(cast[ref yyjson_val](obj), key.data);
     }
     return result;
