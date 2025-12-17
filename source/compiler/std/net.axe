@@ -27,7 +27,7 @@ platform posix {
 }
 
 /// HTTP response model containing status code, headers, and body
-model HttpResponse {
+pub model HttpResponse {
     status_code: i32;
     body: string;
     headers: string;
@@ -60,7 +60,7 @@ def write_callback(contents: ref char, size: usize, nmemb: usize, userp: ref cha
 }
 
 /// Initialize the cURL library globally
-def curl_init() {
+pub def curl_init() {
     foreign {CURL_GLOBAL_ALL};
     unsafe {
         C.curl_global_init(CURL_GLOBAL_ALL);
@@ -68,7 +68,7 @@ def curl_init() {
 }
 
 /// Cleanup the cURL library globally
-def curl_cleanup() {
+pub def curl_cleanup() {
     unsafe {
         C.curl_global_cleanup();
     }
@@ -93,7 +93,7 @@ foreign {
 }
 
 /// Perform an HTTP GET request
-def http_get(url: string): HttpResponse {
+pub def http_get(url: string): HttpResponse {
     mut response: HttpResponse;
     
     response.status_code = 0;
@@ -148,7 +148,7 @@ def http_get(url: string): HttpResponse {
 }
 
 /// Perform an HTTP POST request with data
-def http_post(url: string, data: string): HttpResponse {
+pub def http_post(url: string, data: string): HttpResponse {
     mut response: HttpResponse;
     
     response.status_code = 0;
@@ -205,7 +205,7 @@ def http_post(url: string, data: string): HttpResponse {
 }
 
 /// Perform an HTTP PUT request with data
-def http_put(url: string, data: string): HttpResponse {
+pub def http_put(url: string, data: string): HttpResponse {
     mut response: HttpResponse;
     
     response.status_code = 0;
@@ -260,7 +260,7 @@ def http_put(url: string, data: string): HttpResponse {
 }
 
 /// Perform an HTTP DELETE request
-def http_delete(url: string): HttpResponse {
+pub def http_delete(url: string): HttpResponse {
     mut response: HttpResponse;
     
     response.status_code = 0;
@@ -314,7 +314,7 @@ def http_delete(url: string): HttpResponse {
 }
 
 /// Perform an HTTP PATCH request with data
-def http_patch(url: string, data: string): HttpResponse {
+pub def http_patch(url: string, data: string): HttpResponse {
     mut response: HttpResponse;
     
     response.status_code = 0;
@@ -372,7 +372,7 @@ def http_patch(url: string, data: string): HttpResponse {
 }
 
 /// Perform an HTTP HEAD request (retrieves headers only)
-def http_head(url: string): HttpResponse {
+pub def http_head(url: string): HttpResponse {
     mut response: HttpResponse;
     
     response.status_code = 0;
@@ -421,7 +421,7 @@ def http_head(url: string): HttpResponse {
 }
 
 /// Download a file from a URL and save it to disk
-def download_file(url: string, output_path: string): bool {
+pub def download_file(url: string, output_path: string): bool {
     mut success: bool = false;
     
     unsafe {
@@ -450,7 +450,7 @@ def download_file(url: string, output_path: string): bool {
 }
 
 /// URL encode a string (percent encoding for URLs)
-def url_encode(input: string): string {
+pub def url_encode(input: string): string {
     mut result: string;
     
     result.data = nil;
@@ -479,7 +479,7 @@ def url_encode(input: string): string {
 }
 
 /// URL decode a string (decode percent-encoded URLs)
-def url_decode(input: string): string {
+pub def url_decode(input: string): string {
     mut result: string;
     
     unsafe {
@@ -509,27 +509,27 @@ def url_decode(input: string): string {
 }
 
 /// Check if a response status code indicates success (2xx)
-def is_success_status(status_code: i32): bool {
+pub def is_success_status(status_code: i32): bool {
     return status_code >= 200 and status_code < 300;
 }
 
 /// Check if a response status code indicates a redirect (3xx)
-def is_redirect_status(status_code: i32): bool {
+pub def is_redirect_status(status_code: i32): bool {
     return status_code >= 300 and status_code < 400;
 }
 
 /// Check if a response status code indicates a client error (4xx)
-def is_client_error_status(status_code: i32): bool {
+pub def is_client_error_status(status_code: i32): bool {
     return status_code >= 400 and status_code < 500;
 }
 
 /// Check if a response status code indicates a server error (5xx)
-def is_server_error_status(status_code: i32): bool {
+pub def is_server_error_status(status_code: i32): bool {
     return status_code >= 500 and status_code < 600;
 }
 
 /// Free the memory allocated for an HttpResponse
-def free_response(response: HttpResponse) {
+pub def free_response(response: HttpResponse) {
     unsafe {
         if response.body.data != nil {
             C.free(response.body.data);
@@ -545,7 +545,7 @@ def free_response(response: HttpResponse) {
 // ============================================================================
 
 /// HTTP request model containing method, path, headers, and body
-model HttpRequest {
+pub model HttpRequest {
     method: string;
     path: string;
     headers: string;
@@ -554,27 +554,29 @@ model HttpRequest {
 }
 
 /// HTTP server configuration
-model ServerConfig {
+pub model ServerConfig {
     port: i32;
     max_connections: i32;
     timeout_seconds: i32;
 }
 
 /// Socket handle type (cross-platform)
-model Socket {
+pub model Socket {
     fd: i32;
     is_valid: bool;
 }
 
 /// Server instance
-model WebServer {
+pub model WebServer {
     socket: Socket;
     config: ServerConfig;
     is_running: bool;
 }
 
 /// Initialize networking subsystem (cross-platform)
-def net_init(): bool {
+///
+/// This is a NOOP on POSIX systems.
+pub def net_init(): bool {
     mut success: bool = true;
     platform windows {
         foreign { WSADATA };
@@ -590,7 +592,7 @@ def net_init(): bool {
 /// Cleanup networking subsystem (cross-platform)
 ///
 /// This is a NOOP on POSIX systems.
-def net_cleanup() {
+pub def net_cleanup() {
     platform windows {
         unsafe {
             C.WSACleanup();
@@ -611,7 +613,7 @@ foreign {
 }
 
 /// Create a server socket and bind to port
-def server_create(port: i32): WebServer {
+pub def server_create(port: i32): WebServer {
     mut server: WebServer;
     
     unsafe {
@@ -727,7 +729,7 @@ def server_accept(server: WebServer): Socket {
 }
 
 /// Receive data from a socket
-def socket_recv(socket: Socket, buffer_size: i32): string {
+pub def socket_recv(socket: Socket, buffer_size: i32): string {
     mut result: string;
     
     result.data = nil;
@@ -764,7 +766,7 @@ def socket_recv(socket: Socket, buffer_size: i32): string {
 }
 
 /// Send data to a socket
-def socket_send(socket: Socket, data: string): bool {
+pub def socket_send(socket: Socket, data: string): bool {
     mut success: bool = false;
     
     if !socket.is_valid {
@@ -786,7 +788,7 @@ def socket_send(socket: Socket, data: string): bool {
 }
 
 /// Close a socket
-def socket_close(socket: Socket) {
+pub def socket_close(socket: Socket) {
     if socket.is_valid {
         platform windows {
             C.closesocket(cast[SOCKET](socket.fd));
@@ -798,7 +800,7 @@ def socket_close(socket: Socket) {
 }
 
 /// Close the server socket
-def server_close(server: WebServer) {
+pub def server_close(server: WebServer) {
     if server.socket.is_valid {
         platform windows {
             C.closesocket(cast[SOCKET](server.socket.fd));
@@ -810,7 +812,7 @@ def server_close(server: WebServer) {
 }
 
 /// Parse HTTP request from raw data
-def parse_http_request(rdata: string): HttpRequest {
+pub def parse_http_request(rdata: string): HttpRequest {
     mut request: HttpRequest;
     request.method.data = nil;
     request.method.len = 0;
@@ -904,7 +906,7 @@ def parse_http_request(rdata: string): HttpRequest {
 }
 
 /// Create an HTTP response string
-def create_http_response(status_code: i32, content_type: string, body: string): string {
+pub def create_http_response(status_code: i32, content_type: string, body: string): string {
     mut response: string;
     response.data = nil;
     response.len = 0;
@@ -976,7 +978,7 @@ def create_http_response(status_code: i32, content_type: string, body: string): 
 }
 
 /// Send an HTTP response to a client
-def send_http_response(client: Socket, status_code: i32, content_type: string, body: string): bool {
+pub def send_http_response(client: Socket, status_code: i32, content_type: string, body: string): bool {
     val response_str: string = create_http_response(status_code, content_type, body);
     val success: bool = socket_send(client, response_str);
     
@@ -990,7 +992,7 @@ def send_http_response(client: Socket, status_code: i32, content_type: string, b
 }
 
 /// Free HTTP request memory
-def free_request(request: HttpRequest) {
+pub def free_request(request: HttpRequest) {
     unsafe {
         if request.method.data != nil {
             C.free(request.method.data);
