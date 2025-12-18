@@ -99,7 +99,7 @@ def prefix_root_enums(node: ref ASTNode, mprefix: string) {
     if equals_c(nt, "Enum") {
         val ename: string = node.data.enum_node.name;
         if str_len(mprefix) > 0 and !has_double_underscore(ename) {
-            mut new_name: string = mprefix;
+            mut new_name: string = to_c_identifier(mprefix);
             new_name = concat_c(new_name, "__");
             new_name = concat(new_name, ename);
             node.data.enum_node.name = new_name;
@@ -131,7 +131,7 @@ def prefix_root_functions(node: ref ASTNode, mprefix: string) {
         val fname: string = node.data.function.name;
         if !equals_c(fname, "main") {
              if str_len(mprefix) > 0 and !has_double_underscore(fname) {
-                mut new_name: string = mprefix;
+                mut new_name: string = to_c_identifier(mprefix);
                 new_name = concat(new_name, str("__"));
                 new_name = concat(new_name, fname);
                 
@@ -152,6 +152,35 @@ def prefix_root_functions(node: ref ASTNode, mprefix: string) {
             ci = ci + 1;
         }
     }
+}
+
+/// If identifier starts with a digit, prepend an underscore
+/// Replace special characters with '_'
+def to_c_identifier(identifier: string): string {
+    val len: i32 = str_len(identifier);
+    mut sb: StringBuilder = StringBuilder.init(len + 1);
+    
+    if is_digit(cast[i32](get_char(identifier, 0))) {
+        StringBuilder.append_char(addr(sb), '_');
+    }
+
+    mut i: i32 = 0;
+    loop {
+        if i >= len {
+            break;
+        }
+        val c: char = get_char(identifier, i);
+        if is_alphanum(cast[i32](c)) {
+            StringBuilder.append_char(addr(sb), c);
+        } else {
+            StringBuilder.append_char(addr(sb), '_');
+        }
+        i++;
+    }
+
+    val result: string = StringBuilder.to_string(addr(sb));
+    StringBuilder.destroy(addr(sb));
+    return result;
 }
 
 /// Print AST node with indentation for debugging
@@ -956,4 +985,7 @@ test {
     model_ast.children = nil;
 
     collect_model_names(addr(model_ast));
+
+    println "\nTest 4: to_c_identifier for root function and enum prefixes";
+    assert string_equals(str("_1__test"), to_c_identifier(str("1-_test"))), "Expected 1-_test to normalize to _1__test";
 }
