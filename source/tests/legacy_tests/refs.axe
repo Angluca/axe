@@ -6,5 +6,6 @@ def main() {
 
     println(deref(y));                   
     deref(y) = 20;                      
-    val addr: i64 = addr(x);
+    val address: ref i32 = addr(x);
+    put address;
 }
