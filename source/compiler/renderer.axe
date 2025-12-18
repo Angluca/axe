@@ -3800,11 +3800,29 @@ def scan_for_list_types(node: ref ASTNode) {
                 val suffix: string = substring_se(tname, br, cast[i32](str_len(tname)));
                 if equals_c(suffix, "[999]") {
                     mut element: string = strip(substring_se(tname, 0, br));
+                    mut is_ptr: bool = false;
                     if has_prefix(element, str("ref ")) {
+                        is_ptr = true;
                         element = strip(substr(element, 4, str_len(element) - 4));
                     }
-                    val mapped: string = map_axe_type_to_c(element);
-                    add_list_element(mapped);
+                    loop {
+                        if str_len(element) == 0 {
+                            break;
+                        }
+                        if get_char(element, str_len(element) - 1) != '*' {
+                            break;
+                        }
+                        is_ptr = true;
+                        element = strip(substring_se(element, 0, str_len(element) - 1));
+                    }
+
+                    val mapped_base: string = map_axe_type_to_c(element);
+                    if is_ptr {
+                        val mapped_ptr: string = concat(mapped_base, str("*"));
+                        add_list_element(mapped_ptr);
+                    } else {
+                        add_list_element(mapped_base);
+                    }
                 }
             }
         }
@@ -8802,16 +8820,33 @@ pub def generate_c(ast: ref ASTNode): string {
             }
         }
 
+        mut is_list_initializer: bool = false;
+        mut init_trimmed: string = str("");
+        if str_len(initializer) > 0 {
+            init_trimmed = strip(initializer);
+            if has_prefix(init_trimmed, str("[")) and has_suffix(init_trimmed, str("]")) {
+                is_list_initializer = true;
+            }
+        }
+
         mut sb_decl: StringBuilder = StringBuilder.init(256);
         val line_dir: string = emit_line_directive(ast.line);
         StringBuilder.append(addr(sb_decl), line_dir);
-        
+
         if !is_mutable {
             StringBuilder.append_c(addr(sb_decl), "const ");
         }
-        StringBuilder.append(addr(sb_decl), mapped_type);
-        StringBuilder.append_char(addr(sb_decl), ' ');
-        StringBuilder.append(addr(sb_decl), var_name);
+
+        if is_list_initializer and has_prefix(mapped_type, str("__list_")) {
+            StringBuilder.append(addr(sb_decl), mapped_type);
+            StringBuilder.append_c(addr(sb_decl), "*");
+            StringBuilder.append_char(addr(sb_decl), ' ');
+            StringBuilder.append(addr(sb_decl), var_name);
+        } else {
+            StringBuilder.append(addr(sb_decl), mapped_type);
+            StringBuilder.append_char(addr(sb_decl), ' ');
+            StringBuilder.append(addr(sb_decl), var_name);
+        }
         if str_len(array_suffix) > 0 {
             StringBuilder.append(addr(sb_decl), array_suffix);
         }
@@ -8912,15 +8947,34 @@ pub def generate_c(ast: ref ASTNode): string {
                 
                 val processed_elements: string = process_expression(elements_trimmed);
 
-                StringBuilder.append_c(addr(sb_decl), " = {.data = (");
-                StringBuilder.append(addr(sb_decl), elem_type_c);
-                StringBuilder.append_c(addr(sb_decl), "[]){");
-                StringBuilder.append(addr(sb_decl), processed_elements);
-                StringBuilder.append_c(addr(sb_decl), "}, .len = ");
-                StringBuilder.append(addr(sb_decl), i32_to_string(element_count));
-                StringBuilder.append_c(addr(sb_decl), ", .capacity = ");
-                StringBuilder.append(addr(sb_decl), i32_to_string(element_count));
-                StringBuilder.append_c(addr(sb_decl), "}");
+                if has_prefix(mapped_type, str("__list_")) {
+                    mut decl_fix_sb: StringBuilder = StringBuilder.init(32);
+                    StringBuilder.append_c(addr(decl_fix_sb), "*");
+                    StringBuilder.append_char(addr(decl_fix_sb), ' ');
+                    StringBuilder.append(addr(decl_fix_sb), StringBuilder.to_string(addr(decl_fix_sb)));
+                    StringBuilder.destroy(addr(decl_fix_sb));
+                    StringBuilder.append_c(addr(sb_decl), " = &(");
+                    StringBuilder.append(addr(sb_decl), mapped_type);
+                    StringBuilder.append_c(addr(sb_decl), "){.data = (");
+                    StringBuilder.append(addr(sb_decl), elem_type_c);
+                    StringBuilder.append_c(addr(sb_decl), "[]){");
+                    StringBuilder.append(addr(sb_decl), processed_elements);
+                    StringBuilder.append_c(addr(sb_decl), "}, .len = ");
+                    StringBuilder.append(addr(sb_decl), i32_to_string(element_count));
+                    StringBuilder.append_c(addr(sb_decl), ", .capacity = ");
+                    StringBuilder.append(addr(sb_decl), i32_to_string(element_count));
+                    StringBuilder.append_c(addr(sb_decl), "}");
+                } else {
+                    StringBuilder.append_c(addr(sb_decl), " = {.data = (");
+                    StringBuilder.append(addr(sb_decl), elem_type_c);
+                    StringBuilder.append_c(addr(sb_decl), "[]){");
+                    StringBuilder.append(addr(sb_decl), processed_elements);
+                    StringBuilder.append_c(addr(sb_decl), "}, .len = ");
+                    StringBuilder.append(addr(sb_decl), i32_to_string(element_count));
+                    StringBuilder.append_c(addr(sb_decl), ", .capacity = ");
+                    StringBuilder.append(addr(sb_decl), i32_to_string(element_count));
+                    StringBuilder.append_c(addr(sb_decl), "}");
+                }
             } elif has_prefix(trimmed, str("new ")) {
                 trimmed = substring_se(trimmed, 4, cast[i32](str_len(trimmed)));
                 trimmed = strip(trimmed);
