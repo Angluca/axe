@@ -8553,17 +8553,24 @@ pub def generate_c(ast: ref ASTNode): string {
 
                 val inferred_init: string = infer_expression_type(trimmed_init);
                 if str_len(inferred_init) > 0 and !equals_c(inferred_init, "auto") {
-                    if has_prefix(inferred_init, str("ref ")) and !has_prefix(type_name, str("ref ")) {
-                        print(get_short_filename(g_current_source_file));
-                        print(":");
-                        print(i32_to_string(g_current_line));
-                        print(": error: cannot initialize non-ref variable '");
-                        print(var_name);
-                        print("' with address: initializer has type '");
-                        print(inferred_init);
-                        println("'");
-                        unsafe {
-                            C.exit(1);
+                    if has_prefix(inferred_init, str("ref ")) {
+                        if str_len(strip(type_name)) == 0 or equals_c(strip(type_name), "auto") {
+                            type_name = inferred_init;
+                            mapped_type = map_axe_type_to_c(type_name);
+                        } elif has_prefix(strip(type_name), str("ref ")) or has_suffix(strip(type_name), str("*")) or equals_c(strip(type_name), "string") {
+                            // ok
+                        } else {
+                            print(get_short_filename(g_current_source_file));
+                            print(":");
+                            print(i32_to_string(g_current_line));
+                            print(": error: cannot initialize non-ref variable '");
+                            print(var_name);
+                            print("' with address: initializer has type '");
+                            print(inferred_init);
+                            println("'");
+                            unsafe {
+                                C.exit(1);
+                            }
                         }
                     }
 
