@@ -759,7 +759,9 @@ pub def socket_recv(socket: Socket, buffer_size: i32): string {
         result.len = bytes_received;
         result.cap = buffer_size;
     } else {
-        C.free(cast[ref void](buffer));
+        unsafe {
+            C.free(cast[ref void](buffer));
+        }
     }
     
     return result;
