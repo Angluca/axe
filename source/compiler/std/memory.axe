@@ -16,6 +16,6 @@ test {
     val a: i32 = 42;
     mut b: i32 = 0;
     copy(a, b, i32);
-    assert b == 42, "Copy macro failed.";
+    assert b == 42, "Copy macro should work.";
     assert size_of(i32) == 4, "Size of i32 should be 4 bytes.";
 }
