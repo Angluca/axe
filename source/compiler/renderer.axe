@@ -849,7 +849,7 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         }
 
         val arg_expr: string = arg_list.data[arg_idx_nested];
-        
+
         // First check if this argument itself is a function call
 
         mut is_string_lit: bool = false;
@@ -862,11 +862,44 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
 
         if !is_string_lit and arg_paren > 0 {
             val nested_func: string = strip(substring_se(arg_expr, 0, arg_paren));
-            val nested_args_start: i32 = arg_paren + 1;
-            val nested_args_end: i32 = str_len(arg_expr) - 1;
-            if nested_args_end > nested_args_start {
-                val nested_args: string = strip(substring_se(arg_expr, nested_args_start, nested_args_end));
-                validate_function_call(nested_func, nested_args, depth + 1);
+            mut paren_depth2: i32 = 1;
+            mut nested_args_end: i32 = -1;
+            mut j: i32 = arg_paren + 1;
+            mut in_string_check: bool = false;
+            mut in_char_literal_check: bool = false;
+
+            loop {
+                if j >= str_len(arg_expr) {
+                    break;
+                }
+                val ch: char = get_char(arg_expr, j);
+
+                if ch == '\'' and !in_string_check and !is_escaped_quote(arg_expr, j) {
+                    in_char_literal_check = !in_char_literal_check;
+                } elif ch == '\"' and !in_char_literal_check and !is_escaped_quote(arg_expr, j) {
+                    in_string_check = !in_string_check;
+                } elif !in_string_check and !in_char_literal_check {
+                    if ch == '(' {
+                        paren_depth2 = paren_depth2 + 1;
+                    } elif ch == ')' {
+                        paren_depth2 = paren_depth2 - 1;
+                        if paren_depth2 == 0 {
+                            nested_args_end = j;
+                            break;
+                        }
+                    }
+                }
+                j++;
+            }
+
+            if nested_args_end >= 0 {
+                val nested_args_start: i32 = arg_paren + 1;
+                if nested_args_end > nested_args_start {
+                    val nested_args: string = strip(substring_se(arg_expr, nested_args_start, nested_args_end));
+                    validate_function_call(nested_func, nested_args, depth + 1);
+                } else {
+                    validate_function_call(nested_func, str(""), depth + 1);
+                }
             }
         }
         arg_idx_nested++;
