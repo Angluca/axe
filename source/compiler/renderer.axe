@@ -1219,8 +1219,6 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
     }
 }
 
-
-
 /// Recursively collect function signatures from AST
 def collect_function_signatures(node: ref ASTNode, arena: ref Arena, prefix: string) {
     if node == nil {
