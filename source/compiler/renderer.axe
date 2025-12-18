@@ -8843,6 +8843,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 }
                 
                 mut elem_type_c: string = str("int32_t");
+
                 if has_prefix(type_name, str("list(")) {
                     mut paren_end: i32 = 5;
                     mut depth_type: i32 = 1;
@@ -8859,10 +8860,53 @@ pub def generate_c(ast: ref ASTNode): string {
                                 break;
                             }
                         }
-                        paren_end = paren_end + 1;
+                        paren_end++;
                     }
                     val elem_type_axe: string = strip(substr(type_name, 5, paren_end - 5));
                     elem_type_c = map_axe_type_to_c(elem_type_axe);
+                }
+
+                if equals_c(elem_type_c, "int32_t") and StringStringMap.contains(addr(g_list_of_types), var_name) {
+                    val element_type_recorded: string = StringStringMap.get(addr(g_list_of_types), var_name);
+                    elem_type_c = map_axe_type_to_c(element_type_recorded);
+                }
+
+                if equals_c(elem_type_c, "int32_t") and StringStringMap.contains(addr(g_var_types), var_name) {
+                    val var_type_recorded: string = StringStringMap.get(addr(g_var_types), var_name);
+                    if has_prefix(var_type_recorded, str("list(")) or has_suffix(var_type_recorded, str("[999]")) {
+                        mut element_type2: string = var_type_recorded;
+                        if has_prefix(element_type2, str("list(")) {
+                            mut paren_pos2: i32 = 5;
+                            mut depth2: i32 = 1;
+                            loop {
+                                if paren_pos2 >= str_len(element_type2) {
+                                    break;
+                                }
+                                val ch2: char = get_char(element_type2, paren_pos2);
+                                if ch2 == '(' {
+                                    depth2++;
+                                } elif ch2 == ')' {
+                                    depth2--;
+                                    if depth2 == 0 {
+                                        break;
+                                    }
+                                }
+                                paren_pos2 = paren_pos2 + 1;
+                            }
+                            element_type2 = strip(substr(var_type_recorded, 5, paren_pos2 - 5));
+                        } elif has_suffix(element_type2, str("[999]")) {
+                            element_type2 = strip(substring_se(var_type_recorded, 0, str_len(var_type_recorded) - 5));
+                        }
+                        elem_type_c = map_axe_type_to_c(element_type2);
+                    }
+                }
+
+                if equals_c(elem_type_c, "int32_t") and has_prefix(mapped_type, str("__list_")) {
+                    mut san: string = substr(mapped_type, 7, str_len(mapped_type) - 7);
+                    if has_suffix(san, str("_t")) {
+                        san = substring_se(san, 0, str_len(san) - 2);
+                    }
+                    elem_type_c = san;
                 }
                 
                 val processed_elements: string = process_expression(elements_trimmed);
