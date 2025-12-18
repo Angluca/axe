@@ -3509,8 +3509,8 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
             enforce_raw(false, err.data);
             return node;
         }
+
         consume(ctx); // Skip '{'
-        
         push_scope();
         
         mut when_children: list(ASTNode);
