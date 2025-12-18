@@ -6270,12 +6270,12 @@ pub def generate_c(ast: ref ASTNode): string {
 
         return StringBuilder.to_string(addr(sb_top_level));
     }
-    
+
     if equals_c(node_type, "Program") {
         if !::bootstrap_mode {
             g_emit_line_directives = true;
         }
-        
+
         mut ext_arena: Arena = Arena.create(4096);
         StringList.clear(g_global_external_headers);
         StringList.clear(g_windows_external_headers);
@@ -6283,15 +6283,15 @@ pub def generate_c(ast: ref ASTNode): string {
         collect_external_imports(ast, str(""), addr(ext_arena));
         collect_foreign_types(ast);
         build_function_signatures(ast);
-        
-        mut sb: StringBuilder = StringBuilder.init(1024 * 256);
-        
+
+        mut sb: StringBuilder = StringBuilder.init(32768);
+
         StringBuilder.append_c(
-            addr(sb), 
+            addr(sb),
             "#define nil ((void*)0)\n#include <stdio.h>\n#include <stdbool.h>\n#include <stdlib.h>\n#include <string.h>\n#include <stdint.h>\n#define len_ptr(x) ((x)->len)\n#define len_v(x) ((&(x))->len)\n#define len(x) len_v(x)\n"
         );
 
-        StringBuilder.append_c(addr(sb), "\n#ifdef _WIN32\n#define NOMINMAX\n#define NOGDI\n#define WIN32_LEAN_AND_MEAN\n#include <windows.h>\n#endif\n");        
+        StringBuilder.append_c(addr(sb), "\n#ifdef _WIN32\n#define NOMINMAX\n#define NOGDI\n#define WIN32_LEAN_AND_MEAN\n#include <windows.h>\n#endif\n");
         StringBuilder.append_c(addr(sb), "\n#ifdef __APPLE__\n#include <ctype.h>\n#include <mach-o/dyld.h>\n#endif\n");
 
         mut ghi: i32 = 0;
@@ -6305,7 +6305,7 @@ pub def generate_c(ast: ref ASTNode): string {
             StringBuilder.append_c(addr(sb), ">\n");
             ghi = ghi + 1;
         }
-        
+
         // Emit platform-specific headers grouped under appropriate preprocessor
         // guards.
         if g_windows_external_headers*.len > 0 {
@@ -6442,11 +6442,11 @@ pub def generate_c(ast: ref ASTNode): string {
         }
 
         StringBuilder.append_c(addr(sb), "\nint __axe_argc = 0;\nchar** __axe_argv = NULL;\n\n");
-        
+
         // Convert StringBuilder to result string for the rest of the function
         result = StringBuilder.to_string(addr(sb));
         StringBuilder.destroy(addr(sb));
-        
+
         build_function_prefixes(ast);
         build_function_signatures(ast);
 
@@ -6467,7 +6467,7 @@ pub def generate_c(ast: ref ASTNode): string {
                     val module_name: string = uchild.data.use_node.module_name;
                     mut module_prefix: string = replace_all(module_name, dot_str, double_underscore_str);
                     module_prefix = replace_all(module_prefix, dash_str, underscore_str);
-                    
+
                     val imports: ref list(string) = uchild.data.use_node.imports;
                     if imports != nil {
                         mut ii: i32 = 0;
@@ -6501,7 +6501,7 @@ pub def generate_c(ast: ref ASTNode): string {
         if ast.children != nil {
             val children_for_models: ref list(ASTNode) = ast.children;
             val children_count: i32 = len(deref(children_for_models));
-            mut model_name_arena: Arena = Arena.create(1024 * 64);
+            mut model_name_arena: Arena = Arena.create(1024 * 16);
             mut mi: i32 = 0;
             loop {
                 if mi >= children_count {
@@ -6539,7 +6539,7 @@ pub def generate_c(ast: ref ASTNode): string {
                         StringStringMap.set(addr(g_model_names), addr(model_name_arena), base, cname);
                     }
                     StringStringMap.set(addr(g_model_names), addr(model_name_arena), cname, cname);
-                    
+
                     if equals_c(mchild.node_type, "Enum") {
                         StringBoolMap.set(addr(g_enum_names), addr(model_name_arena), cname, true);
                         if str_len(base) > 0 {
@@ -6627,7 +6627,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 i_more++;
             }
 
-            mut sb_fwd: StringBuilder = StringBuilder.init(4096);            
+            mut sb_fwd: StringBuilder = StringBuilder.init(8192);
             mut i_models2: i32 = 0;
 
             loop {
@@ -6666,11 +6666,12 @@ pub def generate_c(ast: ref ASTNode): string {
                 }
                 i_models3++;
             }
-            
-            mut sb_prog: StringBuilder = StringBuilder.init(1024 * 512);
-            StringBuilder.append(addr(sb_prog), result);
-            StringBuilder.append(addr(sb_prog), StringBuilder.to_string(addr(sb_fwd)));
+
+            mut header_part: string = StringBuilder.to_string(addr(sb_fwd));
             StringBuilder.destroy(addr(sb_fwd));
+            mut sb_prog: StringBuilder = StringBuilder.init(65536);
+            StringBuilder.append(addr(sb_prog), result);
+            StringBuilder.append(addr(sb_prog), header_part);
 
             if g_list_elements != nil {
                 val lst_ref: ref StringList = g_list_elements;
