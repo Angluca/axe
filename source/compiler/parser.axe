@@ -2700,7 +2700,7 @@ def parse_type(ctx: ref ParserContext): string {
                 return str("");
             }
             consume(ctx);
-            type_name = concat(element_type, str("[999]"));
+            type_name = concat(str("list("), concat(element_type, str(")")));
         }
     } else {
         val err: string = format_error(ctx, str("Invalid type specification"));

@@ -1878,9 +1878,7 @@ def rewrite_pointer_member_accesses(expr: string): string {
                         }
 
                         if has_prefix(t, str("ref ")) or has_suffix(t, str("*")) {
-                            if !has_suffix(t, str("[999]")) {
-                                is_pointer = true;
-                            }
+                            is_pointer = true;
                         }
                     }
 
@@ -2074,9 +2072,18 @@ def map_axe_type_to_c(axe_type: string): string {
     if has_prefix(result, str("list(")) {
         val close_paren: i32 = find_char_from(result, cast[char](41), cast[usize](0));
         if close_paren > 5 {
-            val inner_type: string = strip(substring_se(result, 5, close_paren));
-            val converted: string = concat(inner_type, str("[999]"));
-            return map_axe_type_to_c(converted);
+            val element_type: string = strip(substring_se(result, 5, close_paren));
+            val mapped_elem: string = map_axe_type_to_c(element_type);
+            add_list_element(mapped_elem);
+            val sanitized: string = sanitize_list_element_name(mapped_elem);
+            
+            mut sb_struct: StringBuilder = StringBuilder.init(str_len(sanitized) + 10);
+            StringBuilder.append_c(addr(sb_struct), "__list_");
+            StringBuilder.append(addr(sb_struct), sanitized);
+            StringBuilder.append_c(addr(sb_struct), "_t");
+            val struct_name: string = StringBuilder.to_string(addr(sb_struct));
+            StringBuilder.destroy(addr(sb_struct));
+            return struct_name;
         }
     }
     
@@ -2171,9 +2178,7 @@ def is_pointer_type(type_str: string): bool {
         t = strip(substr(t, 4, str_len(t) - 4));
     }
     if has_prefix(t, str("ref ")) or has_suffix(t, str("*")) {
-        if !has_suffix(t, str("[999]")) {
-            return true;
-        }
+        return true;
     }
     return false;
 }
