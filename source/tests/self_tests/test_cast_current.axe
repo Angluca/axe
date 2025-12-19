@@ -1,0 +1,25 @@
+use std.io;
+
+def test_i32(x: i32) {
+    println("test_i32 called with: ");
+    println(x);
+}
+
+def test_f32(x: f32) {
+    println("test_f32 called with: ");
+    println(x);
+}
+
+def main() {
+    val n: i32 = 6;
+    val f: f32 = cast[f32](n);
+    println("f = ");
+    println(f);
+    
+    val f2 = cast[f32](n);    
+    println("f2 = ");
+    println(f2);
+    
+    test_i32(cast[i32](f2));
+    test_f32(cast[f32](n)); 
+}
