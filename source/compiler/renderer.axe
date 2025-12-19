@@ -1872,7 +1872,7 @@ def rewrite_pointer_member_accesses(expr: string): string {
                     if StringStringMap.contains(addr(g_var_types), trimmed_base) {
                         val raw_type: string = StringStringMap.get(addr(g_var_types), trimmed_base);
                         mut t: string = strip(raw_type);
-
+                      
                         if has_prefix(t, str("mut ")) {
                             t = strip(substr(t, 4, str_len(t) - 4));
                         }
@@ -2177,6 +2177,11 @@ def collapse_duplicate_segments(s: string): string {
 /// Check if a type string indicates a pointer/reference type
 def is_pointer_type(type_str: string): bool {
     mut t: string = strip(type_str);
+    
+    if (has_prefix(t, str("list(")) and !has_suffix(t, str("*"))) or has_suffix(t, str("[999]")) {
+        return false;
+    }
+
     if has_prefix(t, str("mut ")) {
         t = strip(substr(t, 4, str_len(t) - 4));
     }
@@ -3907,10 +3912,6 @@ def process_parameter_type(param_type: string): string {
 
     val result: string = strip(param_type);
     val mapped: string = map_axe_type_to_c(result);
-    
-    if find_substr(mapped, str("__list_")) >= 0 and !has_suffix(mapped, str("*")) {
-        return concat(mapped, str("*"));
-    }
     
     return mapped;
 }
@@ -8820,14 +8821,6 @@ pub def generate_c(ast: ref ASTNode): string {
             }
         }
 
-        mut is_list_initializer: bool = false;
-        mut init_trimmed: string = str("");
-        if str_len(initializer) > 0 {
-            init_trimmed = strip(initializer);
-            if has_prefix(init_trimmed, str("[")) and has_suffix(init_trimmed, str("]")) {
-                is_list_initializer = true;
-            }
-        }
 
         mut sb_decl: StringBuilder = StringBuilder.init(256);
         val line_dir: string = emit_line_directive(ast.line);
@@ -8837,16 +8830,10 @@ pub def generate_c(ast: ref ASTNode): string {
             StringBuilder.append_c(addr(sb_decl), "const ");
         }
 
-        if is_list_initializer and has_prefix(mapped_type, str("__list_")) {
-            StringBuilder.append(addr(sb_decl), mapped_type);
-            StringBuilder.append_c(addr(sb_decl), "*");
-            StringBuilder.append_char(addr(sb_decl), ' ');
-            StringBuilder.append(addr(sb_decl), var_name);
-        } else {
-            StringBuilder.append(addr(sb_decl), mapped_type);
-            StringBuilder.append_char(addr(sb_decl), ' ');
-            StringBuilder.append(addr(sb_decl), var_name);
-        }
+        StringBuilder.append(addr(sb_decl), mapped_type);
+        StringBuilder.append_char(addr(sb_decl), ' ');
+        StringBuilder.append(addr(sb_decl), var_name);
+
         if str_len(array_suffix) > 0 {
             StringBuilder.append(addr(sb_decl), array_suffix);
         }
@@ -8948,12 +8935,7 @@ pub def generate_c(ast: ref ASTNode): string {
                 val processed_elements: string = process_expression(elements_trimmed);
 
                 if has_prefix(mapped_type, str("__list_")) {
-                    mut decl_fix_sb: StringBuilder = StringBuilder.init(32);
-                    StringBuilder.append_c(addr(decl_fix_sb), "*");
-                    StringBuilder.append_char(addr(decl_fix_sb), ' ');
-                    StringBuilder.append(addr(decl_fix_sb), StringBuilder.to_string(addr(decl_fix_sb)));
-                    StringBuilder.destroy(addr(decl_fix_sb));
-                    StringBuilder.append_c(addr(sb_decl), " = &(");
+                    StringBuilder.append_c(addr(sb_decl), " = (");
                     StringBuilder.append(addr(sb_decl), mapped_type);
                     StringBuilder.append_c(addr(sb_decl), "){.data = (");
                     StringBuilder.append(addr(sb_decl), elem_type_c);
