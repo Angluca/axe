@@ -6204,7 +6204,7 @@ def discover_types(ast: ref ASTNode) {
             loop {
                 if i >= len(deref(field_types)) { break; }
                 map_axe_type_to_c(field_types.data[i]);
-                i = i + 1;
+                i++;
             }
         }
         val union_types: ref list(string) = ast.data.model_node.union_member_types;
@@ -6213,7 +6213,7 @@ def discover_types(ast: ref ASTNode) {
              loop {
                  if j >= len(deref(union_types)) { break; }
                  map_axe_type_to_c(union_types.data[j]);
-                 j = j + 1;
+                 j++;
              }
         }
     } elif equals_c(node_type, "Function") {
@@ -6232,7 +6232,7 @@ def discover_types(ast: ref ASTNode) {
                     val pt: string = strip(substring_se(pstr, cpos + 1, cast[i32](str_len(pstr))));
                     map_axe_type_to_c(pt);
                 }
-                k = k + 1;
+                k++;
             }
         }
     }
@@ -6243,7 +6243,7 @@ def discover_types(ast: ref ASTNode) {
         loop {
             if i_child >= len(deref(children)) { break; }
             discover_types(addr(children.data[i_child]));
-            i_child = i_child + 1;
+            i_child++;
         }
     }
 }
