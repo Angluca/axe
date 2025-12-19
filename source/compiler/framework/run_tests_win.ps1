@@ -25,11 +25,40 @@ if ($sawExit -ne 0) {
 } else {
     Write-Host "OK: saw test" -ForegroundColor Green
 }
-
-$failed = 0
+ 
 $counts = @{ total = 0; passed = 0; failed = 0 }
 $failedFiles = @()
 $stdFolder = "..\\std"
+
+Write-Host ""
+Write-Host "Testing self-compilation: building axc2 with tested axc..."
+Push-Location $axcDir
+$counts.total++
+$axc2Path = Join-Path $axcDir "axc2.exe"
+
+if (Test-Path $axc2Path) {
+    Remove-Item $axc2Path -Force -ErrorAction SilentlyContinue
+}
+Write-Host "Running: & .\axc axc -o axc2"
+& .\axc axc -o axc2
+$scExit = $LASTEXITCODE
+Pop-Location
+
+if ($scExit -ne 0) {
+    Write-Host "FAILED: self-compilation (axc -> axc2) - exit code $scExit" -ForegroundColor Red
+    $failed++
+    $counts.failed++
+    $failedFiles += "self-compilation (exit $scExit)"
+} else {
+    if (Test-Path $axc2Path) {
+        Write-Host "OK: self-compilation (exit 0) produced $axc2Path" -ForegroundColor Green
+    } else {
+        Write-Host "WARNING: self-compilation returned exit 0 but $axc2Path not found" -ForegroundColor Yellow
+        $failed++
+        $counts.failed++
+        $failedFiles += "self-compilation (missing axc2)"
+    }
+}
 
 if (Test-Path $stdFolder) {
     Write-Host ""
