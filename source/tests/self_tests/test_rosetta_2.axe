@@ -1,0 +1,8 @@
+use std.io;
+
+def main() {
+    val words: list(ref char) = ["Enjoy", "Rosetta", "Code"];
+    parallel for mut x = 0 to words.len {
+        println(words.data[x]);
+    }
+}
