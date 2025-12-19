@@ -8700,7 +8700,15 @@ pub def generate_c(ast: ref ASTNode): string {
             val inferred: string = infer_expression_type(strip(initializer));
             if str_len(inferred) > 0 {
                 if equals_c(inferred, "cast_inferred_type") {
-                    // Do nothing here and let LHS type definition take precedence
+                    print(get_short_filename(g_current_source_file));
+                    print(":");
+                    print(i32_to_string(g_current_line));
+                    print(": error: cannot infer cast target type for '");
+                    print(initializer);
+                    println("', add explicit type to the LHS.");
+                    unsafe {
+                        C.exit(1);
+                    }
                 } else {
                     type_name = inferred;
                     mapped_type = map_axe_type_to_c(type_name);
@@ -9215,6 +9223,16 @@ pub def generate_c(ast: ref ASTNode): string {
                                         cast_with_type = concat(cast_with_type, args_content);
                                         cast_with_type = concat(cast_with_type, str(")"));
                                         trimmed = cast_with_type;
+                                    }
+                                } elif !has_type_params and str_len(type_name) == 0 {
+                                    print(get_short_filename(g_current_source_file));
+                                    print(":");
+                                    print(i32_to_string(g_current_line));
+                                    print(": error: cannot infer cast target type for '");
+                                    print(trimmed);
+                                    println("', add explicit type to the LHS.");
+                                    unsafe {
+                                        C.exit(1);
                                     }
                                 }
                             }
