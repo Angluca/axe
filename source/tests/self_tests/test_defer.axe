@@ -1,0 +1,14 @@
+use std.io;
+
+def main() {
+    unsafe {
+        mut some_ptr: ref void = C.malloc(1024);
+
+        defer {
+            C.free(some_ptr);
+            println("Yo.");
+        }
+
+        println("Hello, world.");
+    }
+}
