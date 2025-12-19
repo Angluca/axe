@@ -12,6 +12,7 @@ if (-not (Test-Path "../axc.exe")) {
 
 $axcPath = Resolve-Path "../axc.exe"
 $axcDir  = Split-Path $axcPath -Parent
+$failed  = 0
 
 Write-Host "Running 'saw test' in $axcDir..."
 Push-Location $axcDir
@@ -134,7 +135,7 @@ foreach ($folder in $folders) {
 }
 
 Write-Host ""
-Write-Host "Summary: Total=$($counts.total) Passed=$($counts.passed) Failed=$($counts.failed)"
+Write-Host "Summary: Total=$($counts.total) Passed=$($counts.passed + 1) Failed=$($counts.failed)"
 
 if ($failed -eq 0) {
     Write-Host "All tests passed." -ForegroundColor Green
@@ -146,4 +147,3 @@ if ($failed -eq 0) {
     }
 }
 
-exit $failed

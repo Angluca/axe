@@ -7085,6 +7085,52 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
         }
         return node;
     }
+
+    if token_type == TokenType.DEFER {
+        consume(ctx);
+        skip_whitespace(ctx);
+
+        if !expect(ctx, TokenType.LBRACE) {
+            mut err: string = format_error(ctx, str("Expected '{' after 'defer'"));
+            enforce_raw(false, err.data);
+            return node;
+        }
+        consume(ctx); // Skip '{'
+
+        push_scope();
+
+        mut body: list(ASTNode);
+
+        loop {
+            skip_whitespace(ctx);
+            if ctx.pos >= len(ctx.tokens) {
+                break;
+            }
+            if ctx.tokens.data[ctx.pos].token_type == TokenType.RBRACE {
+                consume(ctx); // Skip '}'
+                break;
+            }
+
+            val stmt: ASTNode = parse_statement_helper(ctx, addr(ctx.current_scope));
+            if str_len(stmt.node_type) > 0 {
+                append(body, stmt);
+            }
+        }
+
+        pop_scope();
+
+        node.node_type = str("Defer");
+
+        unsafe {
+            val list_size_ast: usize = C.sizeof(list(ASTNode));
+            mut heap_body: ref list(ASTNode) = cast[ref list(ASTNode)](C.malloc(list_size_ast));
+            if heap_body != nil {
+                C.memcpy(heap_body, addr(body), list_size_ast);
+                node.data.defer_node.body = heap_body;
+            }
+        }
+        return node;
+    }
     
     // Handle RAW (deprecated)
     if token_type == TokenType.RAW {

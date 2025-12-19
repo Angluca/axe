@@ -82,6 +82,7 @@ pub enum TokenType {
     NEW,
     OVERLOAD,
     EXTERNAL,
+    DEFER,
     SWITCH,
     XOR,
     WHEN,
@@ -466,6 +467,9 @@ pub def lex(source: string): list(Token) {
             if str_equals(source, "default", pos, 7, source_len) and check_boundary(source, pos + 7, source_len) {
                 append(tokens, create_token(TokenType.DEFAULT, "default"));
                 pos = pos + 7;
+            } elif str_equals(source, "defer", pos, 5, source_len) and check_boundary(source, pos + 5, source_len) {
+                append(tokens, create_token(TokenType.DEFER, "defer"));
+                pos = pos + 5;
             } elif str_equals(source, "def", pos, 3, source_len) and check_boundary(source, pos + 3, source_len) {
                 mut lookAhead: i32 = pos + 3;
                 loop {

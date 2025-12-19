@@ -237,7 +237,11 @@ pub model ASTNode {
         unsafe_node: model {
             body: ref list(ASTNode);
         };
-        
+
+        defer_node: model {
+            body: ref list(ASTNode);
+        };
+
         switch_node: model {
             expression: string;
         };
