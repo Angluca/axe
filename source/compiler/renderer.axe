@@ -6190,20 +6190,60 @@ def generate_global_decl(ast: ref ASTNode): string {
 def discover_types(ast: ref ASTNode) {
     if ast == nil { return; }
     
-    if equals_c(ast.node_type, "Declaration") {
+    val node_type: string = ast.node_type;
+    
+    if equals_c(node_type, "Declaration") {
         val type_name: string = ast.data.declaration.type_name;
         if str_len(type_name) > 0 {
             map_axe_type_to_c(type_name);
+        }
+    } elif equals_c(node_type, "Model") {
+        val field_types: ref list(string) = ast.data.model_node.field_types;
+        if field_types != nil {
+            mut i: i32 = 0;
+            loop {
+                if i >= len(deref(field_types)) { break; }
+                map_axe_type_to_c(field_types.data[i]);
+                i = i + 1;
+            }
+        }
+        val union_types: ref list(string) = ast.data.model_node.union_member_types;
+        if union_types != nil {
+             mut j: i32 = 0;
+             loop {
+                 if j >= len(deref(union_types)) { break; }
+                 map_axe_type_to_c(union_types.data[j]);
+                 j = j + 1;
+             }
+        }
+    } elif equals_c(node_type, "Function") {
+        val rt: string = ast.data.function.return_type;
+        if str_len(rt) > 0 {
+            map_axe_type_to_c(rt);
+        }
+        val params: ref list(string) = ast.data.function.params;
+        if params != nil {
+            mut k: i32 = 0;
+            loop {
+                if k >= len(deref(params)) { break; }
+                val pstr: string = params.data[k];
+                val cpos: i32 = find_char_from(pstr, ':', cast[usize](0));
+                if cpos >= 0 {
+                    val pt: string = strip(substring_se(pstr, cpos + 1, cast[i32](str_len(pstr))));
+                    map_axe_type_to_c(pt);
+                }
+                k = k + 1;
+            }
         }
     }
     
     if ast.children != nil {
         val children: ref list(ASTNode) = ast.children;
-        mut i: i32 = 0;
+        mut i_child: i32 = 0;
         loop {
-            if i >= len(deref(children)) { break; }
-            discover_types(addr(children.data[i]));
-            i = i + 1;
+            if i_child >= len(deref(children)) { break; }
+            discover_types(addr(children.data[i_child]));
+            i_child = i_child + 1;
         }
     }
 }
@@ -6602,91 +6642,7 @@ pub def generate_c(ast: ref ASTNode): string {
             val children_len: i32 = len(deref(children));
 
             StringBoolMap.clear(addr(g_list_element_types));
-
-            mut i_scan: i32 = 0;
-            loop {
-                if i_scan >= children_len {
-                    break;
-                }
-                scan_for_list_types(addr(children.data[i_scan]));
-                i_scan++;
-            }
-
-            mut i_more: i32 = 0;
-            loop {
-                if i_more >= children_len {
-                    break;
-                }
-                val cnode: ref ASTNode = addr(children.data[i_more]);
-                if equals_c(cnode.node_type, "Function") {
-                    val ret_type: string = cnode.data.function.return_type;
-                    val br: i32 = find_char_from(ret_type, '[', cast[usize](0));
-                    if br >= 0 and find_char_from(ret_type, ']', cast[usize](br)) >= 0 {
-                        mut elementType: string = strip(substring_se(ret_type, 0, br));
-                        if has_prefix(elementType, str("ref ")) {
-                            elementType = strip(substr(elementType, 4, str_len(elementType) - 4));
-                        }
-                        val mappedC: string = map_axe_type_to_c(elementType);
-                        add_list_element(mappedC);
-                    }
-                } elif equals_c(cnode.node_type, "Model") {
-                    val field_names: ref list(string) = cnode.data.model_node.field_names;
-                    val field_types: ref list(string) = cnode.data.model_node.field_types;
-                    if field_names != nil and field_types != nil {
-                        mut fidx: i32 = 0;
-                        loop {
-                            if fidx >= len(deref(field_types)) or fidx >= len(deref(field_names)) {
-                                break;
-                            }
-                            val ftype: string = field_types.data[fidx];
-                            val br2: i32 = find_char_from(ftype, '[', cast[usize](0));
-                            if br2 >= 0 and find_char_from(ftype, ']', cast[usize](br2)) >= 0 {
-                                mut elemCandidate: string = strip(substring_se(ftype, 0, br2));
-                                if has_prefix(elemCandidate, str("ref ")) {
-                                    elemCandidate = strip(substr(elemCandidate, 4, str_len(elemCandidate) - 4));
-                                }
-                                val mappedElem: string = map_axe_type_to_c(elemCandidate);
-                                add_list_element(mappedElem);
-                            }
-                            fidx++;
-                        }
-                    }
-                    val union_member_types: ref list(string) = cnode.data.model_node.union_member_types;
-                    if union_member_types != nil {
-                        mut uidx: i32 = 0;
-                        loop {
-                            if uidx >= len(deref(union_member_types)) {
-                                break;
-                            }
-                            val utype: string = union_member_types.data[uidx];
-                            val ubr: i32 = find_char_from(utype, '[', cast[usize](0));
-                            if ubr >= 0 and find_char_from(utype, ']', cast[usize](ubr)) >= 0 {
-                                mut uElemCandidate: string = strip(substring_se(utype, 0, ubr));
-                                if has_prefix(uElemCandidate, str("ref ")) {
-                                    uElemCandidate = strip(substr(uElemCandidate, 4, str_len(uElemCandidate) - 4));
-                                }
-                                val mappedUElem: string = map_axe_type_to_c(uElemCandidate);
-                                add_list_element(mappedUElem);
-                            }
-                            uidx++;
-                        }
-                    }
-                }
-                i_more++;
-            }
-
             discover_types(ast);
-
-            if g_list_elements != nil {
-                val lst_ref_pre: ref StringList = g_list_elements;
-                mut li_pre: i32 = 0;
-                loop {
-                    if li_pre >= lst_ref_pre*.len { break; }
-                    val elemPre: string = StringList.get(lst_ref_pre, li_pre);
-                    val mapped: string = map_axe_type_to_c(elemPre);
-                    li_pre = li_pre + 1;
-                }
-            }
 
             mut sb_fwd: StringBuilder = StringBuilder.init(8192);
             mut i_models2: i32 = 0;
@@ -7057,6 +7013,27 @@ pub def generate_c(ast: ref ASTNode): string {
             }
             
             // Step 4: Generate models in sorted order (dependencies first)
+            if g_list_elements != nil {
+                val lst_ref2: ref StringList = g_list_elements;
+                mut ld: i32 = 0;
+                loop {
+                    if ld >= lst_ref2*.len {
+                        break;
+                    }
+                    val elemType: string = StringList.get(lst_ref2, ld);
+                    val elemSanDef: string = sanitize_list_element_name(elemType);
+
+                    StringBuilder.append_c(addr(sb_prog), "typedef struct __list_");
+                    StringBuilder.append(addr(sb_prog), elemSanDef);
+                    StringBuilder.append_c(addr(sb_prog), "_t {\n    ");
+                    StringBuilder.append(addr(sb_prog), elemType);
+                    StringBuilder.append_c(addr(sb_prog), "* data;\n    int len;\n    int capacity;\n} __list_");
+                    StringBuilder.append(addr(sb_prog), elemSanDef);
+                    StringBuilder.append_c(addr(sb_prog), "_t;\n\n");
+                    ld++;
+                }
+            }
+
             mut sorted_idx: i32 = 0;
             loop {
                 if sorted_idx >= sorted_order.len {
@@ -7084,22 +7061,15 @@ pub def generate_c(ast: ref ASTNode): string {
             }
 
             if g_list_elements != nil {
-                val lst_ref2: ref StringList = g_list_elements;
-                mut ld: i32 = 0;
+                val lst_ref3: ref StringList = g_list_elements;
+                mut ld2: i32 = 0;
                 loop {
-                    if ld >= lst_ref2*.len {
+                    if ld2 >= lst_ref3*.len {
                         break;
                     }
-                    val elemType: string = StringList.get(lst_ref2, ld);
+                    val elemType: string = StringList.get(lst_ref3, ld2);
                     val elemSanDef: string = sanitize_list_element_name(elemType);
 
-                    StringBuilder.append_c(addr(sb_prog), "typedef struct __list_");
-                    StringBuilder.append(addr(sb_prog), elemSanDef);
-                    StringBuilder.append_c(addr(sb_prog), "_t {\n    ");
-                    StringBuilder.append(addr(sb_prog), elemType);
-                    StringBuilder.append_c(addr(sb_prog), "* data;\n    int len;\n    int capacity;\n} __list_");
-                    StringBuilder.append(addr(sb_prog), elemSanDef);
-                    StringBuilder.append_c(addr(sb_prog), "_t;\n\n");
                     StringBuilder.append_c(addr(sb_prog), "static inline __list_");
                     StringBuilder.append(addr(sb_prog), elemSanDef);
                     StringBuilder.append_c(addr(sb_prog), "_t __list_");
@@ -7121,9 +7091,10 @@ pub def generate_c(ast: ref ASTNode): string {
                     StringBuilder.append(addr(sb_prog), elemType);
                     StringBuilder.append_c(addr(sb_prog), "));\n        if (new_data == NULL) { fprintf(stderr, \"Out of memory\\n\"); exit(1); }\n        list->data = new_data;\n        list->capacity = new_capacity;\n    }\n    list->data[list->len++] = item;\n}\n\n");
 
-                    ld++;
+                    ld2++;
                 }
             }
+
 
             mut global_arena: Arena = Arena.create(4096);
             mut i_globals_collect: i32 = 0;

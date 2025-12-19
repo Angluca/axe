@@ -71,7 +71,7 @@ pub model ASTNode {
             element_type: string;
             size: string;
             size2: string;
-            initializer: list(string);
+            initializer: ref list(string);
         };
         
         array_access: model {
@@ -89,12 +89,12 @@ pub model ASTNode {
         
         array_literal: model {
             element_type: string;
-            elements: list(string);
+            elements: ref list(string);
         };
         
         function: model {
             name: string;
-            params: list(string);
+            params: ref list(string);
             return_type: string;
             is_public: bool;
             tags: ref list(string);
@@ -107,9 +107,9 @@ pub model ASTNode {
         
         macro_node: model {
             name: string;
-            params: list(string);
-            param_types: list(string);
-            body_tokens: list(Token);
+            params: ref list(string);
+            param_types: ref list(string);
+            body_tokens: ref list(Token);
         };
         
         assert_node: model {
@@ -119,8 +119,8 @@ pub model ASTNode {
         
         if_node: model {
             condition: string;
-            elif_branches: list(ASTNode);
-            else_body: list(ASTNode);
+            elif_branches: ref list(ASTNode);
+            else_body: ref list(ASTNode);
         };
         
         println: model {
@@ -145,8 +145,8 @@ pub model ASTNode {
         };
         
         interpolated_str: model {
-            parts: list(string);
-            expressions: list(string);
+            parts: ref list(string);
+            expressions: ref list(string);
         };
         
         for_loop: model {
@@ -158,7 +158,7 @@ pub model ASTNode {
             var_type: string;
             init_value: string;
             is_parallel: bool;
-            reduction_clauses: list(string);
+            reduction_clauses: ref list(string);
         };
         
         for_in: model {
@@ -184,30 +184,30 @@ pub model ASTNode {
         model_node: model {
             name: string;
             is_public: bool;
-            field_names: list(string);
-            field_types: list(string);
+            field_names: ref list(string);
+            field_types: ref list(string);
 
             // Union field metadata (for fields declared as `field: union { ... }`).
             // For each union member, we store:
             //   - union_member_parent: the parent union field name
             //   - union_member_names/types: the member name and type
-            union_member_parents: list(string);
-            union_member_names: list(string);
-            union_member_types: list(string);
+            union_member_parents: ref list(string);
+            union_member_names: ref list(string);
+            union_member_types: ref list(string);
         };
         
         enum_node: model {
             is_public: bool;
             name: string;
-            values: list(string);
+            values: ref list(string);
         };
         
         model_instantiation: model {
             model_name: string;
             variable_name: string;
             is_mutable: bool;
-            field_names: list(string);
-            field_values: list(string);
+            field_names: ref list(string);
+            field_values: ref list(string);
         };
         
         member_access: model {
@@ -221,16 +221,16 @@ pub model ASTNode {
         };
         
         opaque_node: model {
-            type_names: list(string);
+            type_names: ref list(string);
         };
         
         foreign_node: model {
-            type_names: list(string);
+            type_names: ref list(string);
         };
         
         extern_node: model {
             function_name: string;
-            params: list(string);
+            params: ref list(string);
             return_type: string;
         };
         
