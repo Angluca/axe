@@ -1,0 +1,11 @@
+def some_complex_func(): i32 {
+    val x: i32 = 0;
+    platform windows {
+        C.printf("Should not compile.");
+    }
+    return x;
+}
+
+def main() {
+    some_complex_func();
+}
