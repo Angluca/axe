@@ -7959,21 +7959,21 @@ pub def generate_c(ast: ref ASTNode): string {
                 }
                 q_idx++;
             }
-            
-            mut sb_final: StringBuilder = StringBuilder.init(128000);
-            StringBuilder.append(addr(sb_final), StringBuilder.to_string(addr(sb_header)));
-            StringBuilder.append(addr(sb_final), StringBuilder.to_string(addr(sb_protos)));
-            StringBuilder.append(addr(sb_final), StringBuilder.to_string(addr(g_specialization_prototypes_sb)));
-            StringBuilder.append(addr(sb_final), StringBuilder.to_string(addr(sb_bodies)));
-            StringBuilder.append(addr(sb_final), StringBuilder.to_string(addr(sb_specs)));
-            
-            result = StringBuilder.to_string(addr(sb_final));
-            StringBuilder.destroy(addr(sb_header));
-            StringBuilder.destroy(addr(sb_protos));
-            StringBuilder.destroy(addr(sb_bodies));
-            StringBuilder.destroy(addr(sb_specs));
-            StringBuilder.destroy(addr(sb_final));
         }
+        
+        mut sb_final: StringBuilder = StringBuilder.init(128000);
+        StringBuilder.append(addr(sb_final), StringBuilder.to_string(addr(sb_header)));
+        StringBuilder.append(addr(sb_final), StringBuilder.to_string(addr(sb_protos)));
+        StringBuilder.append(addr(sb_final), StringBuilder.to_string(addr(g_specialization_prototypes_sb)));
+        StringBuilder.append(addr(sb_final), StringBuilder.to_string(addr(sb_bodies)));
+        StringBuilder.append(addr(sb_final), StringBuilder.to_string(addr(sb_specs)));
+        
+        result = StringBuilder.to_string(addr(sb_final));
+        StringBuilder.destroy(addr(sb_header));
+        StringBuilder.destroy(addr(sb_protos));
+        StringBuilder.destroy(addr(sb_bodies));
+        StringBuilder.destroy(addr(sb_specs));
+        StringBuilder.destroy(addr(sb_final));
         result = replace_all(result, str("(->"), str("->"));
 
         mut fixed_result: string = str("");
