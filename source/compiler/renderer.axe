@@ -1490,11 +1490,6 @@ def collect_function_signatures(node: ref ASTNode, arena: ref Arena, prefix: str
             reg_name = concat(prefix, func_name);
         }
         
-        // DEBUG PRINT
-        if equals_c(func_name, "create") {
-            print "DEBUG: Registering function '"; print reg_name; print "'\n";
-        }
-
         register_function_signature(reg_name, params, ret_type, arena);
         
         if node.data.function.is_generic {
