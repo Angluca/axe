@@ -1430,7 +1430,7 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
         }
         
         // If caller passed an address (addr(...)) but the parameter doesn't expect a ref, emit a specific error.
-        if str_len(inferred_type) > 0 and has_prefix(inferred_type, str("ref ")) and !has_prefix(expected_type, str("ref ")) {
+        if !is_generic_func and str_len(inferred_type) > 0 and has_prefix(inferred_type, str("ref ")) and !has_prefix(expected_type, str("ref ")) {
             print(get_short_filename(g_current_source_file));
             print ":";
             print(i32_to_string(g_current_line));
