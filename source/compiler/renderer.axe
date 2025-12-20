@@ -5148,6 +5148,28 @@ def rewrite_dereference(expr: string): string {
 
                     if depth == 0 {
                         val var_name: string = strip(substring_se(expr, paren_start, paren_end));
+                        val var_type: string = infer_expression_type(var_name);
+                        
+                        if str_len(var_type) > 0 {
+                            mut check_type: string = var_type;
+                            if has_prefix(check_type, str("mut ")) {
+                                check_type = strip(substr(check_type, 4, str_len(check_type) - 4));
+                            }
+                            if !has_prefix(check_type, str("ref ")) {
+                                print(get_short_filename(g_current_source_file));
+                                print ":";
+                                print(i32_to_string(g_current_line));
+                                print ": error: cannot dereference non-ref type: ";
+                                print var_type;
+                                print " in 'deref(";
+                                print var_name;
+                                println ")'";
+                                unsafe {
+                                    C.exit(1);
+                                }
+                            }
+                        }
+
                         StringBuilder.append_c(addr(sb), "(*");
                         StringBuilder.append(addr(sb), var_name);
                         StringBuilder.append_c(addr(sb), ")");
