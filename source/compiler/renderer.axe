@@ -2022,7 +2022,8 @@ def collect_function_prefixes(node: ref ASTNode) {
     }
     
     if equals_c(node.node_type, "Function") {
-        register_function_prefix(node.data.function.name);
+        val fn_name: string = node.data.function.name;
+        register_function_prefix(fn_name);
     }
     
     if equals_c(node.node_type, "Overload") {
@@ -3383,13 +3384,6 @@ def rewrite_function_prefixes(expr: string): string {
             }
 
             if k < expr_len and get_char(expr, k) == '(' {
-                val has_double_underscore: bool = find_substr(func_name, str("__")) >= 0;
-                if has_double_underscore {
-                    StringBuilder.append(addr(sb), func_name);
-                    i = j;
-                    continue;
-                }
-                
                 if StringStringMap.contains(addr(g_function_prefixes), func_name) {
                     val full_name: string = StringStringMap.get(addr(g_function_prefixes), func_name);
                     StringBuilder.append(addr(sb), full_name);
@@ -5475,8 +5469,7 @@ def rewrite_function_calls(expr: string): string {
             if str_len(ident) > 3 and get_char(ident, 0) == 'C' and get_char(ident, 1) == '_' and get_char(ident, 2) == '_' {
                 replaced_ident = substring_se(ident, 3, cast[i32](str_len(ident)));
             } elif k < expr_len and get_char(expr, k) == '(' {
-                val has_double_underscore: bool = find_substr(ident, str("__")) >= 0;
-                if !has_double_underscore and StringStringMap.contains(addr(g_function_prefixes), ident) {
+                if StringStringMap.contains(addr(g_function_prefixes), ident) {
                     replaced_ident = StringStringMap.get(addr(g_function_prefixes), ident);
                 }
             }
@@ -10107,8 +10100,14 @@ pub def generate_c(ast: ref ASTNode): string {
         }
 
         mut emitted_name: string = func_name;
+        print "[DEBUG FC] Looking up func_name: ";
+        println func_name;
         if StringStringMap.contains(addr(g_function_prefixes), func_name) {
             emitted_name = StringStringMap.get(addr(g_function_prefixes), func_name);
+            print "[DEBUG FC] Found prefix: ";
+            println emitted_name;
+        } else {
+            println "[DEBUG FC] NOT found in prefix map";
         }
 
         if call_args != nil and len(deref(call_args)) > 0 {

@@ -287,6 +287,10 @@ def prefix_function_node(node: ref ASTNode, module_prefix: string, exported: ref
 
         if has_double_underscore {
             val potential_model: string = substring_se(name, 0, first_underscore_idx);
+            if equals_c(potential_model, module_prefix.data) {
+                return;
+            }
+
             if !StringBoolMap.contains(exported, potential_model) {
                 return;
             }
@@ -374,9 +378,7 @@ def build_exported_name_map(imported: ref ASTNode): StringBoolMap {
                 StringBoolMap.set(addr(m), addr(arena), child.data.function.name, true);
             }
         } elif equals_c(child.node_type, "Model") {
-            if child.data.model_node.is_public {
-                StringBoolMap.set(addr(m), addr(arena), child.data.model_node.name, true);
-            }
+            StringBoolMap.set(addr(m), addr(arena), child.data.model_node.name, true);
         } elif equals_c(child.node_type, "Enum") {
             if child.data.enum_node.is_public {
                 StringBoolMap.set(addr(m), addr(arena), child.data.enum_node.name, true);
@@ -731,6 +733,21 @@ def merge_imported_module(program: ref ASTNode, imported: ref ASTNode, use_modul
             prefix_model_node(addr(child), module_prefix);
             val prefixed_name: string = child.data.model_node.name;
             register_model_name(original_name, prefixed_name);
+            
+            if child.children != nil {
+                val model_children: ref list(ASTNode) = child.children;
+                mut mi: i32 = 0;
+                loop {
+                    if mi >= len(deref(model_children)) {
+                        break;
+                    }
+                    if equals_c(model_children.data[mi].node_type, "Function") {
+                        prefix_function_node(addr(model_children.data[mi]), module_prefix, addr(exported));
+                    }
+                    mi++;
+                }
+            }
+            
             prefix_types_in_node(addr(child), module_prefix, addr(exported));
         } elif equals_c(child.node_type, "Enum") {
             val enum_name: string = child.data.enum_node.name;
