@@ -1,0 +1,5 @@
+extern def some_extern(hi: char*): i32;
+
+def main() {
+    some_extern("Hello from extern!");
+}
