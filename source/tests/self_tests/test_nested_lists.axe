@@ -1,0 +1,27 @@
+// Simple test for nested lists: list(list(i32))
+use std.io;
+use std.arena (Arena);
+
+def main() {
+    mut arena: Arena = Arena.create(1024);
+    mut nested_list: list(list(i32));
+    mut inner_list: list(i32);
+    append(inner_list, 1);
+    append(inner_list, 2);
+    append(inner_list, 3);
+    
+    append(nested_list, inner_list);
+    
+    mut inner_list2: list(i32);
+    append(inner_list2, 4);
+    append(inner_list2, 5);
+    append(inner_list2, 6);
+    
+    append(nested_list, inner_list2);
+    
+    println nested_list.data[0].data[0];
+    
+    println nested_list.data[1].data[0];
+    
+    Arena.destroy(addr(arena));
+}

@@ -304,9 +304,25 @@ def extract_base_type(type_name: string): string {
     }
     
     if has_prefix(result, str("list(")) {
-        val close_paren: i32 = find_char_from(result, cast[char](41), cast[usize](0));
-        if close_paren > 5 {
-            result = strip(substring_se(result, 5, cast[usize](close_paren)));
+        mut paren_pos: i32 = 5;
+        mut depth: i32 = 1;
+        loop {
+            if paren_pos >= str_len(result) {
+                break;
+            }
+            val ch: char = get_char(result, paren_pos);
+            if ch == '(' {
+                depth++;
+            } elif ch == ')' {
+                depth--;
+                if depth == 0 {
+                    break;
+                }
+            }
+            paren_pos++;
+        }
+        if depth == 0 {
+            result = strip(substring_se(result, 5, paren_pos));
             return extract_base_type(result);
         }
     }
@@ -392,6 +408,7 @@ def is_valid_symbol(symbol_name: string): bool {
     return str_len(symbol_name) == 0
         or is_builtin_type(symbol_name)
         or is_language_keyword(symbol_name)
+        or has_prefix(strip(symbol_name), str("list("))
         or StringBoolMap.contains(addr(g_opaque_types), symbol_name)
         or StringBoolMap.contains(addr(g_foreign_types), symbol_name)
         or is_symbol_imported(symbol_name)
@@ -405,9 +422,32 @@ def validate_type_imported(type_name: string) {
     if str_len(type_name) == 0 {
         return;
     }
-    
+
+    if has_prefix(strip(type_name), str("list(")) {
+        mut paren_pos: i32 = 5;  // length of "list("
+        mut depth: i32 = 1;
+        loop {
+            if paren_pos >= str_len(type_name) {
+                break;
+            }
+            val ch: char = get_char(type_name, paren_pos);
+            if ch == '(' {
+                depth++;
+            } elif ch == ')' {
+                depth--;
+                if depth == 0 {
+                    break;
+                }
+            }
+            paren_pos++;
+        }
+        if depth == 0 {
+            return;
+        }
+    }
+
     val base_type: string = extract_base_type(type_name);
-    
+
     if str_len(base_type) == 0 {
         return;
     }
@@ -419,7 +459,7 @@ def validate_type_imported(type_name: string) {
     if find_char_from(base_type, '_', cast[usize](0)) >= 0 {
         return;
     }
-    
+
     if !is_valid_symbol(base_type) {
         if g_current_source_file.data != nil {
             print(get_short_filename(g_current_source_file));
@@ -2079,9 +2119,25 @@ def map_axe_type_to_c(axe_type: string): string {
     }
     
     if has_prefix(result, str("list(")) {
-        val close_paren: i32 = find_char_from(result, cast[char](41), cast[usize](0));
-        if close_paren > 5 {
-            val element_type: string = strip(substring_se(result, 5, close_paren));
+        mut paren_pos: i32 = 5;
+        mut depth: i32 = 1;
+        loop {
+            if paren_pos >= str_len(result) {
+                break;
+            }
+            val ch: char = get_char(result, paren_pos);
+            if ch == '(' {
+                depth++;
+            } elif ch == ')' {
+                depth--;
+                if depth == 0 {
+                    break;
+                }
+            }
+            paren_pos++;
+        }
+        if depth == 0 {
+            val element_type: string = strip(substring_se(result, 5, paren_pos));
             val mapped_elem: string = map_axe_type_to_c(element_type);
             add_list_element(mapped_elem);
             val sanitized: string = sanitize_list_element_name(mapped_elem);
@@ -2158,6 +2214,16 @@ def sanitize_list_element_name(c_elem: string): string {
             StringBuilder.append_c(addr(sb), "_ptr");
         } elif ch == ' ' {
             StringBuilder.append_c(addr(sb), "_");
+        } elif ch == '(' {
+            StringBuilder.append_c(addr(sb), "_");
+        } elif ch == ')' {
+            StringBuilder.append_c(addr(sb), "_");
+        } elif ch == '<' {
+            StringBuilder.append_c(addr(sb), "_lt_");
+        } elif ch == '>' {
+            StringBuilder.append_c(addr(sb), "_gt_");
+        } elif ch == ',' {
+            StringBuilder.append_c(addr(sb), "_comma_");
         } else {
             StringBuilder.append_char(addr(sb), ch);
         }
@@ -3808,6 +3874,222 @@ def scan_for_list_types(node: ref ASTNode) {
                     val mapped: string = map_axe_type_to_c(element);
                     add_list_element(mapped);
                 }
+            }
+            elif has_prefix(tname, str("list(")) {
+                mut paren_pos: i32 = 5;
+                mut depth: i32 = 1;
+                loop {
+                    if paren_pos >= str_len(tname) {
+                        break;
+                    }
+                    val ch: char = get_char(tname, paren_pos);
+                    if ch == '(' {
+                        depth++;
+                    } elif ch == ')' {
+                        depth--;
+                        if depth == 0 {
+                            break;
+                        }
+                    }
+                    paren_pos++;
+                }
+                if depth == 0 {
+                    mut element: string = strip(substring_se(tname, 5, paren_pos));
+                    if has_prefix(element, str("ref ")) {
+                        element = strip(substr(element, 4, str_len(element) - 4));
+                    }
+                    val mapped: string = map_axe_type_to_c(element);
+                    add_list_element(mapped);
+                }
+            }
+        }
+    }
+
+    if equals_c(node.node_type, "Function") {
+        val ret_type: string = node.data.function.return_type;
+        if str_len(ret_type) > 0 and has_prefix(ret_type, str("list(")) {
+            mut paren_pos: i32 = 5;  // length of "list("
+            mut depth: i32 = 1;
+            loop {
+                if paren_pos >= str_len(ret_type) {
+                    break;
+                }
+                val ch: char = get_char(ret_type, paren_pos);
+                if ch == '(' {
+                    depth++;
+                } elif ch == ')' {
+                    depth--;
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                paren_pos++;
+            }
+            if depth == 0 {
+                mut element: string = strip(substring_se(ret_type, 5, paren_pos));
+                if has_prefix(element, str("ref ")) {
+                    element = strip(substr(element, 4, str_len(element) - 4));
+                }
+                val mapped: string = map_axe_type_to_c(element);
+                add_list_element(mapped);
+            }
+        }
+
+        val params: ref list(string) = node.data.function.params;
+        if params != nil {
+            mut i: i32 = 0;
+            loop {
+                if i >= len(deref(params)) {
+                    break;
+                }
+                val param: string = params.data[i];
+                val colon_pos: i32 = find_char_from(param, ':', cast[usize](0));
+                if colon_pos >= 0 {
+                    val param_type: string = strip(substr(param, colon_pos + 1, str_len(param) - colon_pos - 1));
+                    if has_prefix(param_type, str("list(")) {
+                        mut paren_pos: i32 = 5;  // length of "list("
+                        mut depth: i32 = 1;
+                        loop {
+                            if paren_pos >= str_len(param_type) {
+                                break;
+                            }
+                            val ch: char = get_char(param_type, paren_pos);
+                            if ch == '(' {
+                                depth++;
+                            } elif ch == ')' {
+                                depth--;
+                                if depth == 0 {
+                                    break;
+                                }
+                            }
+                            paren_pos++;
+                        }
+                        if depth == 0 {
+                            mut element: string = strip(substring_se(param_type, 5, paren_pos));
+                            if has_prefix(element, str("ref ")) {
+                                element = strip(substr(element, 4, str_len(element) - 4));
+                            }
+                            val mapped: string = map_axe_type_to_c(element);
+                            add_list_element(mapped);
+                        }
+                    }
+                }
+                i++;
+            }
+        }
+    }
+
+    if equals_c(node.node_type, "Extern") {
+        val ret_type: string = node.data.extern_node.return_type;
+        if str_len(ret_type) > 0 and has_prefix(ret_type, str("list(")) {
+            mut paren_pos: i32 = 5;  // length of "list("
+            mut depth: i32 = 1;
+            loop {
+                if paren_pos >= str_len(ret_type) {
+                    break;
+                }
+                val ch: char = get_char(ret_type, paren_pos);
+                if ch == '(' {
+                    depth++;
+                } elif ch == ')' {
+                    depth--;
+                    if depth == 0 {
+                        break;
+                    }
+                }
+                paren_pos++;
+            }
+            if depth == 0 {
+                mut element: string = strip(substring_se(ret_type, 5, paren_pos));
+                if has_prefix(element, str("ref ")) {
+                    element = strip(substr(element, 4, str_len(element) - 4));
+                }
+                val mapped: string = map_axe_type_to_c(element);
+                add_list_element(mapped);
+            }
+        }
+
+        val params: ref list(string) = node.data.extern_node.params;
+        if params != nil {
+            mut i: i32 = 0;
+            loop {
+                if i >= len(deref(params)) {
+                    break;
+                }
+                val param: string = params.data[i];
+                val colon_pos: i32 = find_char_from(param, ':', cast[usize](0));
+                if colon_pos >= 0 {
+                    val param_type: string = strip(substr(param, colon_pos + 1, str_len(param) - colon_pos - 1));
+                    if has_prefix(param_type, str("list(")) {
+                        mut paren_pos: i32 = 5;  // length of "list("
+                        mut depth: i32 = 1;
+                        loop {
+                            if paren_pos >= str_len(param_type) {
+                                break;
+                            }
+                            val ch: char = get_char(param_type, paren_pos);
+                            if ch == '(' {
+                                depth++;
+                            } elif ch == ')' {
+                                depth--;
+                                if depth == 0 {
+                                    break;
+                                }
+                            }
+                            paren_pos++;
+                        }
+                        if depth == 0 {
+                            mut element: string = strip(substring_se(param_type, 5, paren_pos));
+                            if has_prefix(element, str("ref ")) {
+                                element = strip(substr(element, 4, str_len(element) - 4));
+                            }
+                            val mapped: string = map_axe_type_to_c(element);
+                            add_list_element(mapped);
+                        }
+                    }
+                }
+                i++;
+            }
+        }
+    }
+
+    if equals_c(node.node_type, "Model") {
+        val field_types: ref list(string) = node.data.model_node.field_types;
+        if field_types != nil {
+            mut i: i32 = 0;
+            loop {
+                if i >= len(deref(field_types)) {
+                    break;
+                }
+                val field_type: string = field_types.data[i];
+                if has_prefix(field_type, str("list(")) {
+                    mut paren_pos: i32 = 5;  // length of "list("
+                    mut depth: i32 = 1;
+                    loop {
+                        if paren_pos >= str_len(field_type) {
+                            break;
+                        }
+                        val ch: char = get_char(field_type, paren_pos);
+                        if ch == '(' {
+                            depth++;
+                        } elif ch == ')' {
+                            depth--;
+                            if depth == 0 {
+                                break;
+                            }
+                        }
+                        paren_pos++;
+                    }
+                    if depth == 0 {
+                        mut element: string = strip(substring_se(field_type, 5, paren_pos));
+                        if has_prefix(element, str("ref ")) {
+                            element = strip(substr(element, 4, str_len(element) - 4));
+                        }
+                        val mapped: string = map_axe_type_to_c(element);
+                        add_list_element(mapped);
+                    }
+                }
+                i++;
             }
         }
     }
@@ -6107,18 +6389,20 @@ def generate_global_decl(ast: ref ASTNode): string {
                 }
                 val ch: char = get_char(type_name, paren_pos);
                 if ch == '(' {
-                    depth = depth + 1;
+                    depth++;
                 } elif ch == ')' {
-                    depth = depth - 1;
+                    depth--;
                     if depth == 0 {
                         break;
                     }
                 }
-                paren_pos = paren_pos + 1;
+                paren_pos++;
             }
-            val element_type: string = strip(substr(type_name, 5, paren_pos - 5));
-            mut list_arena: Arena = Arena.create(2560);
-            StringStringMap.set(addr(g_list_of_types), addr(list_arena), var_name, element_type);
+            if depth == 0 {
+                val element_type: string = strip(substring_se(type_name, 5, paren_pos));
+                mut list_arena: Arena = Arena.create(2560);
+                StringStringMap.set(addr(g_list_of_types), addr(list_arena), var_name, element_type);
+            }
         } elif has_suffix(type_name, str("[999]")) {
             val element_type: string = strip(substring_se(type_name, 0, str_len(type_name) - 5));
             mut list_arena: Arena = Arena.create(2560);
@@ -7033,7 +7317,11 @@ pub def generate_c(ast: ref ASTNode): string {
                     StringBuilder.append_c(addr(sb_prog), "typedef struct __list_");
                     StringBuilder.append(addr(sb_prog), elemSanDef);
                     StringBuilder.append_c(addr(sb_prog), "_t {\n    ");
-                    StringBuilder.append(addr(sb_prog), elemType);
+                    mut final_field_type: string = elemType;
+                    if has_prefix(elemType, str("list(")) {
+                        final_field_type = map_axe_type_to_c(elemType);
+                    }
+                    StringBuilder.append(addr(sb_prog), final_field_type);
                     StringBuilder.append_c(addr(sb_prog), "* data;\n    int len;\n    int capacity;\n} __list_");
                     StringBuilder.append(addr(sb_prog), elemSanDef);
                     StringBuilder.append_c(addr(sb_prog), "_t;\n\n");
@@ -7089,13 +7377,17 @@ pub def generate_c(ast: ref ASTNode): string {
                     StringBuilder.append_c(addr(sb_prog), "_push(__list_");
                     StringBuilder.append(addr(sb_prog), elemSanDef);
                     StringBuilder.append_c(addr(sb_prog), "_t* list, ");
-                    StringBuilder.append(addr(sb_prog), elemType);
+                    mut final_param_type: string = elemType;
+                    if has_prefix(elemType, str("list(")) {
+                        final_param_type = map_axe_type_to_c(elemType);
+                    }
+                    StringBuilder.append(addr(sb_prog), final_param_type);
                     StringBuilder.append_c(addr(sb_prog), " item) {\n    if (list->len >= list->capacity) {\n        int new_capacity = list->capacity == 0 ? 8 : list->capacity * 2;\n        ");
-                    StringBuilder.append(addr(sb_prog), elemType);
+                    StringBuilder.append(addr(sb_prog), final_param_type);
                     StringBuilder.append_c(addr(sb_prog), "* new_data = (");
-                    StringBuilder.append(addr(sb_prog), elemType);
+                    StringBuilder.append(addr(sb_prog), final_param_type);
                     StringBuilder.append_c(addr(sb_prog), "*)realloc(list->data, new_capacity * sizeof(");
-                    StringBuilder.append(addr(sb_prog), elemType);
+                    StringBuilder.append(addr(sb_prog), final_param_type);
                     StringBuilder.append_c(addr(sb_prog), "));\n        if (new_data == NULL) { fprintf(stderr, \"Out of memory\\n\"); exit(1); }\n        list->data = new_data;\n        list->capacity = new_capacity;\n    }\n    list->data[list->len++] = item;\n}\n\n");
 
                     ld2++;
@@ -8822,18 +9114,20 @@ pub def generate_c(ast: ref ASTNode): string {
                     }
                     val ch: char = get_char(type_name, paren_pos);
                     if ch == '(' {
-                        depth = depth + 1;
+                        depth++;
                     } elif ch == ')' {
-                        depth = depth - 1;
+                        depth--;
                         if depth == 0 {
                             break;
                         }
                     }
-                    paren_pos = paren_pos + 1;
+                    paren_pos++;
                 }
-                val element_type: string = strip(substr(type_name, 5, paren_pos - 5));
-                mut list_arena: Arena = Arena.create(2560);
-                StringStringMap.set(addr(g_list_of_types), addr(list_arena), var_name, element_type);
+                if depth == 0 {
+                    val element_type: string = strip(substring_se(type_name, 5, paren_pos));
+                    mut list_arena: Arena = Arena.create(2560);
+                    StringStringMap.set(addr(g_list_of_types), addr(list_arena), var_name, element_type);
+                }
             } elif has_suffix(type_name, str("[999]")) {
                 val element_type: string = strip(substring_se(type_name, 0, str_len(type_name) - 5));
                 mut list_arena: Arena = Arena.create(2560);

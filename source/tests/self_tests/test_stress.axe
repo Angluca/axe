@@ -1,0 +1,279 @@
+use std.io;
+use std.string;
+use std.lists;
+use std.maps;
+
+model Person {
+    name: string;
+    age: i32;
+    active: bool;
+}
+
+model TreeNode {
+    value: i32;
+    left: ref TreeNode;
+    right: ref TreeNode;
+    parent: ref TreeNode;
+}
+
+def factorial(n: i32): i32 {
+    if n <= 1 {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+def fibonacci(n: i32): i32 {
+    if n <= 1 {
+        return n;
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+def quicksort(arr: ref list(i32), low: i32, high: i32) {
+    if low < high {
+        val pivot_idx = partition(arr, low, high);
+        quicksort(arr, low, pivot_idx - 1);
+        quicksort(arr, pivot_idx + 1, high);
+    }
+}
+
+def partition(arr: ref list(i32), low: i32, high: i32): i32 {
+    val pivot: i32 = arr.data[high];
+    mut i: i32 = low - 1;
+
+    for mut j = low; j < high; j++ {
+        if arr.data[j] <= pivot {
+            i = i + 1;
+            val temp: i32 = arr.data[i];
+            arr.data[i] = arr.data[j];
+            arr.data[j] = temp;
+        }
+    }
+
+    val temp2: i32 = arr.data[i + 1];
+    arr.data[i + 1] = arr.data[high];
+    arr.data[high] = temp2;
+    
+    return i + 1;
+}
+
+def create_tree_recursive(depth: i32, value: i32): ref TreeNode {
+    if depth <= 0 {
+        return nil;
+    }
+
+    val node: TreeNode = TreeNode{
+        value: value,
+        left: create_tree_recursive(depth - 1, value * 2),
+        right: create_tree_recursive(depth - 1, value * 2 + 1),
+        parent: nil
+    };
+
+    mut node_ptr: ref TreeNode = addr(node);
+    
+    if node_ptr.left != nil {
+        node_ptr.left.parent = node_ptr;
+    }
+    if node_ptr.right != nil {
+        node_ptr.right.parent = node_ptr;
+    }
+    
+    return node_ptr;
+}
+
+def tree_sum(node: ref TreeNode): i32 {
+    if node == nil {
+        return 0;
+    }
+    return node.value + tree_sum(node.left) + tree_sum(node.right);
+}
+
+def test_generics[T](x: T, y: T): T {
+    when T is i32 {
+        if x > y { return x; }
+        return y;
+    }
+    when T is f32 {
+        if x > y { return x; }
+        return y;
+    }
+    when T is string {
+        if str_len(x) > str_len(y) { return x; }
+        return y;
+    }
+}
+
+def matrix_multiply(a: ref list(list(i32)), b: ref list(list(i32)), result: ref list(list(i32))) {
+    val rows_a: i32 = len(deref(a));
+    val cols_a: i32 = len(deref(a.data[0]));
+    val cols_b: i32 = len(deref(b.data[0]));
+
+    for mut i = 0; i < rows_a; i++ {
+        for mut j = 0; j < cols_b; j++ {
+            result.data[i].data[j] = 0;
+            for mut k = 0; k < cols_a; k++ {
+                result.data[i].data[j] = result.data[i].data[j] + a.data[i].data[k] * b.data[k].data[j];
+            }
+        }
+    }
+
+}
+
+def complex_computation() {
+    for mut i = 0; i < 10; i++ {
+        for mut j = 0; j < 10; j++ {
+            for mut k = 0; k < 10; k++ {
+                if i*j + k > 50 {
+                    if i + j + k < 15 {
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+def test_list_operations() {
+    mut my_list: list(i32);
+    
+    for mut i = 0; i < 100; i++ {
+        append(my_list, i * 2);
+    }
+    
+    for mut i = 0; i < 50; i++ {
+        if i mod 2 == 0 {
+            append(my_list, i * 3);
+        } else {
+            append(my_list, i * 5);
+        }
+    }
+    
+    for mut i = 0; i < len(my_list); i++ {
+        if my_list.data[i] mod 3 == 0 {
+            my_list.data[i] = my_list.data[i] * 2;
+        }
+    }
+}
+
+def test_cast_operations() {
+    val n: i32 = 42;
+    val f: f32 = cast[f32](n);
+    val d: f64 = cast[f64](f);
+    
+    println("Cast test:");
+    println(n);
+    println(f);
+    println(d);
+}
+
+def test_large_string_operations() {
+    mut result: string = str("");
+    
+    for mut i = 0; i < 100; i++ {
+        result = concat(result, i32_to_string(i));
+        result = concat(result, str("_"));
+    }
+    
+    println("String length:");
+    println(cast[i32](str_len(result)));
+}
+
+def test_nested_models() {
+    mut people: list(Person);
+    
+    for mut i = 0; i < 100; i++ {
+        val p: Person = Person{
+            name: concat(str("Person_"), i32_to_string(i)),
+            age: i * 2 + 5,
+            active: (i % 2) == 0
+        };
+        append(people, p);
+    }
+    
+    mut active_count: i32 = 0;
+    for mut i = 0; i < len(people); i++ {
+        if people.data[i].active {
+            active_count = active_count + 1;
+        }
+    }
+    
+    println("Active people count:");
+    println(active_count);
+}
+
+def test_parallel_computation() {
+    parallel for mut i = 0; i < 100; i++ {
+        val x = i * i;
+        val y: i32 = x + 10;
+        println($"pog: {y}");
+    }
+}
+
+def main() {
+    println("Starting stress test...");
+    
+    println("Testing factorial:");
+    println(factorial(10));
+    
+    println("Testing fibonacci:");
+    println(fibonacci(15));
+    
+    println("Testing tree operations:");
+    val tree = create_tree_recursive(4, 1);
+    val sum = tree_sum(tree);
+    println(sum);
+    
+    println("Testing generics:");
+    val max_int = test_generics[i32](10, 20);
+    println(max_int);
+    
+    val max_str = test_generics[string](str("short"), str("longer_string"));
+    println(max_str);
+    
+    println("Testing list operations:");
+    test_list_operations();
+    
+    test_cast_operations();
+    
+    println("Testing large string operations:");
+    test_large_string_operations();
+    
+    println("Testing nested models:");
+    test_nested_models();
+    
+    println("Testing complex computation:");
+    complex_computation();
+    
+    println("Testing parallel computation:");
+    test_parallel_computation();
+    
+    println("Testing matrix operations:");
+    mut a: list(list(i32));
+    mut b: list(list(i32));
+    mut result: list(list(i32));
+    
+    for mut i = 0; i < 10; i++ {
+        mut row_a: list(i32);
+        mut row_b: list(i32);
+        mut row_result: list(i32);
+        
+        for mut j = 0; j < 10; j++ {
+            append(row_a, i * j + 1);
+            append(row_b, i + j);
+            append(row_result, 0);
+        }
+        
+        append(a, row_a);
+        append(b, row_b);
+        append(result, row_result);
+    }
+    
+    matrix_multiply(addr(a), addr(b), addr(result));
+    
+    println(result.data[0].data[0]);
+    
+    println("Stress test completed successfully!");
+}
