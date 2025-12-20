@@ -2,6 +2,7 @@ use std.io;
 use std.string;
 use std.lists;
 use std.maps;
+use std.arena;
 
 model Person {
     name: string;
@@ -58,28 +59,25 @@ def partition(arr: ref list(i32), low: i32, high: i32): i32 {
     return i + 1;
 }
 
-def create_tree_recursive(depth: i32, value: i32): ref TreeNode {
+def create_tree_recursive(arena: ref Arena, depth: i32, value: i32): ref TreeNode {
     if depth <= 0 {
         return nil;
     }
 
-    val node: TreeNode = TreeNode{
-        value: value,
-        left: create_tree_recursive(depth - 1, value * 2),
-        right: create_tree_recursive(depth - 1, value * 2 + 1),
-        parent: nil
-    };
+    mut node: ref TreeNode = cast[ref TreeNode](Arena.alloc(arena, sizeof(TreeNode)));
+    node.value = value;
+    node.left = create_tree_recursive(arena, depth - 1, value * 2);
+    node.right = create_tree_recursive(arena, depth - 1, value * 2 + 1);
+    node.parent = nil;
 
-    mut node_ptr: ref TreeNode = addr(node);
-    
-    if node_ptr.left != nil {
-        node_ptr.left.parent = node_ptr;
+    if node.left != nil {
+        node.left.parent = node;
     }
-    if node_ptr.right != nil {
-        node_ptr.right.parent = node_ptr;
+    if node.right != nil {
+        node.right.parent = node;
     }
     
-    return node_ptr;
+    return node;
 }
 
 def tree_sum(node: ref TreeNode): i32 {
@@ -222,9 +220,11 @@ def main() {
     println(fibonacci(15));
     
     println("Testing tree operations:");
-    val tree = create_tree_recursive(4, 1);
+    mut tree_arena: Arena = Arena.create(1024 * 64);
+    val tree = create_tree_recursive(addr(tree_arena), 4, 1);
     val sum = tree_sum(tree);
     println(sum);
+    Arena.destroy(addr(tree_arena));
     
     println("Testing generics:");
     val max_int = test_generics[i32](10, 20);
