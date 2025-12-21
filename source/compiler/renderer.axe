@@ -6580,6 +6580,8 @@ def generate_function_prototype(ast: ref ASTNode): string {
 def generate_specialized_function_prototype(ast: ref ASTNode, type_mapping: ref StringStringMap, spec_func_name: string): string {
     if ast == nil { return str(""); }
     
+    g_current_type_mapping = type_mapping;
+
     mut return_type: string = ast.data.function.return_type;
     if str_len(return_type) == 0 { return_type = str("void"); }
     if StringStringMap.contains(type_mapping, return_type) {
@@ -6633,6 +6635,8 @@ def generate_specialized_function_prototype(ast: ref ASTNode, type_mapping: ref 
     StringBuilder.append_c(addr(sb_spec), ");\n");
     val result_spec: string = StringBuilder.to_string(addr(sb_spec));
     StringBuilder.destroy(addr(sb_spec));
+    
+    g_current_type_mapping = nil;
     return result_spec;
 }
 
@@ -8770,6 +8774,8 @@ pub def generate_c(ast: ref ASTNode): string {
                     spec_return_type = StringStringMap.get(addr(type_mapping), return_type);
                 }
                 
+                g_current_type_mapping = addr(type_mapping);
+
                 val mapped_ret: string = map_axe_type_to_c(spec_return_type);
                 mut sb_func: StringBuilder = StringBuilder.init(4096);
                 
@@ -8843,8 +8849,6 @@ pub def generate_c(ast: ref ASTNode): string {
                 if ast.children != nil {
                     val children: ref list(ASTNode) = ast.children;
                     mut ci: i32 = 0;
-                    
-                    g_current_type_mapping = addr(type_mapping);
 
                     if has_top_level_when {
                         mut next_check_branch: i32 = 0;
