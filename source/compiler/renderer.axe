@@ -8428,6 +8428,35 @@ pub def generate_c(ast: ref ASTNode): string {
                     if str_len(var_name) > 0 and str_len(type_name) > 0 {
                         mut arena_decl: Arena = Arena.create(2560);
                         StringStringMap.set(addr(g_var_types), addr(arena_decl), var_name, type_name);
+
+                        if has_prefix(type_name, str("list(")) {
+                            mut paren_pos: i32 = 5;
+                            mut depth: i32 = 1;
+                            loop {
+                                if paren_pos >= str_len(type_name) {
+                                    break;
+                                }
+                                val ch: char = get_char(type_name, paren_pos);
+                                if ch == '(' {
+                                    depth++;
+                                } elif ch == ')' {
+                                    depth--;
+                                    if depth == 0 {
+                                        break;
+                                    }
+                                }
+                                paren_pos++;
+                            }
+                            if depth == 0 {
+                                val element_type: string = strip(substring_se(type_name, 5, paren_pos));
+                                mut list_arena: Arena = Arena.create(2560);
+                                StringStringMap.set(addr(g_list_of_types), addr(list_arena), var_name, element_type);
+                            }
+                        } elif has_suffix(type_name, str("[999]")) {
+                            val element_type: string = strip(substring_se(type_name, 0, str_len(type_name) - 5));
+                            mut list_arena: Arena = Arena.create(2560);
+                            StringStringMap.set(addr(g_list_of_types), addr(list_arena), var_name, element_type);
+                        }
                     }
 
                     mut mapped_type: string = map_axe_type_to_c(type_name);
@@ -8461,9 +8490,113 @@ pub def generate_c(ast: ref ASTNode): string {
 
                     mut trimmed_init: string = strip(initializer);
                     if str_len(trimmed_init) > 0 {
-                        val init_norm: string = process_expression(trimmed_init);
-                        StringBuilder.append_c(addr(sb_test), " = ");
-                        StringBuilder.append(addr(sb_test), init_norm);
+                        if has_prefix(trimmed_init, str("[")) and has_suffix(trimmed_init, str("]")) {
+                            val elements_str: string = substring_se(trimmed_init, 1, str_len(trimmed_init) - 1);
+                            val elements_trimmed: string = strip(elements_str);
+                            mut element_count: i32 = 0;
+                            if str_len(elements_trimmed) > 0 {
+                                element_count = 1;
+                                mut depth: i32 = 0;
+                                mut idx_elem: i32 = 0;
+                                loop {
+                                    if idx_elem >= str_len(elements_trimmed) {
+                                        break;
+                                    }
+                                    val ch_elem: char = get_char(elements_trimmed, idx_elem);
+                                    if ch_elem == '(' or ch_elem == '[' or ch_elem == '{' {
+                                        depth++;
+                                    } elif ch_elem == ')' or ch_elem == ']' or ch_elem == '}' {
+                                        depth--;
+                                    } elif ch_elem == ',' and depth == 0 {
+                                        element_count++;
+                                    }
+                                    idx_elem++;
+                                }
+                            }
+                            
+                            mut elem_type_c: string = str("int32_t");
+
+                            if has_prefix(type_name, str("list(")) {
+                                mut paren_end: i32 = 5;
+                                mut depth_type: i32 = 1;
+                                loop {
+                                    if paren_end >= str_len(type_name) {
+                                        break;
+                                    }
+                                    val ch_t: char = get_char(type_name, paren_end);
+                                    if ch_t == '(' {
+                                        depth_type++;
+                                    } elif ch_t == ')' {
+                                        depth_type--;
+                                        if depth_type == 0 {
+                                            break;
+                                        }
+                                    }
+                                    paren_end++;
+                                }
+                                val elem_type_axe: string = strip(substr(type_name, 5, paren_end - 5));
+                                elem_type_c = map_axe_type_to_c(elem_type_axe);
+                            }
+
+                            if equals_c(elem_type_c, "int32_t") and StringStringMap.contains(addr(g_list_of_types), var_name) {
+                                val element_type_recorded: string = StringStringMap.get(addr(g_list_of_types), var_name);
+                                elem_type_c = map_axe_type_to_c(element_type_recorded);
+                            }
+
+                            if equals_c(elem_type_c, "int32_t") and StringStringMap.contains(addr(g_var_types), var_name) {
+                                val var_type_recorded: string = StringStringMap.get(addr(g_var_types), var_name);
+                                if has_prefix(var_type_recorded, str("list(")) or has_suffix(var_type_recorded, str("[999]")) {
+                                    mut element_type2: string = var_type_recorded;
+                                    if has_prefix(element_type2, str("list(")) {
+                                        mut paren_pos2: i32 = 5;
+                                        mut depth2: i32 = 1;
+                                        loop {
+                                            if paren_pos2 >= str_len(element_type2) {
+                                                break;
+                                            }
+                                            val ch2: char = get_char(element_type2, paren_pos2);
+                                            if ch2 == '(' {
+                                                depth2++;
+                                            } elif ch2 == ')' {
+                                                depth2--;
+                                                if depth2 == 0 {
+                                                    break;
+                                                }
+                                            }
+                                            paren_pos2 = paren_pos2 + 1;
+                                        }
+                                        element_type2 = strip(substr(var_type_recorded, 5, paren_pos2 - 5));
+                                    } elif has_suffix(element_type2, str("[999]")) {
+                                        element_type2 = strip(substring_se(var_type_recorded, 0, str_len(var_type_recorded) - 5));
+                                    }
+                                    elem_type_c = map_axe_type_to_c(element_type2);
+                                }
+                            }
+
+                            if equals_c(elem_type_c, "int32_t") and has_prefix(mapped_type, str("__list_")) {
+                                mut san: string = substr(mapped_type, 7, str_len(mapped_type) - 7);
+                                if has_suffix(san, str("_t")) {
+                                    san = substring_se(san, 0, str_len(san) - 2);
+                                }
+                                elem_type_c = san;
+                            }
+                            
+                            val processed_elements: string = process_expression(elements_trimmed);
+
+                            StringBuilder.append_c(addr(sb_test), " = {.data = (");
+                            StringBuilder.append(addr(sb_test), elem_type_c);
+                            StringBuilder.append_c(addr(sb_test), "[]){");
+                            StringBuilder.append(addr(sb_test), processed_elements);
+                            StringBuilder.append_c(addr(sb_test), "}, .len = ");
+                            StringBuilder.append(addr(sb_test), i32_to_string(element_count));
+                            StringBuilder.append_c(addr(sb_test), ", .capacity = ");
+                            StringBuilder.append(addr(sb_test), i32_to_string(element_count));
+                            StringBuilder.append_c(addr(sb_test), "}");
+                        } else {
+                            val init_norm: string = process_expression(trimmed_init);
+                            StringBuilder.append_c(addr(sb_test), " = ");
+                            StringBuilder.append(addr(sb_test), init_norm);
+                        }
                     }
 
                     StringBuilder.append_c(addr(sb_test), ";\n");
