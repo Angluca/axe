@@ -1,0 +1,14 @@
+
+def main() {
+    val x: i32 = 10;
+
+    if x == 10 {
+        put("x is ten");
+    } 
+    // Some random comment
+    elif x == 20 {
+        put("x is twenty");
+    } else {
+        put("x is something else");
+    }
+}
