@@ -1,0 +1,22 @@
+use std.io;
+use std.math;
+
+def median_i32(nums: ref list(i32)): f64 {
+    val s = sorted[i32](nums);
+    val n = len(s);
+    if n == 0 {
+        return 0.0;
+    }
+    if n - (n / 2) * 2 == 1 {
+        return int_to_float(s.data[n / 2]);
+    } else {
+        val a = int_to_float(s.data[n / 2 - 1]);
+        val b = int_to_float(s.data[n / 2]);
+        return (a + b) / 2.0;
+    }
+}
+
+def main() {
+    val nums: list(i32) = [5, 3, 8, 1, 4];
+    println(cast[i32](median_i32(addr(nums))));
+}
