@@ -181,6 +181,55 @@ def is_all_digits(s: string): bool {
     return true;
 }
 
+/// Type inference for macro argument validation
+/// Returns the inferred type of a simple expression (literals, identifiers)
+def infer_simple_type(expr: string): string {
+    val trimmed: string = strip(expr);
+    
+    if str_len(trimmed) == 0 {
+        return str("");
+    }
+    
+    if has_prefix(trimmed, str("\"")) and has_suffix(trimmed, str("\"")) {
+        return str("ref char");
+    }
+    
+    if has_prefix(trimmed, str("'")) and has_suffix(trimmed, str("'")) {
+        return str("char");
+    }
+    
+    val first_char: char = get_char(trimmed, 0);
+    mut is_numeric: bool = false;
+
+    if (first_char >= '0' and first_char <= '9') {
+        is_numeric = true;
+    } elif first_char == '-' {
+        if str_len(trimmed) > 1 {
+            val second_char: char = get_char(trimmed, 1);
+            if (second_char >= '0' and second_char <= '9') or second_char == '.' {
+                is_numeric = true;
+            }
+        }
+    }
+    
+    if is_numeric {
+        if find_char_from(trimmed, '.', cast[usize](0)) >= 0 {
+            return str("f64");
+        }
+        return str("i32");
+    }
+    
+    if equals_c(trimmed, "true") or equals_c(trimmed, "false") {
+        return str("bool");
+    }
+    
+    if equals_c(trimmed, "nil") {
+        return str("ref void");
+    }
+    
+    return str("");
+}
+
 /// Expand macro calls inline within an expression string
 ///
 /// This handles macros that appear within expressions (e.g., assert, return, assignments)
@@ -302,6 +351,64 @@ pub def expand_macros_in_expression(expr: string): string {
                 }
                 
                 val defn: MacroDef = macros_get(ident);
+                
+                if defn.param_types != nil and len(defn.param_types) > 0 {
+                    if len(args) != len(defn.params) {
+                        if str_len(g_current_parse_file) > 0 {
+                            print g_current_parse_file;
+                            print ":";
+                        }
+                        if g_current_parse_line > 0 {
+                            print g_current_parse_line;
+                            print ":";
+                        }
+                        print(ident_start + 1);
+                        print ": error: macro '";
+                        print ident;
+                        print "' expects some";
+                        print " argument(s), but none";
+                        println " were provided";
+                        quit(1);
+                    }
+                    
+                    mut arg_idx: i32 = 0;
+                    loop {
+                        if arg_idx >= len(args) {
+                            break;
+                        }
+                        
+                        val arg_expr: string = args.data[arg_idx];
+                        val expected_type: string = defn.param_types.data[arg_idx];
+                        val inferred_type: string = infer_simple_type(arg_expr);
+                        
+                        if str_len(inferred_type) > 0 and !(compare(inferred_type, expected_type) == 0) {
+                            if str_len(g_current_parse_file) > 0 {
+                                print g_current_parse_file;
+                                print ":";
+                            }
+                            if g_current_parse_line > 0 {
+                                print g_current_parse_line;
+                                print ":";
+                            }
+                            print(ident_start + 1);
+                            print ": error: type mismatch in call to macro '";
+                            print ident;
+                            print "': argument ";
+                            print(i32_to_string(arg_idx + 1));
+                            print " expects type '";
+                            print expected_type;
+                            print "' but got '";
+                            print inferred_type;
+                            println "'";
+                            unsafe {
+                                C.exit(1);
+                            }
+                        }
+                        
+                        arg_idx++;
+                    }
+                }
+                
                 mut expanded: StringBuilder = StringBuilder.init(256);
                 mut tok_idx: i32 = 0;
                 
@@ -2573,6 +2680,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         }
 
         mut heap_params: ref list(string);
+        mut heap_param_types: ref list(string);
         mut heap_body: ref list(Token);
         
         unsafe {
@@ -2580,6 +2688,12 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
             heap_params = cast[ref list(string)](C.malloc(params_size));
             if heap_params != nil {
                 C.memcpy(heap_params, addr(params), params_size);
+            }
+
+            val param_types_size: usize = C.sizeof(list(string));
+            heap_param_types = cast[ref list(string)](C.malloc(param_types_size));
+            if heap_param_types != nil {
+                C.memcpy(heap_param_types, addr(param_types), param_types_size);
             }
 
             val body_size: usize = C.sizeof(list(Token));
@@ -2601,6 +2715,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
 
         mut defn: MacroDef;
         defn.params = heap_params;
+        defn.param_types = heap_param_types;
         defn.body = heap_body;
         macros_add(macro_name, defn);
 

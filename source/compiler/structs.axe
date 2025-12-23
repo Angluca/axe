@@ -12,6 +12,7 @@ use lexer (Token);
 /// Macro definition modelure
 pub model MacroDef {
     params: ref list(string);
+    param_types: ref list(string);
     body: ref list(Token);
 }
 
