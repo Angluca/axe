@@ -227,9 +227,7 @@ test {
     
     mut x: i32 = 100;
     mut y: i32 = 200;
-    unsafe {
-        mem_swap(addr(x), addr(y), C.sizeof(i32));
-    }
+    mem_swap(addr(x), addr(y), cast[usize](size_of(i32)));
     assert x == 200, "Swap should exchange x and y (x should be 200)";
     assert y == 100, "Swap should exchange x and y (y should be 100)";
     

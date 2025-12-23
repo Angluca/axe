@@ -1141,7 +1141,7 @@ def expand_macros_in_ast(ast: ref ASTNode) {
             val expanded: string = expand_macros_in_expression(expr);
             ast.data.return_node.expression = expanded;
         }
-    } elif equals_c(node_type, "FuncCall") {
+    } elif equals_c(node_type, "FunctionCall") or equals_c(node_type, "FuncCall") {
         mut args: ref list(string) = ast.data.func_call.args;
         if args != nil {
             set_parse_location(ast.line, ast.source_file);
