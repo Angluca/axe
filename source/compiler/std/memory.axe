@@ -1,5 +1,5 @@
 /// Copies a value from one location to another.
-macro copy(src: untyped, dest: untyped, type: untyped) {
+pub macro copy(src: untyped, dest: untyped, type: untyped) {
     unsafe {
         if C.sizeof(type) > 0 {
             C.memcpy(&dest, &src, C.sizeof(type));
@@ -8,7 +8,7 @@ macro copy(src: untyped, dest: untyped, type: untyped) {
 }
 
 /// Returns the size of a type in bytes.
-macro size_of(type: untyped) {
+pub macro size_of(type: untyped) {
     cast[i32](sizeof(type))
 }
 

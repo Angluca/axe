@@ -4,17 +4,20 @@
 /// Handles imports and module processing
 
 use structs (
-    ASTNode
+    ASTNode,
+    MacroDef
 );
 
 use lexer (
-    Token, 
+    Token,
     lex
 );
 
 use parser (
     parse,
-    add_child_to_ast
+    add_child_to_ast,
+    macros_add,
+    expand_macros_in_expression
 );
 
 use std.io;
@@ -682,7 +685,7 @@ def merge_imported_module(program: ref ASTNode, imported: ref ASTNode, use_modul
             break;
         }
 
-        val child: ASTNode = children.data[i];
+        mut child: ASTNode = children.data[i];
 
         if equals_c(child.node_type, "Use") {
             i++;
@@ -820,6 +823,33 @@ def merge_imported_module(program: ref ASTNode, imported: ref ASTNode, use_modul
 
             register_imported_symbol(ovl_name);
             prefix_types_in_node(addr(child), module_prefix, addr(exported));
+        } elif equals_c(child.node_type, "Macro") {
+            val macro_name: string = child.data.macro_node.name;
+            if !child.data.macro_node.is_public {
+                i++;
+                continue;
+            }
+
+            if check_symbol_exists_in_program(program, macro_name) {
+                print "error: imported symbol '";
+                print macro_name;
+                print "' from module '";
+                print use_module;
+                println "' shadows a local declaration";
+                unsafe {
+                    C.exit(1);
+                }
+            }
+
+            register_imported_symbol(macro_name);
+            val prefixed_name: string = concat(concat(module_prefix, str("__")), macro_name);
+            child.data.macro_node.name = prefixed_name;
+
+            mut defn: MacroDef;
+            defn.params = child.data.macro_node.params;
+            defn.body = child.data.macro_node.body_tokens;
+
+            macros_add(macro_name, defn);
         }
 
         append_child(program, child);
@@ -1025,7 +1055,82 @@ pub def process_imports(
         idx++;
     }
 
+    expand_macros_in_ast(ast);
+
     return deref(ast);
+}
+
+/// Expand macros in an AST after imports have been processed
+def expand_macros_in_ast(ast: ref ASTNode) {
+    if ast == nil {
+        return;
+    }
+
+    val node_type: string = ast.node_type;
+
+    if equals_c(node_type, "Declaration") {
+        val initializer: string = ast.data.declaration.initializer;
+        if str_len(initializer) > 0 {
+            val expanded: string = expand_macros_in_expression(initializer);
+            ast.data.declaration.initializer = expanded;
+        }
+    } elif equals_c(node_type, "Assignment") {
+        val expression: string = ast.data.assignment.expression;
+        if str_len(expression) > 0 {
+            val expanded: string = expand_macros_in_expression(expression);
+            ast.data.assignment.expression = expanded;
+        }
+    } elif equals_c(node_type, "Return") {
+        val expr: string = ast.data.return_node.expression;
+        if str_len(expr) > 0 {
+            val expanded: string = expand_macros_in_expression(expr);
+            ast.data.return_node.expression = expanded;
+        }
+    } elif equals_c(node_type, "FuncCall") {
+        mut args: ref list(string) = ast.data.func_call.args;
+        if args != nil {
+            mut i: i32 = 0;
+            loop {
+                if i >= len(deref(args)) {
+                    break;
+                }
+                val arg: string = args.data[i];
+                val expanded: string = expand_macros_in_expression(arg);
+                args.data[i] = expanded;
+                i++;
+            }
+        }
+    } elif equals_c(node_type, "If") {
+        val condition: string = ast.data.if_node.condition;
+        if str_len(condition) > 0 {
+            val expanded: string = expand_macros_in_expression(condition);
+            ast.data.if_node.condition = expanded;
+        }
+    } elif equals_c(node_type, "While") {
+        val condition: string = ast.data.if_node.condition;
+        if str_len(condition) > 0 {
+            val expanded: string = expand_macros_in_expression(condition);
+            ast.data.if_node.condition = expanded;
+        }
+    } elif equals_c(node_type, "For") {
+        val condition: string = ast.data.for_loop.condition;
+        if str_len(condition) > 0 {
+            val expanded: string = expand_macros_in_expression(condition);
+            ast.data.for_loop.condition = expanded;
+        }
+    }
+
+    if ast.children != nil {
+        val children: ref list(ASTNode) = ast.children;
+        mut i: i32 = 0;
+        loop {
+            if i >= len(deref(children)) {
+                break;
+            }
+            expand_macros_in_ast(addr(children.data[i]));
+            i++;
+        }
+    }
 }
 
 test {

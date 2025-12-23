@@ -111,6 +111,7 @@ pub model ASTNode {
             params: ref list(string);
             param_types: ref list(string);
             body_tokens: ref list(Token);
+            is_public: bool;
         };
         
         assert_node: model {

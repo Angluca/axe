@@ -65,7 +65,7 @@ pub def initialize_all() {
 }
 
 /// Register a macro definition
-def macros_add(name: string, defn: MacroDef) {
+pub def macros_add(name: string, defn: MacroDef) {
     mut i: i32 = 0;
     loop {
         if i >= len(g_macro_names) {
@@ -136,7 +136,7 @@ def is_all_digits(s: string): bool {
 /// Expand macro calls inline within an expression string
 ///
 /// This handles macros that appear within expressions (e.g., assert, return, assignments)
-def expand_macros_in_expression(expr: string): string {
+pub def expand_macros_in_expression(expr: string): string {
     mut result: StringBuilder = StringBuilder.init(512);
     mut i: i32 = 0;
     val expr_len: i32 = cast[i32](str_len(expr));
@@ -2524,6 +2524,7 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         macro_node.data.macro_node.params = heap_params;
         macro_node.data.macro_node.param_types = addr(param_types);
         macro_node.data.macro_node.body_tokens = heap_body;
+        macro_node.data.macro_node.is_public = ctx.expecting_public;
 
         add_child_to_ast(ast, macro_node);
 
