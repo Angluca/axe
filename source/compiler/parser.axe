@@ -1137,6 +1137,7 @@ pub def parse(tokens: ref list(Token), is_axec: bool, check_entry_point: bool, c
     ctx.current_module = current_module;
     ctx.filename = filename;
     ctx.expecting_public = false;
+    ctx.current_model = str("");
     
     g_check_shadowing = check_entry_point;
     
@@ -1640,6 +1641,10 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
         val model_name: string = ctx.tokens.data[ctx.pos].value;
         model_node.data.model_node.name = model_name;
         model_node.data.model_node.is_public = ctx.expecting_public;
+
+        val old_current_model: string = ctx.current_model;
+        ctx.current_model = model_name;
+
         ctx.pos++;
 
         skip_whitespace(ctx);
@@ -1965,9 +1970,11 @@ def parse_top_level(ctx: ref ParserContext, ast: ref ASTNode) {
             }
         }
 
+        ctx.current_model = old_current_model;
         add_child_to_ast(ast, model_node);
         return;
     }
+
     
     if token_type == TokenType.ENUM {
         ctx.pos++;
@@ -2717,6 +2724,13 @@ def parse_type(ctx: ref ParserContext): string {
         
     } elif current_token.token_type == TokenType.IDENTIFIER {
         type_name = current_token.value;
+        if equals_c(type_name, "Self") {
+            debug_print_raw "Found Self, current_model is: ";
+            debug_print_str ctx.current_model;
+            if str_len(ctx.current_model) > 0 {
+                type_name = ctx.current_model;
+            }
+        }
         check_null_usage(ctx, type_name);
         consume(ctx);
         

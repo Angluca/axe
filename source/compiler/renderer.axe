@@ -150,7 +150,12 @@ mut g_current_line: i32;
 
 /// Current type mapping for generic function specialization. Used by WhenBranch nodes to check if their constraints match
 mut g_current_type_mapping: ref StringStringMap;
+
+/// Current module prefix (for resolving Self and similar)
 mut g_current_module_prefix: string;
+
+/// Current model name (for resolving Self in model methods)
+mut g_current_model: string;
 
 /// Current function's generic type parameters (for checking if a name is valid type parameter)
 mut g_current_function_type_params: StringBoolMap;
@@ -204,6 +209,19 @@ pub def has_external_header(header_name: string): bool {
         or StringList.contains(g_openbsd_external_headers, header_name)
         or StringList.contains(g_netbsd_external_headers, header_name)
         or StringList.contains(g_dragonflybsd_external_headers, header_name);
+}
+
+/// Resolve "Self" keyword in a type string to the current model name
+def resolve_self(axe_type: string): string {
+    if str_len(g_current_model) == 0 {
+        return axe_type;
+    }
+    if find_substr(axe_type, str("Self")) < 0 {
+        return axe_type;
+    }
+    
+    val res: string = replace_all(axe_type, str("Self"), g_current_model);
+    return res;
 }
 
 /// Return the platform-specific starting preprocessor directive for a
@@ -345,48 +363,51 @@ def types_match(actual_type: string, expected_type: string): bool {
          print "types_match: '"; print actual_type; print "' vs '"; print expected_type; println "'";
     }
 
-    if compare(actual_type, expected_type) == 0 {
+    val actual_type_res: string = resolve_self(actual_type);
+    val expected_type_res: string = resolve_self(expected_type);
+
+    if compare(actual_type_res, expected_type_res) == 0 {
         return true;
     }
 
-    val actual_base: string = get_type_base_name(actual_type);
-    val expected_base: string = get_type_base_name(expected_type);
+    val actual_base: string = get_type_base_name(actual_type_res);
+    val expected_base: string = get_type_base_name(expected_type_res);
     
     if compare(actual_base, expected_base) == 0 {
         if compare(actual_base, str("error")) == 0 {
             return true;
         }
-        if str_contains_c(actual_type, "__") or str_contains_c(expected_type, "__") {
+        if str_contains_c(actual_type_res, "__") or str_contains_c(expected_type_res, "__") {
              return true;
         }
     }
 
-    val expected_len: i32 = cast[i32](str_len(expected_type));
-    val actual_len: i32 = cast[i32](str_len(actual_type));
+    val expected_len: i32 = cast[i32](str_len(expected_type_res));
+    val actual_len: i32 = cast[i32](str_len(actual_type_res));
 
     if actual_len > expected_len and expected_len >= 2 {
         val suffix_start: i32 = actual_len - expected_len;
         val separator_pos: i32 = suffix_start - 2;
 
         if separator_pos > 0 and suffix_start <= actual_len {
-            if get_char(actual_type, separator_pos) == '_' and get_char(actual_type, separator_pos + 1) == '_' {
-                val actual_suffix: string = substring_se(actual_type, suffix_start, actual_len);
-                if compare(actual_suffix, expected_type) == 0 {
+            if get_char(actual_type_res, separator_pos) == '_' and get_char(actual_type_res, separator_pos + 1) == '_' {
+                val actual_suffix: string = substring_se(actual_type_res, suffix_start, actual_len);
+                if compare(actual_suffix, expected_type_res) == 0 {
                     return true;
                 }
             }
         }
     }
 
-    if expected_len > actual_len and actual_len >= 2 and find_char_from(actual_type, '_', cast[usize](0)) < 0 {
-        val actual_suffix_len: i32 = cast[i32](str_len(actual_type));
+    if expected_len > actual_len and actual_len >= 2 and find_char_from(actual_type_res, '_', cast[usize](0)) < 0 {
+        val actual_suffix_len: i32 = cast[i32](str_len(actual_type_res));
         val suffix_start2: i32 = expected_len - actual_suffix_len;
         val separator_pos2: i32 = suffix_start2 - 2;
 
         if suffix_start2 <= expected_len and separator_pos2 > 0 {
-            if get_char(expected_type, separator_pos2) == '_' and get_char(expected_type, separator_pos2 + 1) == '_' {
-                val expected_suffix: string = substring_se(expected_type, suffix_start2, expected_len);
-                if compare(actual_type, expected_suffix) == 0 {
+            if get_char(expected_type_res, separator_pos2) == '_' and get_char(expected_type_res, separator_pos2 + 1) == '_' {
+                val expected_suffix: string = substring_se(expected_type_res, suffix_start2, expected_len);
+                if compare(actual_type_res, expected_suffix) == 0 {
                     return true;
                 }
             }
@@ -461,7 +482,8 @@ def is_builtin_type(type_name: string): bool {
         equals_c(type_name, "f32") or equals_c(type_name, "f64") or
         equals_c(type_name, "bool") or equals_c(type_name, "char") or
         equals_c(type_name, "void") or equals_c(type_name, "byte") or
-        equals_c(type_name, "rchar") or equals_c(type_name, "ptrdiff");
+        equals_c(type_name, "rchar") or equals_c(type_name, "ptrdiff") or 
+        equals_c(type_name, "Self");
 }
 
 /// Extract the base type name from a complex type (removing ref, list, mut, etc.)
@@ -663,14 +685,43 @@ def validate_type_imported(type_name: string) {
 
 /// Register a function's parameter types for later validation
 def register_function_signature(func_name: string, params: ref list(string), ret_type: string, arena: ref Arena) {
-    if str_len(ret_type) > 0 {
-        StringStringMap.set(addr(g_function_return_types), arena, func_name, ret_type);
+    val old_model: string = g_current_model;
+    
+    if str_len(g_current_model) == 0 {
+        mut dot_pos: i32 = find_char_from(func_name, '.', cast[usize](0));
+        if dot_pos > 0 {
+            g_current_model = substring_se(func_name, 0, dot_pos);
+        } else {
+            mut last_sep: i32 = -1;
+            mut si: i32 = 0;
+            val slen: i32 = cast[i32](str_len(func_name));
+            loop {
+                if si + 1 >= slen { break; }
+                if get_char(func_name, si) == '_' and get_char(func_name, si+1) == '_' {
+                    last_sep = si;
+                }
+                si++;
+            }
+            if last_sep >= 0 {
+                val model_candidate: string = substring_se(func_name, 0, last_sep);
+                val canon: string = canonical_model_c_name(model_candidate);
+                if str_len(canon) > 0 {
+                    g_current_model = canon;
+                }
+            }
+        }
+    }
+
+    val res_ret: string = resolve_self(ret_type);
+    if str_len(res_ret) > 0 {
+        StringStringMap.set(addr(g_function_return_types), arena, func_name, res_ret);
     } else {
         StringStringMap.set(addr(g_function_return_types), arena, func_name, str("void"));
     }
 
     if params == nil {
         StringStringMap.set(addr(g_function_param_types), arena, func_name, str(""));
+        g_current_model = old_model;
         return;
     }
 
@@ -691,10 +742,11 @@ def register_function_signature(func_name: string, params: ref list(string), ret
             val colon_pos: i32 = find_char_from(param, ':', cast[usize](0));
             if colon_pos >= 0 {
                 val param_type: string = strip(substr(param, colon_pos + 1, str_len(param) - colon_pos - 1));
+                val res_type: string = resolve_self(param_type);
                 if i > 0 {
                     StringBuilder.append_c(addr(sb_types), ",");
                 }
-                StringBuilder.append(addr(sb_types), param_type);
+                StringBuilder.append(addr(sb_types), res_type);
             }
         }
         i++;
@@ -702,6 +754,7 @@ def register_function_signature(func_name: string, params: ref list(string), ret
     val types_str: string = StringBuilder.to_string(addr(sb_types));
     StringBuilder.destroy(addr(sb_types));
     StringStringMap.set(addr(g_function_param_types), arena, func_name, types_str);
+    g_current_model = old_model;
 }
 
 /// Infer the type of an expression (simplified type inference, non-recursive)
@@ -1430,11 +1483,30 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
             arg_idx++;
             continue;
         }
-        
+
+        val old_model_for_validation: string = g_current_model;
+
+        if find_substr(expected_type, str("Self")) >= 0 {
+            if arg_idx == 0 and str_len(inferred_type) > 0 {
+                if StringStringMap.contains(addr(g_model_names), inferred_type) {
+                    g_current_model = inferred_type;
+                } else {
+                    val base_type: string = extract_base_type(inferred_type);
+                    if StringStringMap.contains(addr(g_model_names), base_type) {
+                        g_current_model = base_type;
+                    }
+                }
+            }
+        }
+
+        val resolved_expected_type: string = resolve_self(expected_type);
+
+        g_current_model = old_model_for_validation;
+
         val mapped_inferred: string = map_axe_type_to_c(inferred_type);
-        val mapped_expected: string = map_axe_type_to_c(expected_type);
-        
+        val mapped_expected: string = map_axe_type_to_c(resolved_expected_type);
         mut is_generic_func: bool = StringBoolMap.contains(addr(g_generic_functions), func_name);
+
         if !is_generic_func and StringStringMap.contains(addr(g_function_prefixes), func_name) {
             val prefixed_func: string = StringStringMap.get(addr(g_function_prefixes), func_name);
             if StringBoolMap.contains(addr(g_generic_functions), prefixed_func) {
@@ -1452,7 +1524,7 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
             print "': argument ";
             print(i32_to_string(arg_idx + 1));
             print " expects type '";
-            print expected_type;
+            print resolved_expected_type;
             print "' but got '";
             print inferred_type;
             unsafe {
@@ -1474,7 +1546,7 @@ def validate_function_call(func_name: string, args_str: string, depth: i32) {
                 print "': argument ";
                 print(i32_to_string(arg_idx + 1));
                 print " expects type '";
-                print expected_type;
+                print resolved_expected_type;
                 print "' but got '";
                 print inferred_type;
                 println "'";
@@ -1558,6 +1630,8 @@ def collect_function_signatures(node: ref ASTNode, arena: ref Arena, prefix: str
     
     if equals_c(node.node_type, "Model") {
         val model_name: string = node.data.model_node.name;
+        val old_model: string = g_current_model;
+        g_current_model = model_name;
 
         if node.children != nil {
             val children: ref list(ASTNode) = node.children;
@@ -1572,6 +1646,7 @@ def collect_function_signatures(node: ref ASTNode, arena: ref Arena, prefix: str
             }
         }
 
+        g_current_model = old_model;
         return;
     }
 
@@ -2405,7 +2480,8 @@ def canonical_model_c_name(name: string): string {
 
 /// Map Axe type to C type (comprehensive version for model fields)
 def map_axe_type_to_c(axe_type: string): string {
-    mut result: string = strip(axe_type);
+    val res_self: string = resolve_self(axe_type);
+    mut result: string = strip(res_self);
     
     if g_current_type_mapping != nil and StringStringMap.contains(g_current_type_mapping, result) {
         result = StringStringMap.get(g_current_type_mapping, result);
@@ -6645,6 +6721,7 @@ def generate_function_prototype(ast: ref ASTNode): string {
         i++;
     }
 
+    val old_model: string = g_current_model;
     if sep >= 0 and sep + 2 < n {
         val model_part: string = substring_se(func_name, 0, sep);
         val method_part: string = substring_se(func_name, sep + 2, n);
@@ -6667,6 +6744,7 @@ def generate_function_prototype(ast: ref ASTNode): string {
         if !has_inner_sep {
             val canon_model: string = canonical_model_c_name(model_part);
             if str_len(canon_model) > 0 {
+                g_current_model = canon_model;
                 mut sb_name: StringBuilder = StringBuilder.init(1256);
                 StringBuilder.append(addr(sb_name), canon_model);
                 StringBuilder.append_c(addr(sb_name), "__");
@@ -6682,7 +6760,7 @@ def generate_function_prototype(ast: ref ASTNode): string {
             func_name = StringStringMap.get(addr(g_function_prefixes), func_name);
         }
     }
-    
+
     mut return_type: string = ast.data.function.return_type;
 
     if str_len(return_type) == 0 {
@@ -6751,6 +6829,9 @@ def generate_function_prototype(ast: ref ASTNode): string {
     StringBuilder.append_c(addr(sb), ");\n");
     val result: string = StringBuilder.to_string(addr(sb));
     StringBuilder.destroy(addr(sb));
+
+    g_current_model = old_model;
+
     return result;
 }
 
@@ -8868,8 +8949,33 @@ pub def generate_c(ast: ref ASTNode): string {
         val is_public: bool = ast.data.function.is_public;
         val is_generic: bool = ast.data.function.is_generic;
         val old_prefix: string = g_current_module_prefix;
+        val old_model: string = g_current_model;
+        defer { 
+            g_current_model = old_model;
+            g_current_module_prefix = old_prefix;
+            StringBoolMap.clear(addr(g_current_function_type_params));
+        }
 
         g_current_module_prefix = get_prefix_from_mangled(func_name);
+
+        // Extract model name from mangled function name if it's a method
+        mut last_sep: i32 = -1;
+        mut si: i32 = 0;
+        val slen: i32 = cast[i32](str_len(func_name));
+        loop {
+            if si + 1 >= slen { break; }
+            if get_char(func_name, si) == '_' and get_char(func_name, si+1) == '_' {
+                last_sep = si;
+            }
+            si++;
+        }
+        if last_sep >= 0 {
+            val model_candidate: string = substring_se(func_name, 0, last_sep);
+            val canon: string = canonical_model_c_name(model_candidate);
+            if str_len(canon) > 0 {
+                g_current_model = canon;
+            }
+        }
 
         StringBoolMap.clear(addr(g_current_function_type_params));
 
@@ -8880,7 +8986,9 @@ pub def generate_c(ast: ref ASTNode): string {
             val type_params: ref list(string) = ast.data.function.type_params;
 
             if type_params == nil {
+                g_current_model = old_model;
                 g_current_module_prefix = old_prefix;
+                StringBoolMap.clear(addr(g_current_function_type_params));
                 return str("");
             }
 
@@ -8999,8 +9107,9 @@ pub def generate_c(ast: ref ASTNode): string {
             }
             
             if !has_top_level_when and len(collected_constraints) == 0 {
-                StringBoolMap.clear(addr(g_current_function_type_params));
+                g_current_model = old_model;
                 g_current_module_prefix = old_prefix;
+                StringBoolMap.clear(addr(g_current_function_type_params));
                 return str("");
             }
             
@@ -9299,9 +9408,11 @@ pub def generate_c(ast: ref ASTNode): string {
                 branch_idx = branch_idx + 1;
             }
             
-            StringBoolMap.clear(addr(g_current_function_type_params));
+            val all_funcs_result: string = StringBuilder.to_string(addr(sb_all_funcs));
+            g_current_model = old_model;
             g_current_module_prefix = old_prefix;
-            return StringBuilder.to_string(addr(sb_all_funcs));
+            StringBoolMap.clear(addr(g_current_function_type_params));
+            return all_funcs_result;
         }
         
         if !equals_c(func_name, "main") {
@@ -9359,7 +9470,9 @@ pub def generate_c(ast: ref ASTNode): string {
         }
         
         if StringBoolMap.contains(addr(g_generated_functions), func_name) {
+            g_current_model = old_model;
             g_current_module_prefix = old_prefix;
+            StringBoolMap.clear(addr(g_current_function_type_params));
             return str("");
         }
         
@@ -9417,7 +9530,6 @@ pub def generate_c(ast: ref ASTNode): string {
             }
             
             StringBuilder.append_c(addr(sb_main), "return 0;\n}\n\n");
-            g_current_module_prefix = old_prefix;
             return StringBuilder.to_string(addr(sb_main));
         }
         
@@ -9505,8 +9617,9 @@ pub def generate_c(ast: ref ASTNode): string {
         }
         
         result = concat_c(result, "}\n\n");
-        StringBoolMap.clear(addr(g_current_function_type_params));
+        g_current_model = old_model;
         g_current_module_prefix = old_prefix;
+        StringBoolMap.clear(addr(g_current_function_type_params));
         return result;
     }
     
@@ -12315,6 +12428,8 @@ pub def generate_c(ast: ref ASTNode): string {
     
     if equals_c(node_type, "Model") {
         val model_name: string = ast.data.model_node.name;
+        val old_model: string = g_current_model;
+        g_current_model = model_name;
         val is_public: bool = ast.data.model_node.is_public;
         val field_names: ref list(string) = ast.data.model_node.field_names;
         val field_types: ref list(string) = ast.data.model_node.field_types;
@@ -12532,6 +12647,7 @@ pub def generate_c(ast: ref ASTNode): string {
         StringBuilder.append_c(addr(sb), ";\n\n");
         result = StringBuilder.to_string(addr(sb));
         StringBuilder.destroy(addr(sb));
+        g_current_model = old_model;
         return result;
     }
 
