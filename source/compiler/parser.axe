@@ -1004,21 +1004,26 @@ def is_simple_put_expression(expr: string): bool {
         return false;
     }
     
-    if has_prefix(trimmed, str("\"")) and has_suffix(trimmed, str("\"")) {
+    mut inner: string = trimmed;
+    if has_prefix(trimmed, str("(")) and has_suffix(trimmed, str(")")) {
+        inner = strip(substring_se(trimmed, 1, str_len(trimmed) - 1));
+    }
+    
+    if has_prefix(inner, str("\"")) and has_suffix(inner, str("\"")) {
         return true;
     }
     
-    if has_prefix(trimmed, str("'")) and has_suffix(trimmed, str("'")) {
+    if has_prefix(inner, str("'")) and has_suffix(inner, str("'")) {
         return true;
     }
     
-    val first_char: char = get_char(trimmed, 0);
+    val first_char: char = get_char(inner, 0);
     mut is_number: bool = false;
     
     if first_char >= '0' and first_char <= '9' {
         is_number = true;
-    } elif first_char == '-' and str_len(trimmed) > 1 {
-        val second_char: char = get_char(trimmed, 1);
+    } elif first_char == '-' and str_len(inner) > 1 {
+        val second_char: char = get_char(inner, 1);
         if (second_char >= '0' and second_char <= '9') or second_char == '.' {
             is_number = true;
         }
@@ -1028,10 +1033,10 @@ def is_simple_put_expression(expr: string): bool {
         mut i: i32 = 0;
         mut has_dot: bool = false;
         loop {
-            if i >= str_len(trimmed) {
+            if i >= str_len(inner) {
                 break;
             }
-            val ch: char = get_char(trimmed, i);
+            val ch: char = get_char(inner, i);
             if ch >= '0' and ch <= '9' {
                 // digit is ok
             } elif ch == '.' {
