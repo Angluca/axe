@@ -230,6 +230,65 @@ def infer_simple_type(expr: string): string {
     return str("");
 }
 
+/// Infer list type from array literal like ["a", "b", "c"]
+def infer_list_type_from_literal(expr: string): string {
+    val trimmed: string = strip(expr);
+    
+    if str_len(trimmed) < 2 {
+        return str("");
+    }
+    
+    if get_char(trimmed, 0) != '[' {
+        return str("");
+    }
+    
+    val close_bracket: i32 = find_char_from(trimmed, ']', cast[usize](0));
+    if close_bracket < 0 {
+        return str("");
+    }
+    
+    val content: string = strip(substring_se(trimmed, 1, close_bracket));
+    
+    if str_len(content) == 0 {
+        return str("");
+    }
+    
+    mut first_elem: string = content;
+    val comma_pos: i32 = find_char_from(content, ',', cast[usize](0));
+    if comma_pos >= 0 {
+        first_elem = strip(substring_se(content, 0, comma_pos));
+    }
+    
+    if str_len(first_elem) == 0 {
+        return str("");
+    }
+    
+    mut elem_type: string = str("");
+    
+    if has_prefix(first_elem, str("\"")) {
+        elem_type = str("ref char");
+    } elif has_prefix(first_elem, str("'")) {
+        elem_type = str("char");
+    } elif has_prefix(first_elem, str("str(")) {
+        elem_type = str("string");
+    } else {
+        val first_char_elem: char = get_char(first_elem, 0);
+        if (first_char_elem >= '0' and first_char_elem <= '9') or first_char_elem == '-' {
+            if find_char_from(first_elem, '.', cast[usize](0)) >= 0 {
+                elem_type = str("f64");
+            } else {
+                elem_type = str("i32");
+            }
+        }
+    }
+    
+    if str_len(elem_type) > 0 {
+        return concat(str("list("), concat(elem_type, str(")")));
+    }
+    
+    return str("");
+}
+
 /// Expand macro calls inline within an expression string
 ///
 /// This handles macros that appear within expressions (e.g., assert, return, assignments)
@@ -5231,6 +5290,13 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     val trimmed_init_val: string = strip(initializer);
 
                     if str_len(type_name) == 0 {
+                        val inferred_list_type: string = infer_list_type_from_literal(trimmed_init_val);
+                        if str_len(inferred_list_type) > 0 {
+                            type_name = inferred_list_type;
+                        }
+                    }
+
+                    if str_len(type_name) == 0 {
                         val brace_pos_val: i32 = find_char_from(trimmed_init_val, '{', cast[usize](0));
                         if brace_pos_val > 0 {
                             val inferred_name_brace: string = strip(substring_se(trimmed_init_val, 0, cast[usize](brace_pos_val)));
@@ -5408,6 +5474,14 @@ def parse_statement_helper(ctx: ref ParserContext, scope: ref Scope): ASTNode {
                     }
 
                     mut trimmed_init_mut: string = strip(initializer);
+                    
+                    if str_len(type_name) == 0 {
+                        val inferred_list_type_mut: string = infer_list_type_from_literal(trimmed_init_mut);
+                        if str_len(inferred_list_type_mut) > 0 {
+                            type_name = inferred_list_type_mut;
+                        }
+                    }
+                    
                     if str_len(type_name) == 0 and has_prefix(trimmed_init_mut, str("new ")) {
                         trimmed_init_mut = substring_se(trimmed_init_mut, 4, cast[usize](str_len(trimmed_init_mut)));
                         trimmed_init_mut = strip(trimmed_init_mut);

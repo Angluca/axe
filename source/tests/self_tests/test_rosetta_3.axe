@@ -1,7 +1,7 @@
 use std.io;
 
 def main() {
-    val words = ["Enjoy", "Rosetta", "Code"];
+    val words: list(ref char) = ["Enjoy", "Rosetta", "Code", "With", "Type"];
     parallel for mut x = 0 to words.len {
         println(words.data[x]);
     }
