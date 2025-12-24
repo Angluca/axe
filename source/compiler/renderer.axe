@@ -166,6 +166,9 @@ mut g_expected_return_type: string;
 /// Track if we're inside a non-matching when branch (to skip validation)
 mut g_inside_non_matching_when: bool;
 
+/// Whether to emit #line directives
+mut g_emit_line_directives: bool;
+
 /// Helper to extract prefix from a mangled name (e.g. "std__errors__error" -> "std__errors")
 def get_prefix_from_mangled(name: string): string {
     val n: i32 = cast[i32](str_len(name));
@@ -181,9 +184,6 @@ def get_prefix_from_mangled(name: string): string {
     }
     return str("");
 }
-
-/// Whether to emit #line directives
-mut g_emit_line_directives: bool;
 
 /// Set the current source file for #line directives
 pub def set_source_file(filename: string) {
