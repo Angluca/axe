@@ -91,6 +91,59 @@ pub def now(): DateTime {
 }
 
 
+/// Converts an epoch timestamp (milliseconds since Unix epoch) to a DateTime
+pub def epoch_to_datetime(epoch_ms: i64): DateTime {
+    platform posix {
+        foreign { time_t, tm };
+        unsafe {
+            val epoch_sec: time_t = cast[time_t](epoch_ms / 1000);
+            val ms_remainder: i32 = cast[i32](epoch_ms % 1000);
+            
+            mut local_tm: ref $(tm) = C.localtime(addr(epoch_sec));
+
+            mut dt: DateTime;
+            dt.year        = local_tm.tm_year + 1900;
+            dt.month       = local_tm.tm_mon + 1;
+            dt.day         = local_tm.tm_mday;
+            dt.hour        = local_tm.tm_hour;
+            dt.minute      = local_tm.tm_min;
+            dt.second      = local_tm.tm_sec;
+            dt.millisecond = ms_remainder;
+            dt.epoch_ms    = epoch_ms;
+
+            return dt;
+        }
+    }
+
+    platform windows {
+        foreign { SYSTEMTIME, FILETIME };
+        unsafe {
+            // Convert Unix epoch (ms) to Windows FILETIME (100ns intervals since 1601-01-01)
+            val unix_time_100ns: i64 = epoch_ms * 10000;
+            val win_time_100ns: i64 = unix_time_100ns + 116444736000000000;
+            
+            mut ft: FILETIME;
+            ft.dwLowDateTime = cast[u32](win_time_100ns & 0xFFFFFFFF);
+            ft.dwHighDateTime = cast[u32](win_time_100ns >> 32);
+            
+            mut st: SYSTEMTIME;
+            C.FileTimeToSystemTime(addr(ft), addr(st));
+
+            mut dt: DateTime;
+            dt.year        = st.wYear;
+            dt.month       = st.wMonth;
+            dt.day         = st.wDay;
+            dt.hour        = st.wHour;
+            dt.minute      = st.wMinute;
+            dt.second      = st.wSecond;
+            dt.millisecond = st.wMilliseconds;
+            dt.epoch_ms    = epoch_ms;
+
+            return dt;
+        }
+    }
+}
+
 /// Simple and accurate epoch-based difference calculation
 pub def difference(dt1: DateTime, dt2: DateTime): i64 {
     return dt2.epoch_ms - dt1.epoch_ms;
@@ -125,4 +178,20 @@ test {
     print_time(now(), true);
     println "Difference: ";
     print_i64(difference(start, now()));
+    
+    println "\nTesting epoch_to_datetime:";
+    val test_epoch: i64 = 1609459200000;
+    val dt_from_epoch: DateTime = epoch_to_datetime(test_epoch);
+    print "Epoch ";
+    print_i64(test_epoch);
+    print " converts to: ";
+    print_time(dt_from_epoch, true);
+    
+    val current: DateTime = now();
+    val reconstructed: DateTime = epoch_to_datetime(current.epoch_ms);
+    print "Original time:      ";
+    print_time(current, true);
+    print "Reconstructed time: ";
+    print_time(reconstructed, true);
+    assert(current.epoch_ms == reconstructed.epoch_ms, "Epoch should match after round-trip");
 }
