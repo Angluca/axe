@@ -1,0 +1,21 @@
+use std.string;
+use std.io;
+
+model Expr {
+    tag: string;
+
+    data: union {
+        literal: model { value: i32 };
+        variable: model { name: string };
+        binary: model { op: string; left: Expr; right: Expr };
+    };
+}
+
+def main() {
+    val x = Expr{
+        tag: "literal",
+        data: literal{ value: 42 }
+    };
+
+    println x.data.literal.value;
+}
