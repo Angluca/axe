@@ -644,6 +644,7 @@ def render_qbe_return(ast: ref ASTNode): string {
             StringBuilder.append(addr(sb), str("\n"));
         } elif str_contains(expression, str(".")) {
             val dot_pos: i32 = find_substr(expression, str("."));
+
             if dot_pos > 0 {
                 val object_name: string = substring_se(expression, 0, dot_pos);
                 val member_name: string = substring_se(
